@@ -3,10 +3,18 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const effectiveConfig = {
+  ...firebaseConfig,
+  apiKey:
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
+    process.env.FIREBASE_API_KEY ||
+    firebaseConfig.apiKey,
+};
+
+const app = !getApps().length ? initializeApp(effectiveConfig) : getApp();
 
 // CRITICAL: Must use databaseId as specified in firebaseConfig
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app, effectiveConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });

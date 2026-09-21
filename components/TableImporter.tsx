@@ -172,8 +172,8 @@ export const TableImporter: React.FC<TableImporterProps> = ({
     });
   };
 
-  // 2. AI SMART GENERATE & ENRICH (via Gemini API /api/generate-decks)
-  const handleGenerateWithAi = async () => {
+  // 2. AI SMART GENERATE & ENRICH (via Gemini API /api/generate-decks with client-side batching)
+  const handleAIGenerate = async () => {
     playHapticFeedback('rating');
     const validRows = editableRows.filter((r) => r.english.trim() && r.targetWord.trim());
     if (validRows.length === 0) {
@@ -185,43 +185,103 @@ export const TableImporter: React.FC<TableImporterProps> = ({
     setErrorMessage(null);
 
     try {
-      const res = await fetch('/api/generate-decks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          words: validRows,
-          deckTitle: deckTitle.trim() || parsed.detectedTitle,
-          targetLanguage: targetLanguage.trim() || parsed.detectedLanguage,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error('AI generation service returned an error. Using instant generation.');
+      // 1. DIVIDE 81-CARD ARRAY INTO CHUNKS OF 15-20 (chunk size 16)
+      const CHUNK_SIZE = 16;
+      const chunks: (typeof validRows)[] = [];
+      for (let i = 0; i < validRows.length; i += CHUNK_SIZE) {
+        chunks.push(validRows.slice(i, i + CHUNK_SIZE));
       }
 
-      const data = await res.json();
+      // 2. USE Promise.all TO FETCH AI ENHANCEMENTS FOR EACH BATCH CONCURRENTLY
+      const batchPromises = chunks.map(async (chunk, chunkIdx) => {
+        try {
+          const res = await fetch('/api/generate-decks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              words: chunk,
+              deckTitle: deckTitle.trim() || parsed.detectedTitle,
+              targetLanguage: targetLanguage.trim() || parsed.detectedLanguage,
+              batchIndex: chunkIdx,
+              totalBatches: chunks.length,
+            }),
+          });
+
+          if (!res.ok) {
+            console.warn(`Batch ${chunkIdx + 1}/${chunks.length} request returned status ${res.status}`);
+            return null;
+          }
+
+          return await res.json();
+        } catch (batchErr) {
+          console.warn(`Batch ${chunkIdx + 1}/${chunks.length} fetch failed:`, batchErr);
+          return null;
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+
+      // Collect all enriched cards and metadata across all batches
+      const allAiCards: any[] = [];
+      let detectedMeta: any = null;
+      let hasAnyFallback = false;
+
+      batchResults.forEach((batch) => {
+        if (batch) {
+          if (!detectedMeta) {
+            detectedMeta = batch;
+          }
+          if (batch.fallback) {
+            hasAnyFallback = true;
+          }
+          if (Array.isArray(batch.cards)) {
+            allAiCards.push(...batch.cards);
+          }
+        }
+      });
+
       const newDeckId = `deck-ai-${Date.now()}`;
-      const cleanLanguage = data.detectedLanguage || targetLanguage || parsed.detectedLanguage || 'Foreign Language';
+      const cleanLanguage =
+        detectedMeta?.detectedLanguage ||
+        targetLanguage.trim() ||
+        parsed.detectedLanguage ||
+        'Foreign Language';
 
       const newDeck: Deck = {
         id: newDeckId,
-        title: data.deckTitle || deckTitle.trim() || parsed.detectedTitle || 'Smart Vocabulary Deck',
+        title:
+          detectedMeta?.deckTitle ||
+          deckTitle.trim() ||
+          parsed.detectedTitle ||
+          `${cleanLanguage} Smart Deck`,
         language: cleanLanguage,
-        languageCode: data.languageCode || parsed.detectedLanguageCode || 'es-ES',
-        color: (data.color as any) || (parsed.detectedColor as any) || 'indigo',
+        languageCode:
+          detectedMeta?.languageCode || parsed.detectedLanguageCode || 'es-ES',
+        color:
+          (detectedMeta?.color as any) || (parsed.detectedColor as any) || 'indigo',
         description:
-          data.deckDescription ||
-          `Smart spaced repetition deck with ${validRows.length} vocabulary words enriched with pronunciation and context.`,
-        icon: data.icon || parsed.detectedIcon || 'Sparkles',
+          detectedMeta?.deckDescription ||
+          `Smart spaced repetition deck with ${validRows.length} vocabulary words across ${parsed.sections?.length || 1} sections.`,
+        icon: detectedMeta?.icon || parsed.detectedIcon || 'Sparkles',
         createdAt: new Date().toISOString(),
       };
 
-      // Map each row, enriching with AI output when available
+      // 3. MERGE GENERATED DATA BACK INTO THE ORIGINAL ARRAY WITHOUT LOSING ANY CARDS
+      // Strictly map over ALL original validRows (e.g. all 81 cards).
+      // Never replace the array with a partial response.
       const newCards: Flashcard[] = validRows.map((row, idx) => {
         const staggerOffset = scheduleMode === 'staggered' ? idx : 0;
-        const aiCard = data.cards?.[idx] || data.cards?.find(
-          (c: any) => c.english === row.english || c.targetWord === row.targetWord
-        );
+
+        // Match AI enrichment by targetWord, english, or position
+        const aiCard =
+          allAiCards.find(
+            (c: any) =>
+              c &&
+              ((c.targetWord &&
+                c.targetWord.trim().toLowerCase() === row.targetWord.trim().toLowerCase()) ||
+               (c.english &&
+                c.english.trim().toLowerCase() === row.english.trim().toLowerCase()))
+          ) || allAiCards[idx];
 
         return initializeCardSchedule(
           {
@@ -229,16 +289,19 @@ export const TableImporter: React.FC<TableImporterProps> = ({
             english: row.english.trim(),
             targetWord: row.targetWord.trim(),
             language: newDeck.language,
-            phonetic: row.phonetic || aiCard?.phonetic,
-            partOfSpeech: row.partOfSpeech || aiCard?.partOfSpeech,
-            category: row.category || aiCard?.category || 'Core Vocabulary',
+            phonetic: row.phonetic?.trim() || aiCard?.phonetic?.trim() || '',
+            partOfSpeech:
+              row.partOfSpeech?.trim() ||
+              aiCard?.partOfSpeech?.trim() ||
+              (row.targetWord.includes(' ') ? 'phrase' : 'word'),
+            category: row.category?.trim() || aiCard?.category?.trim() || 'Core Vocabulary',
             exampleSentence: aiCard?.exampleTarget
               ? {
                   target: aiCard.exampleTarget,
                   english: aiCard.exampleEnglish || '',
                 }
               : undefined,
-            notes: row.notes || aiCard?.notes,
+            notes: row.notes?.trim() || aiCard?.notes?.trim() || '',
           },
           `card-ai-${Date.now()}-${idx}`,
           staggerOffset
@@ -250,16 +313,18 @@ export const TableImporter: React.FC<TableImporterProps> = ({
         deckId: newDeckId,
         cardCount: newCards.length,
         deckTitle: newDeck.title,
-        isFallback: Boolean(data.fallback),
+        isFallback: hasAnyFallback || batchResults.some((b) => b === null),
       });
     } catch (err: unknown) {
       console.warn('AI smart enrich failed, falling back to local generator', err);
-      // Seamlessly fallback so user is never blocked
+      // Seamlessly fallback so user is never blocked and retains all 81 cards
       handleGenerateInstant();
     } finally {
       setIsAiLoading(false);
     }
   };
+
+  const handleGenerateWithAi = handleAIGenerate;
 
   // Section categories for filtering
   const sectionCategories = useMemo(() => {
@@ -621,19 +686,19 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                 id="generate-ai-smart-deck-btn"
                 type="button"
                 disabled={isAiLoading || editableRows.length === 0}
-                onClick={handleGenerateWithAi}
+                onClick={handleAIGenerate}
                 className="py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium text-xs shadow-xs shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98"
-                title="Enrich with AI generated example sentences and audio tags"
+                title="Enrich all cards with AI generated example sentences, mnemonics, and phonetics"
               >
                 {isAiLoading ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>AI Enriching...</span>
+                    <span>AI Enriching ({editableRows.length} Cards)...</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>AI Enrich & Generate</span>
+                    <span>AI Enrich & Generate ({editableRows.length} Cards)</span>
                   </>
                 )}
               </button>
