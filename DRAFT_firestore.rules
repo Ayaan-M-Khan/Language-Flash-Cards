@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['userId', 'email', 'streak', 'totalReviews', 'cardsMastered']) &&
+        data.keys().hasOnly(['userId', 'email', 'displayName', 'photoURL', 'streak', 'lastStudiedDate', 'totalReviews', 'cardsMastered', 'createdAt', 'updatedAt']) &&
+        data.userId == userId &&
+        data.email is string && data.email.size() <= 200 &&
+        (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
+        (!('lastStudiedDate' in data) || (data.lastStudiedDate is string && data.lastStudiedDate.size() <= 30)) &&
+        data.streak is number && data.streak >= 0 &&
+        data.totalReviews is number && data.totalReviews >= 0 &&
+        data.cardsMastered is number && data.cardsMastered >= 0;
+    }
+
+    function isValidDeck(data, userId, deckId) {
+      return data.keys().hasAll(['id', 'userId', 'title', 'language', 'languageCode', 'color']) &&
+        data.keys().hasOnly(['id', 'userId', 'title', 'language', 'languageCode', 'color', 'description', 'icon', 'createdAt', 'updatedAt']) &&
+        data.id == deckId &&
+        data.userId == userId &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 120 &&
+        data.language is string && data.language.size() > 0 && data.language.size() <= 50 &&
+        data.languageCode is string && data.languageCode.size() > 0 && data.languageCode.size() <= 20 &&
+        data.color is string && data.color.size() <= 30 &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 500)) &&
+        (!('icon' in data) || (data.icon is string && data.icon.size() <= 50));
+    }
+
+    function isValidFlashcard(data, userId, deckId, cardId) {
+      return data.keys().hasAll(['id', 'deckId', 'userId', 'english', 'targetWord', 'state', 'repetitions', 'intervalDays', 'easeFactor', 'dueDate']) &&
+        data.keys().hasOnly(['id', 'deckId', 'userId', 'english', 'targetWord', 'language', 'phonetic', 'partOfSpeech', 'category', 'notes', 'state', 'repetitions', 'intervalDays', 'easeFactor', 'dueDate', 'lastReviewedAt', 'exampleSentence', 'createdAt']) &&
+        data.id == cardId &&
+        data.deckId == deckId &&
+        data.userId == userId &&
+        data.english is string && data.english.size() <= 500 &&
+        data.targetWord is string && data.targetWord.size() <= 500 &&
+        (!('language' in data) || (data.language is string && data.language.size() <= 50)) &&
+        (!('phonetic' in data) || (data.phonetic is string && data.phonetic.size() <= 200)) &&
+        (!('partOfSpeech' in data) || (data.partOfSpeech is string && data.partOfSpeech.size() <= 50)) &&
+        (!('category' in data) || (data.category is string && data.category.size() <= 100)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000)) &&
+        (data.state in ['new', 'learning', 'review', 'mastered']) &&
+        data.repetitions is number && data.repetitions >= 0 &&
+        data.intervalDays is number && data.intervalDays >= 0 &&
+        data.easeFactor is number && data.easeFactor >= 1.0 &&
+        data.dueDate is string && data.dueDate.size() <= 40 &&
+        (!('lastReviewedAt' in data) || (data.lastReviewedAt is string && data.lastReviewedAt.size() <= 40)) &&
+        (!('exampleSentence' in data) || (data.exampleSentence is map));
+    }
+
+    // User profile document
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile(incoming(), userId);
+      allow update: if isOwner(userId) && isValidUserProfile(incoming(), userId) &&
+        incoming().userId == existing().userId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['email', 'displayName', 'photoURL', 'streak', 'lastStudiedDate', 'totalReviews', 'cardsMastered', 'updatedAt']);
+      allow delete: if isOwner(userId);
+
+      // User Decks
+      match /decks/{deckId} {
+        allow get: if isOwner(userId) && isValidId(deckId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(deckId) && isValidDeck(incoming(), userId, deckId);
+        allow update: if isOwner(userId) && isValidId(deckId) && isValidDeck(incoming(), userId, deckId) &&
+          incoming().id == existing().id &&
+          incoming().userId == existing().userId &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'language', 'languageCode', 'color', 'description', 'icon', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(deckId);
+
+        // Flashcards within Deck
+        match /cards/{cardId} {
+          allow get: if isOwner(userId) && isValidId(deckId) && isValidId(cardId);
+          allow list: if isOwner(userId) && isValidId(deckId);
+          allow create: if isOwner(userId) && isValidId(deckId) && isValidId(cardId) && isValidFlashcard(incoming(), userId, deckId, cardId);
+          allow update: if isOwner(userId) && isValidId(deckId) && isValidId(cardId) && isValidFlashcard(incoming(), userId, deckId, cardId) &&
+            incoming().id == existing().id &&
+            incoming().deckId == existing().deckId &&
+            incoming().userId == existing().userId &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'english', 'targetWord', 'language', 'phonetic', 'partOfSpeech', 'category',
+              'notes', 'state', 'repetitions', 'intervalDays', 'easeFactor', 'dueDate',
+              'lastReviewedAt', 'exampleSentence'
+            ]);
+          allow delete: if isOwner(userId) && isValidId(deckId) && isValidId(cardId);
+        }
+      }
+    }
+  }
+}

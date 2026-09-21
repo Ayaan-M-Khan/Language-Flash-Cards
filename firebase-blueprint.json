@@ -1,0 +1,208 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with study streaks, statistics, and learning progress",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Unique Firebase Authentication UID of user"
+        },
+        "email": {
+          "type": "string",
+          "description": "User's verified email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User's display name",
+          "maxLength": 100
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "User's profile avatar URL",
+          "maxLength": 500
+        },
+        "streak": {
+          "type": "number",
+          "description": "Consecutive days studied"
+        },
+        "lastStudiedDate": {
+          "type": "string",
+          "description": "Date string of last study session (YYYY-MM-DD)",
+          "maxLength": 20
+        },
+        "totalReviews": {
+          "type": "number",
+          "description": "Total number of card reviews completed"
+        },
+        "cardsMastered": {
+          "type": "number",
+          "description": "Number of cards in mastered state"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last updated timestamp"
+        }
+      },
+      "required": ["userId", "email", "streak", "totalReviews", "cardsMastered"]
+    },
+    "Deck": {
+      "title": "Deck",
+      "description": "Language vocabulary deck containing cards and metadata",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Deck identifier",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of the deck owner"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the deck",
+          "maxLength": 120
+        },
+        "language": {
+          "type": "string",
+          "description": "Target language name",
+          "maxLength": 50
+        },
+        "languageCode": {
+          "type": "string",
+          "description": "BCP 47 language code for audio speech synthesis",
+          "maxLength": 20
+        },
+        "color": {
+          "type": "string",
+          "description": "Apple design system color name",
+          "maxLength": 30
+        },
+        "description": {
+          "type": "string",
+          "description": "Short description of the deck",
+          "maxLength": 500
+        },
+        "icon": {
+          "type": "string",
+          "description": "Lucide icon identifier",
+          "maxLength": 50
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when deck was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp when deck was last updated"
+        }
+      },
+      "required": ["id", "userId", "title", "language", "languageCode", "color"]
+    },
+    "Flashcard": {
+      "title": "Flashcard",
+      "description": "Individual flashcard with spaced repetition (SM-2) scheduling",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Card identifier",
+          "maxLength": 128
+        },
+        "deckId": {
+          "type": "string",
+          "description": "Parent deck identifier",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of the card owner"
+        },
+        "english": {
+          "type": "string",
+          "description": "English meaning/translation",
+          "maxLength": 500
+        },
+        "targetWord": {
+          "type": "string",
+          "description": "Word or phrase in target language",
+          "maxLength": 500
+        },
+        "language": {
+          "type": "string",
+          "description": "Language name",
+          "maxLength": 50
+        },
+        "phonetic": {
+          "type": "string",
+          "description": "Phonetic transcription or pronunciation guide",
+          "maxLength": 200
+        },
+        "partOfSpeech": {
+          "type": "string",
+          "description": "Part of speech (noun, verb, phrase, etc.)",
+          "maxLength": 50
+        },
+        "category": {
+          "type": "string",
+          "description": "Thematic category",
+          "maxLength": 100
+        },
+        "notes": {
+          "type": "string",
+          "description": "Mnemonic memory hook or context notes",
+          "maxLength": 1000
+        },
+        "state": {
+          "type": "string",
+          "description": "Spaced repetition state (new, learning, review, mastered)",
+          "enum": ["new", "learning", "review", "mastered"]
+        },
+        "repetitions": {
+          "type": "number",
+          "description": "Consecutive correct reviews"
+        },
+        "intervalDays": {
+          "type": "number",
+          "description": "Days until next review"
+        },
+        "easeFactor": {
+          "type": "number",
+          "description": "SM-2 difficulty multiplier (minimum 1.3)"
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "ISO date string when card is next due",
+          "maxLength": 40
+        },
+        "lastReviewedAt": {
+          "type": "string",
+          "description": "ISO date string of last review",
+          "maxLength": 40
+        }
+      },
+      "required": ["id", "deckId", "userId", "english", "targetWord", "state", "repetitions", "intervalDays", "easeFactor", "dueDate"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile with study streaks and mastery counters"
+    },
+    "/users/{userId}/decks/{deckId}": {
+      "schema": "Deck",
+      "description": "Language learning decks owned by user"
+    },
+    "/users/{userId}/decks/{deckId}/cards/{cardId}": {
+      "schema": "Flashcard",
+      "description": "Flashcards belonging to a deck with SM-2 spaced repetition state"
+    }
+  }
+}

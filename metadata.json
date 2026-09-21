@@ -1,0 +1,6 @@
+{
+  "name": "Language Flashcards",
+  "description": "Apple-designed spaced repetition flashcard app that automatically generates smart decks and schedules from vocabulary tables.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
