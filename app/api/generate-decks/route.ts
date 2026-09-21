@@ -51,6 +51,9 @@ function inferLanguageDetails(words: TableRowInput[], userLang?: string): {
     if (l.includes('kore')) {
       return { language: 'Korean', languageCode: 'ko-KR', color: 'indigo', icon: 'Sparkles' };
     }
+    if (l.includes('arab')) {
+      return { language: 'Arabic', languageCode: 'ar-SA', color: 'emerald', icon: 'Compass' };
+    }
     if (l.includes('portug')) {
       return { language: 'Portuguese', languageCode: 'pt-BR', color: 'teal', icon: 'Globe' };
     }
@@ -62,6 +65,10 @@ function inferLanguageDetails(words: TableRowInput[], userLang?: string): {
 
   const sample = words.map((w) => `${w.targetWord} ${w.english}`).join(' ');
 
+  // Arabic script detection
+  if (/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(sample)) {
+    return { language: 'Arabic', languageCode: 'ar-SA', color: 'emerald', icon: 'Compass' };
+  }
   // Japanese kana detection
   if (/[\u3040-\u309F\u30A0-\u30FF]/.test(sample)) {
     return { language: 'Japanese', languageCode: 'ja-JP', color: 'pink', icon: 'Sparkles' };

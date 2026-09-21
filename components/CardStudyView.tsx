@@ -495,7 +495,10 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
             {/* Center: Foreign Target Word */}
             <div className="my-auto text-center py-4">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-neutral-900 mb-3 break-words">
+              <h1
+                dir={/[\u0600-\u06FF]/.test(currentCard.targetWord) ? 'rtl' : 'ltr'}
+                className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-neutral-900 mb-3 break-words"
+              >
                 {currentCard.targetWord}
               </h1>
 

@@ -138,8 +138,6 @@ export async function saveDeckAndCardsToFirestore(
 ): Promise<void> {
   const basePath = `users/${userId}/decks/${deck.id}`;
   try {
-    const batch = writeBatch(db);
-
     const deckRef = doc(db, 'users', userId, 'decks', deck.id);
     const deckPayload = {
       id: deck.id,
@@ -153,9 +151,14 @@ export async function saveDeckAndCardsToFirestore(
       createdAt: deck.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    batch.set(deckRef, deckPayload);
 
-    for (const card of cards) {
+    // Save deck and cards in batches to stay safely within Firestore 500 operation limit
+    const initialBatch = writeBatch(db);
+    initialBatch.set(deckRef, deckPayload);
+
+    const CHUNK_SIZE = 400;
+    const firstChunk = cards.slice(0, CHUNK_SIZE);
+    for (const card of firstChunk) {
       const cardRef = doc(db, 'users', userId, 'decks', deck.id, 'cards', card.id);
       const cardPayload = {
         id: card.id,
@@ -177,10 +180,40 @@ export async function saveDeckAndCardsToFirestore(
         exampleSentence: card.exampleSentence || undefined,
         createdAt: new Date().toISOString(),
       };
-      batch.set(cardRef, cardPayload);
+      initialBatch.set(cardRef, cardPayload);
     }
+    await initialBatch.commit();
 
-    await batch.commit();
+    // Additional chunks if cards exceed 400
+    for (let i = CHUNK_SIZE; i < cards.length; i += CHUNK_SIZE) {
+      const chunkBatch = writeBatch(db);
+      const chunk = cards.slice(i, i + CHUNK_SIZE);
+      for (const card of chunk) {
+        const cardRef = doc(db, 'users', userId, 'decks', deck.id, 'cards', card.id);
+        const cardPayload = {
+          id: card.id,
+          deckId: deck.id,
+          userId,
+          english: card.english.slice(0, 500),
+          targetWord: card.targetWord.slice(0, 500),
+          language: (card.language || deck.language).slice(0, 50),
+          phonetic: (card.phonetic || '').slice(0, 200),
+          partOfSpeech: (card.partOfSpeech || 'phrase').slice(0, 50),
+          category: (card.category || 'General').slice(0, 100),
+          notes: (card.notes || '').slice(0, 1000),
+          state: card.state,
+          repetitions: card.repetitions,
+          intervalDays: card.intervalDays,
+          easeFactor: Math.max(1.3, card.easeFactor || 2.5),
+          dueDate: card.dueDate,
+          lastReviewedAt: card.lastReviewedAt || undefined,
+          exampleSentence: card.exampleSentence || undefined,
+          createdAt: new Date().toISOString(),
+        };
+        chunkBatch.set(cardRef, cardPayload);
+      }
+      await chunkBatch.commit();
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, basePath);
   }

@@ -265,6 +265,112 @@ export const INITIAL_CARDS: Flashcard[] = [
 
 export const SAMPLE_TABLE_PRESETS = [
   {
+    name: 'Arabic Multi-Topic Master (81 Words)',
+    language: 'Arabic',
+    code: 'ar-SA',
+    rawText: `1. Greetings & Introductions
+English\tArabic Script\tTransliteration\tNotes
+Welcome\tأهلاً وسهلاً\t'ahlan wa sahlan\t
+Hello\tمَرحَباً / مَرحَبَاً\tmarHaba / marHaban\t
+Good morning\tصَباح الخَير\tSabaaH al-khayr\t
+Response: Good morning\tصَباح النّور\tSabaaH an-nuur\t
+Peace be upon you\tالسَّلامُ عَلَيكُم\tassalaamu Calaykum\t
+Response: And upon you peace\tوَعَلَيكُمُ السَّلام\twa Calaykumu s-salaam\t
+How are you?\tكَيفَ الحال؟\tkayfa al-Haal?\tFormal / General
+Response: Praise be to God\tالحَمدُ لله\tal-Hamdulillaah\t
+My name is X\tاِسمي ...\tismii X\t
+I’m from the city of X in X country\tأَنا مِن مَدينة ... في ...\tanaa min madiinat X fii X\t
+Good afternoon / evening\tمَساء الخَير\tmasaa’ al-khayr\tResponse: masaa' an-nuur
+How are you? (♂)\tكَيفَ حالُكَ؟\tkayfa Haaluka?\tFormal masculine
+How are you? (♀)\tكَيفَ حالُكِ؟\tkayfa Haaluki?\tFormal feminine
+Response: Fine / well\tبِخَير\tbi-khayr\t
+Nice to meet you\tتَشَرَّفنا\ttasharrafnaa\t
+
+2. Dialect vs. Formal Expressions & Question Words
+Meaning\tArabic Script\tTransliteration\tGender / Dialect Notes
+Good morning\tصباح الخير\tSabaaH el-kheer / al-khayr\tDialect / Formal variation
+Good morning (response)\tصباح النور\tSabaaH in-nuur / an-nuur\tDialect / Formal variation
+How are you?\tكيفك\tkiifak\tDialect (♂)
+How are you?\tكيفك\tkiifik\tDialect (♀)
+Good / fine\tكويس\tkwayyis\tDialect (♂)
+Good / fine\tكويسة\tkwayysa/e\tDialect (♀)
+Fine / okay\tتمام\ttamaam\tNeutral (♂ / ♀)
+Fine / good\tمنيح\tmniiH\tLevantine dialect (♂)
+Fine / good\tمنيحة\tmniiHa\tLevantine dialect (♀)
+Not good\tمش كويس\tmish kwayyis\tDialect (♂)
+What’s your name?\tما اسمك؟\tmaa ismuka?\tFormal (♂)
+What’s your name?\tما اسمكِ؟\tmaa ismuki?\tFormal (♀)
+What’s your name?\tشو اسمك؟\tshuu ismak? / ismik?\tDialect (♂ / ♀)
+Your presence / form of address\tحضرتك\tHaDratuka / -ki\tFormal polite address (♂ / ♀)
+Welcome\tأهلاً بك\tahlan bika / -ki\t(♂ / ♀)
+Nice to meet you\tتشرفنا بك\ttasharrafnaa bika / -ki\t(♂ / ♀)
+Where? (New)\tوين؟\tween?\tDialect question word
+From where? (New)\tمن وين؟\tmin ween?\tDialect question phrase
+What? (New)\tشو؟\tshuu?\tDialect question word
+
+3. Classroom, Objects & Places Vocabulary
+English\tArabic Script\tTransliteration\tGender / Number
+Book\tكِتاب\tkitaab\tMasculine
+Notebook\tدَفتَر\tdaftar\tMasculine
+Pen / pencil\tقَلَم\tqalam\tMasculine
+Chair\tكُرسِيّ\tkursii\tMasculine
+Table\tطاوِلة\tTaawila(t)\tFeminine
+Light\tنور\tnuur\tMasculine
+Paper\tوَرَقة\twaraqa(t)\tFeminine
+Page\tصَفحة\tSafHa(t)\tFeminine
+Question\tسُؤال\tsu’aal\tMasculine
+Board\tلَوح\tlawH\tMasculine
+Office / desk\tمَكتَب\tmaktab\tMasculine
+Student\tطالِب / طالبة\tTaalib / Taaliba(t)\t♂ / ♀
+Teacher / Professor\tأُستاذ / أُستاذة\tustaadh / ustaadha(t)\t♂ / ♀
+Problem\tمُشكِلة\tmushkila(t)\tFeminine
+Homework (singular)\tواجِب\twaajib\tMasculine
+Homework (plural) (New)\tواجِبات\twaajibaat\tPlural
+Window\tشُبّاك\tshubbaak\tMasculine
+Classroom / class\tصَفّ\tSaff\tMasculine
+Door\tباب\tbaab\tMasculine
+Drill / exercise\tتَمرين\ttamriin\tMasculine
+House / home (New)\tبَيت\tbayt\tMasculine
+Street (New)\tشارِع\tshaaric\tMasculine
+Bed (New)\tتَخت\ttakht\tMasculine
+University (New)\tجامِعة\tjaamica(t)\tFeminine
+News item (singular) (New)\tخَبَر\tkhabar\tMasculine
+News (plural / general) (New)\tأَخبار\takhbaar\tPlural
+
+4. Prepositions & Spatial Words (New from Week 4)
+English\tArabic Script\tTransliteration\tNotes
+Under / beneath\tتَحتَ\ttaHta\tPreposition
+On / upon\tعَلى\tCalaa\tPreposition
+Between / among\tبَينَ\tbayna\tPreposition
+In / at\tفي\tfii\tPreposition (reviewed)
+From\tمِن\tmin\tPreposition (reviewed)
+
+5. Pronouns & Demonstratives (New from Week 4)
+English\tArabic Script\tTransliteration\tType / Notes
+I\tأَنا\tanaa\t1st person singular
+You (masculine)\tأَنتَ\tanta\t2nd person singular (♂)
+You (feminine)\tأَنتِ\tanti\t2nd person singular (♀)
+He / it\tهُوَ\thuwa\t3rd person singular (♂)
+She / it\tهِيَ\thiya\t3rd person singular (♀)
+This is (masculine)\tهذا\thaadhaa\tDemonstrative pronoun (♂)
+This is (feminine)\tهذِهِ\thaadhihi\tDemonstrative pronoun (♀)
+
+6. People & Relationships (New from Week 4)
+English\tArabic Script\tTransliteration\tGender
+Neighbor (♂)\tجار\tjaar\tMasculine
+Neighbor (♀)\tجارة\tjaara(t)\tFeminine
+Friend / companion (♂)\tصاحِب\tSaaHib\tMasculine
+Beloved / lover / sweetheart (♂)\tحَبيب\tHabiib\tMasculine
+
+7. Possessive Suffixes / Attached Pronouns (New from Week 4)
+Suffix\tTransliteration\tMeaning\tExample: kitaab (book)\tExample: jaara(t) (neighbor ♀)
+ـي\t-ii\tMy\tكِتابي (kitaabii - my book)\tجاراتي (jaaratii - my neighbor)
+ـكَ\t-ka\tYour (♂)\tكِتابُكَ (kitaabuka - your book)\tجارَتُكَ (jaaratuka - your neighbor)
+ـكِ\t-ki\tYour (♀)\tكِتابُكِ (kitaabuki - your book)\tجارَتُكِ (jaaratuki - your neighbor)
+ـهُ\t-hu\tHis\tكِتابُهُ (kitaabuhu - his book)\tجارَتُهُ (jaaratuhu - his neighbor)
+ـها\t-haa\tHer\tكِتابُها (kitaabuhaa - her book)\tجارَتُها (jaaratuhaa - her neighbor)`,
+  },
+  {
     name: 'Spanish Travel & Social (10 Words)',
     language: 'Spanish',
     code: 'es-ES',
