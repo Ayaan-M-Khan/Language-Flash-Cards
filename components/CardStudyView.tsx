@@ -18,6 +18,8 @@ import {
 import { Flashcard, Deck, SM2Rating, CardState } from '@/lib/types';
 import { calculateSM2, getPreviewIntervals, isCardDue } from '@/lib/srs';
 import { speakWord, playHapticFeedback } from '@/lib/audio';
+import { WeeklyReviewTracker } from './WeeklyReviewTracker';
+import { incrementTodayReviewCount } from '@/lib/review-history';
 
 interface CardStudyViewProps {
   cards: Flashcard[];
@@ -26,6 +28,7 @@ interface CardStudyViewProps {
   onSelectDeck: (deckId: string | null) => void;
   onCardReviewed: (updatedCard: Flashcard, rating: SM2Rating) => void;
   onNavigateToImport: () => void;
+  currentStreak?: number;
 }
 
 export const CardStudyView: React.FC<CardStudyViewProps> = ({
@@ -35,9 +38,11 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   onSelectDeck,
   onCardReviewed,
   onNavigateToImport,
+  currentStreak = 4,
 }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [sessionIndex, setSessionIndex] = useState(0);
+  const [reviewRefreshTrigger, setReviewRefreshTrigger] = useState(0);
   const [sessionReviews, setSessionReviews] = useState<{
     cardId: string;
     rating: SM2Rating;
@@ -105,6 +110,10 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
       onCardReviewed(updatedCard, rating);
       setSessionReviews((prev) => [...prev, { cardId: currentCard.id, rating }]);
+
+      // Log review to local weekly review consistency tracker
+      incrementTodayReviewCount();
+      setReviewRefreshTrigger((v) => v + 1);
 
       // Flip back and advance to next card
       setIsFlipped(false);
@@ -253,6 +262,9 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             <span>View All Decks</span>
           </button>
         </div>
+
+        {/* Visual Progress Tracking Section */}
+        <WeeklyReviewTracker currentStreak={currentStreak} refreshTrigger={reviewRefreshTrigger} />
       </div>
     );
   }
@@ -368,6 +380,9 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             </button>
           </div>
         </motion.div>
+
+        {/* Visual Progress Tracking Section */}
+        <WeeklyReviewTracker currentStreak={currentStreak} refreshTrigger={reviewRefreshTrigger} />
       </div>
     );
   }
@@ -644,6 +659,9 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Visual Progress Tracking Section */}
+      <WeeklyReviewTracker currentStreak={currentStreak} refreshTrigger={reviewRefreshTrigger} />
     </div>
   );
 };

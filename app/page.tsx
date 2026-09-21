@@ -309,6 +309,7 @@ export default function HomePage() {
             onSelectDeck={setSelectedStudyDeckId}
             onCardReviewed={handleCardReviewed}
             onNavigateToImport={() => setActiveTab('import')}
+            currentStreak={effectiveStreak}
           />
         )}
 
