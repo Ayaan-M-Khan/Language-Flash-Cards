@@ -63,7 +63,7 @@ export async function syncUserProfile(
   userEmail: string,
   displayName?: string | null,
   photoURL?: string | null,
-  initialStreak = 1
+  initialStreak = 0
 ): Promise<UserProfile> {
   const path = `users/${userId}`;
   try {

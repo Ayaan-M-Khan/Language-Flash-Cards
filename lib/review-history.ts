@@ -19,8 +19,15 @@ export interface WeeklyConsistencyStats {
   dailyBreakdown: DailyReviewData[];
 }
 
-const STORAGE_KEY_DAILY_REVIEWS = 'language_flashcards_daily_reviews_v1';
+const STORAGE_KEY_DAILY_REVIEWS_BASE = 'language_flashcards_daily_reviews_v2';
 export const DEFAULT_DAILY_TARGET = 15;
+
+/**
+ * Get storage key scoped to user or guest
+ */
+export function getDailyReviewsStorageKey(userId?: string | null): string {
+  return userId ? `${STORAGE_KEY_DAILY_REVIEWS_BASE}_${userId}` : `${STORAGE_KEY_DAILY_REVIEWS_BASE}_guest`;
+}
 
 /**
  * Format a Date object as YYYY-MM-DD
@@ -33,70 +40,81 @@ export function formatDateKey(d: Date): string {
 }
 
 /**
- * Generate initial realistic review history for the last 7 days
- * aligning with the app's default 4-day study streak
+ * Generate initial clean review history for the rolling 7 days
+ * Starts at 0 for all days so consistency is driven entirely by user's actual actions
  */
-function getInitialReviewHistory(): Record<string, number> {
+export function getInitialReviewHistory(): Record<string, number> {
   const history: Record<string, number> = {};
   const today = new Date();
-
-  // Past 7 days realistic distribution:
-  // 4 days of active streak (today, yesterday, 2 days ago, 3 days ago)
-  const pastStreakCounts = [14, 22, 18, 16]; // today down to 3 days ago
-  const olderCounts = [0, 11, 8]; // 4, 5, 6 days ago
 
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() - (6 - i));
     const key = formatDateKey(d);
-
-    // If day is within the 4-day active streak (i.e. last 4 days: i = 3, 4, 5, 6)
-    if (i >= 3) {
-      const streakIdx = 6 - i; // 0 = today, 1 = yesterday, etc.
-      history[key] = pastStreakCounts[streakIdx] ?? 15;
-    } else {
-      const olderIdx = 2 - i;
-      history[key] = olderCounts[olderIdx] ?? 0;
-    }
+    history[key] = 0;
   }
 
   return history;
 }
 
 /**
- * Get all stored daily review counts
+ * Get all stored daily review counts for a user or guest
  */
-export function getDailyReviewsRecord(): Record<string, number> {
+export function getDailyReviewsRecord(userId?: string | null): Record<string, number> {
+  const initial = getInitialReviewHistory();
   if (typeof window === 'undefined') {
-    return getInitialReviewHistory();
+    return initial;
   }
 
+  const storageKey = getDailyReviewsStorageKey(userId);
+
   try {
-    const saved = localStorage.getItem(STORAGE_KEY_DAILY_REVIEWS);
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (typeof parsed === 'object' && parsed !== null) {
-        return parsed;
+        return { ...initial, ...parsed };
       }
     }
   } catch (err) {
     console.warn('Failed to parse daily reviews from storage:', err);
   }
 
-  const initial = getInitialReviewHistory();
   try {
-    localStorage.setItem(STORAGE_KEY_DAILY_REVIEWS, JSON.stringify(initial));
+    localStorage.setItem(storageKey, JSON.stringify(initial));
   } catch {}
+  return initial;
+}
+
+/**
+ * Reset daily review history to 0 for all days
+ */
+export function resetDailyReviewsRecord(userId?: string | null): Record<string, number> {
+  const initial = getInitialReviewHistory();
+  if (typeof window !== 'undefined') {
+    try {
+      const storageKey = getDailyReviewsStorageKey(userId);
+      localStorage.setItem(storageKey, JSON.stringify(initial));
+      window.dispatchEvent(
+        new CustomEvent('language_flashcards_review_added', {
+          detail: { newCount: 0, userId },
+        })
+      );
+    } catch (err) {
+      console.warn('Failed to reset daily reviews record:', err);
+    }
+  }
   return initial;
 }
 
 /**
  * Increment review count for today
  */
-export function incrementTodayReviewCount(): number {
+export function incrementTodayReviewCount(userId?: string | null): number {
   if (typeof window === 'undefined') return 1;
 
-  const record = getDailyReviewsRecord();
+  const storageKey = getDailyReviewsStorageKey(userId);
+  const record = getDailyReviewsRecord(userId);
   const todayKey = formatDateKey(new Date());
   const currentCount = record[todayKey] || 0;
   const newCount = currentCount + 1;
@@ -104,8 +122,12 @@ export function incrementTodayReviewCount(): number {
   record[todayKey] = newCount;
 
   try {
-    localStorage.setItem(STORAGE_KEY_DAILY_REVIEWS, JSON.stringify(record));
-    window.dispatchEvent(new CustomEvent('language_flashcards_review_added', { detail: { newCount } }));
+    localStorage.setItem(storageKey, JSON.stringify(record));
+    window.dispatchEvent(
+      new CustomEvent('language_flashcards_review_added', {
+        detail: { newCount, userId },
+      })
+    );
   } catch (err) {
     console.warn('Failed to save updated daily review count:', err);
   }
@@ -118,9 +140,10 @@ export function incrementTodayReviewCount(): number {
  */
 export function getWeeklyConsistencyStats(
   targetDaily: number = DEFAULT_DAILY_TARGET,
-  _version?: number
+  _version?: number,
+  userId?: string | null
 ): WeeklyConsistencyStats {
-  const record = getDailyReviewsRecord();
+  const record = getDailyReviewsRecord(userId);
   const today = new Date();
   const todayKey = formatDateKey(today);
 

@@ -29,6 +29,7 @@ import {
 interface WeeklyReviewTrackerProps {
   currentStreak?: number;
   refreshTrigger?: number; // changes whenever a card is reviewed
+  userId?: string | null;
 }
 
 interface CustomTooltipProps {
@@ -81,8 +82,9 @@ const CustomChartTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) =
 };
 
 export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
-  currentStreak = 4,
+  currentStreak = 0,
   refreshTrigger = 0,
+  userId = null,
 }) => {
   const isClient = useIsClient();
   const [showGoalLine, setShowGoalLine] = useState(true);
@@ -90,19 +92,22 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
 
   // Subscribe to external storage event for real-time reactivity
   useEffect(() => {
-    const handleStorageUpdate = () => {
-      setStoreVersion((v) => v + 1);
+    const handleStorageUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ userId?: string }>;
+      if (!customEvent.detail || !customEvent.detail.userId || customEvent.detail.userId === userId) {
+        setStoreVersion((v) => v + 1);
+      }
     };
 
     window.addEventListener('language_flashcards_review_added', handleStorageUpdate);
     return () => {
       window.removeEventListener('language_flashcards_review_added', handleStorageUpdate);
     };
-  }, []);
+  }, [userId]);
 
   const stats = useMemo(() => {
-    return getWeeklyConsistencyStats(DEFAULT_DAILY_TARGET, refreshTrigger + storeVersion);
-  }, [refreshTrigger, storeVersion]);
+    return getWeeklyConsistencyStats(DEFAULT_DAILY_TARGET, refreshTrigger + storeVersion, userId);
+  }, [refreshTrigger, storeVersion, userId]);
 
   const maxReviews = useMemo(() => {
     const highest = Math.max(...stats.dailyBreakdown.map((d) => d.reviews), DEFAULT_DAILY_TARGET);

@@ -24,7 +24,7 @@ import { Cloud } from 'lucide-react';
 
 const STORAGE_KEY_DECKS = 'language_flashcards_decks_v1';
 const STORAGE_KEY_CARDS = 'language_flashcards_cards_v1';
-const STORAGE_KEY_STREAK = 'language_flashcards_streak_v1';
+const STORAGE_KEY_STREAK = 'language_flashcards_streak_v2';
 
 export default function HomePage() {
   const { user, profile, updateLocalProfileStats, signInWithGoogle } = useAuth();
@@ -59,12 +59,12 @@ export default function HomePage() {
   const [hasDismissedAuthBanner, setHasDismissedAuthBanner] = useState(false);
 
   const [streakDays, setStreakDays] = useState<number>(() => {
-    if (typeof window === 'undefined') return 4;
+    if (typeof window === 'undefined') return 0;
     try {
       const saved = localStorage.getItem(STORAGE_KEY_STREAK);
-      if (saved) return Number(saved) || 4;
+      if (saved) return Number(saved) || 0;
     } catch {}
-    return 4;
+    return 0;
   });
 
   const [soundState, setSoundState] = useState<boolean>(() => {
@@ -310,6 +310,7 @@ export default function HomePage() {
             onCardReviewed={handleCardReviewed}
             onNavigateToImport={() => setActiveTab('import')}
             currentStreak={effectiveStreak}
+            userId={user?.uid}
           />
         )}
 

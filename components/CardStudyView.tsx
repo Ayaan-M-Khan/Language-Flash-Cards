@@ -29,6 +29,7 @@ interface CardStudyViewProps {
   onCardReviewed: (updatedCard: Flashcard, rating: SM2Rating) => void;
   onNavigateToImport: () => void;
   currentStreak?: number;
+  userId?: string | null;
 }
 
 export const CardStudyView: React.FC<CardStudyViewProps> = ({
@@ -38,7 +39,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   onSelectDeck,
   onCardReviewed,
   onNavigateToImport,
-  currentStreak = 4,
+  currentStreak = 0,
+  userId = null,
 }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [sessionIndex, setSessionIndex] = useState(0);
@@ -112,14 +114,14 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
       setSessionReviews((prev) => [...prev, { cardId: currentCard.id, rating }]);
 
       // Log review to local weekly review consistency tracker
-      incrementTodayReviewCount();
+      incrementTodayReviewCount(userId);
       setReviewRefreshTrigger((v) => v + 1);
 
-      // Flip back and advance to next card
+      // Flip back and advance to next card immediately
       setIsFlipped(false);
       setSessionIndex((prev) => prev + 1);
     },
-    [currentCard, onCardReviewed]
+    [currentCard, onCardReviewed, userId]
   );
 
   // Keyboard shortcut listeners (Space = flip, 1-4 = ratings, S = speak)
@@ -264,7 +266,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         </div>
 
         {/* Visual Progress Tracking Section */}
-        <WeeklyReviewTracker currentStreak={currentStreak} refreshTrigger={reviewRefreshTrigger} />
+        <WeeklyReviewTracker currentStreak={currentStreak} refreshTrigger={reviewRefreshTrigger} userId={userId} />
       </div>
     );
   }
@@ -382,7 +384,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         </motion.div>
 
         {/* Visual Progress Tracking Section */}
-        <WeeklyReviewTracker currentStreak={currentStreak} refreshTrigger={reviewRefreshTrigger} />
+        <WeeklyReviewTracker currentStreak={currentStreak} refreshTrigger={reviewRefreshTrigger} userId={userId} />
       </div>
     );
   }
@@ -457,6 +459,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
       {/* 3D Flip Card Container */}
       <div className="perspective-1000 w-full mb-6">
         <div
+          key={`${currentCard.id}-${sessionIndex}`}
           id="flashcard-interactive-box"
           onClick={handleFlip}
           className="relative w-full min-h-[360px] sm:min-h-[400px] cursor-pointer select-none transition-transform duration-500 transform-style-preserve-3d"
@@ -518,7 +521,9 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
           {/* ================= CARD BACK (English & Examples) ================= */}
           <div
-            className="absolute inset-0 w-full h-full backface-hidden rounded-3xl bg-white p-6 sm:p-8 flex flex-col justify-between shadow-sm border border-blue-500/20 rotate-y-180"
+            className={`absolute inset-0 w-full h-full backface-hidden rounded-3xl bg-white p-6 sm:p-8 flex flex-col justify-between shadow-sm border border-blue-500/20 rotate-y-180 transition-opacity duration-150 ${
+              !isFlipped ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`}
           >
             {/* Top row: Target echo & audio button */}
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
@@ -664,7 +669,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
       </AnimatePresence>
 
       {/* Visual Progress Tracking Section */}
-      <WeeklyReviewTracker currentStreak={currentStreak} refreshTrigger={reviewRefreshTrigger} />
+      <WeeklyReviewTracker currentStreak={currentStreak} refreshTrigger={reviewRefreshTrigger} userId={userId} />
     </div>
   );
 };
