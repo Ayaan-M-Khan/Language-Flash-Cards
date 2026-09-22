@@ -169,7 +169,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
                 <Flame className="w-4 h-4 fill-orange-500" />
               </div>
               <div className="text-sm font-bold text-orange-700">
-                {profile?.streak ?? 1}d
+                {profile?.streak ?? 0}d
               </div>
               <div className="text-[10px] text-orange-600/80 font-medium">Streak</div>
             </div>

@@ -29,47 +29,44 @@ const STORAGE_KEY_STREAK = 'language_flashcards_streak_v2';
 export default function HomePage() {
   const { user, profile, updateLocalProfileStats, signInWithGoogle } = useAuth();
 
-  const [decks, setDecks] = useState<Deck[]>(() => {
-    if (typeof window === 'undefined') return INITIAL_DECKS;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_DECKS);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return INITIAL_DECKS;
-  });
-
-  const [cards, setCards] = useState<Flashcard[]>(() => {
-    if (typeof window === 'undefined') return INITIAL_CARDS;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_CARDS);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return INITIAL_CARDS;
-  });
-
+  // Consistent initial state between server and client to eliminate hydration mismatches
+  const [decks, setDecks] = useState<Deck[]>(INITIAL_DECKS);
+  const [cards, setCards] = useState<Flashcard[]>(INITIAL_CARDS);
   const [activeTab, setActiveTab] = useState<ActiveTab>('study');
   const [selectedStudyDeckId, setSelectedStudyDeckId] = useState<string | null>(null);
   const [inspectingDeck, setInspectingDeck] = useState<Deck | null>(null);
   const [hasDismissedAuthBanner, setHasDismissedAuthBanner] = useState(false);
+  const [streakDays, setStreakDays] = useState<number>(0);
+  const [soundState, setSoundState] = useState<boolean>(true);
 
-  const [streakDays, setStreakDays] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_STREAK);
-      if (saved) return Number(saved) || 0;
-    } catch {}
-    return 0;
-  });
+  // Storage hydration guard to prevent overwriting saved items with initial placeholders
+  const isStorageLoadedRef = useRef(false);
 
-  const [soundState, setSoundState] = useState<boolean>(() => {
-    return isSoundEnabled();
-  });
+  // Hydrate client storage after mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const savedDecks = localStorage.getItem(STORAGE_KEY_DECKS);
+        if (savedDecks) {
+          const parsed = JSON.parse(savedDecks);
+          if (Array.isArray(parsed) && parsed.length > 0) setDecks(parsed);
+        }
+        const savedCards = localStorage.getItem(STORAGE_KEY_CARDS);
+        if (savedCards) {
+          const parsed = JSON.parse(savedCards);
+          if (Array.isArray(parsed) && parsed.length > 0) setCards(parsed);
+        }
+        const savedStreak = localStorage.getItem(STORAGE_KEY_STREAK);
+        if (savedStreak) setStreakDays(Number(savedStreak) || 0);
+      } catch (err) {
+        console.warn('Failed to load local state:', err);
+      } finally {
+        isStorageLoadedRef.current = true;
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Keep refs to current decks and cards for initial cloud migration
   const decksRef = useRef(decks);
@@ -117,14 +114,16 @@ export default function HomePage() {
     };
   }, [user]);
 
-  // Save changes to localStorage as fallback
+  // Save changes to localStorage as fallback only after initial storage hydration is complete
   useEffect(() => {
+    if (!isStorageLoadedRef.current) return;
     try {
       localStorage.setItem(STORAGE_KEY_DECKS, JSON.stringify(decks));
     } catch {}
   }, [decks]);
 
   useEffect(() => {
+    if (!isStorageLoadedRef.current) return;
     try {
       localStorage.setItem(STORAGE_KEY_CARDS, JSON.stringify(cards));
     } catch {}

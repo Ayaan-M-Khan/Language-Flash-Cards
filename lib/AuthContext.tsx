@@ -32,34 +32,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Listen to auth state
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
+    try {
+      const unsubscribeAuth = onAuthStateChanged(
+        auth,
+        async (currentUser) => {
+          setUser(currentUser);
 
-      if (currentUser) {
-        setIsSyncing(true);
-        try {
-          // Initialize profile in Firestore if not present
-          const userProf = await syncUserProfile(
-            currentUser.uid,
-            currentUser.email || 'user@example.com',
-            currentUser.displayName,
-            currentUser.photoURL
-          );
-          setProfile(userProf);
-        } catch (err) {
-          console.warn('Initial profile sync warning:', err);
-        } finally {
-          setIsSyncing(false);
+          if (currentUser) {
+            setIsSyncing(true);
+            try {
+              // Initialize profile in Firestore if not present
+              const userProf = await syncUserProfile(
+                currentUser.uid,
+                currentUser.email || 'user@example.com',
+                currentUser.displayName,
+                currentUser.photoURL
+              );
+              setProfile(userProf);
+            } catch (err) {
+              console.warn('Initial profile sync warning:', err);
+            } finally {
+              setIsSyncing(false);
+              setIsLoading(false);
+            }
+          } else {
+            setProfile(null);
+            setIsSyncing(false);
+            setIsLoading(false);
+          }
+        },
+        (err) => {
+          console.warn('Auth state error:', err);
           setIsLoading(false);
         }
-      } else {
-        setProfile(null);
-        setIsSyncing(false);
-        setIsLoading(false);
-      }
-    });
+      );
 
-    return () => unsubscribeAuth();
+      return () => unsubscribeAuth();
+    } catch (err) {
+      console.warn('Failed to attach auth listener:', err);
+      setTimeout(() => setIsLoading(false), 0);
+    }
   }, []);
 
   // Subscribe to real-time updates when user is logged in

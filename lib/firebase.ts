@@ -8,7 +8,8 @@ const effectiveConfig = {
   apiKey:
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
     process.env.FIREBASE_API_KEY ||
-    firebaseConfig.apiKey,
+    firebaseConfig.apiKey ||
+    'AIzaSyCvu-Qd3kZjif7hWybPLN2kS47BntM8D5k',
 };
 
 const app = !getApps().length ? initializeApp(effectiveConfig) : getApp();

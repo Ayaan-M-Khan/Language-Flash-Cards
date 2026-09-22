@@ -84,6 +84,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Study</span>
             {dueTodayCount > 0 && (
               <span
+                suppressHydrationWarning
                 className={`ml-1 text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
                   activeTab === 'study'
                     ? 'bg-blue-500 text-white'

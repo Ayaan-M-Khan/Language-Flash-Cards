@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
 import {
@@ -50,6 +50,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     rating: SM2Rating;
   }[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const isAdvancingRef = useRef(false);
 
   // Filter study queue based on selected deck and due status
   const queueCards = useMemo(() => {
@@ -70,6 +71,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
   // Handle Flip
   const handleFlip = useCallback(() => {
+    if (isAdvancingRef.current) return;
     playHapticFeedback('flip');
     setIsFlipped((prev) => !prev);
   }, []);
@@ -91,7 +93,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   // Handle User Evaluation (Again, Hard, Good, Easy)
   const handleRating = useCallback(
     (rating: SM2Rating) => {
-      if (!currentCard) return;
+      if (!currentCard || isAdvancingRef.current) return;
 
       if (rating === 'again') {
         playHapticFeedback('fail');
@@ -117,11 +119,19 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
       incrementTodayReviewCount(userId);
       setReviewRefreshTrigger((v) => v + 1);
 
-      // Flip back and advance to next card immediately
-      setIsFlipped(false);
-      setSessionIndex((prev) => prev + 1);
+      // Flip back to front showing the current card first so the next card's meaning is never exposed
+      if (isFlipped) {
+        isAdvancingRef.current = true;
+        setIsFlipped(false);
+        setTimeout(() => {
+          setSessionIndex((prev) => prev + 1);
+          isAdvancingRef.current = false;
+        }, 220);
+      } else {
+        setSessionIndex((prev) => prev + 1);
+      }
     },
-    [currentCard, onCardReviewed, userId]
+    [currentCard, isFlipped, onCardReviewed, userId]
   );
 
   // Keyboard shortcut listeners (Space = flip, 1-4 = ratings, S = speak)
@@ -131,6 +141,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
         return;
       }
+
+      if (isAdvancingRef.current) return;
 
       if (e.code === 'Space') {
         e.preventDefault();

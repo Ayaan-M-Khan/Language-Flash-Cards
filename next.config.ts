@@ -1,6 +1,9 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_FIREBASE_API_KEY: process.env.FIREBASE_API_KEY || 'AIzaSyCvu-Qd3kZjif7hWybPLN2kS47BntM8D5k',
+  },
   reactStrictMode: true,
   eslint: {
     ignoreDuringBuilds: true,
