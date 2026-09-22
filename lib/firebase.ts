@@ -1,15 +1,23 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import firebaseConfig from '../firebase-applet-config.json';
+import { defaultFirebaseConfig } from './defaultFirebaseConfig';
+
+let appletConfig = {};
+try {
+  appletConfig = require('../firebase-applet-config.json');
+} catch {
+  // Optional external config
+}
 
 const effectiveConfig = {
-  ...firebaseConfig,
+  ...defaultFirebaseConfig,
+  ...appletConfig,
   apiKey:
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
     process.env.FIREBASE_API_KEY ||
-    firebaseConfig.apiKey ||
-    'AIzaSyCvu-Qd3kZjif7hWybPLN2kS47BntM8D5k',
+    (appletConfig as Record<string, string>).apiKey ||
+    defaultFirebaseConfig.apiKey,
 };
 
 const app = !getApps().length ? initializeApp(effectiveConfig) : getApp();
