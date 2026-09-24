@@ -8,10 +8,11 @@ import {
   getDoc,
   onSnapshot,
   writeBatch,
+  increment,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
-import { Deck, Flashcard, UserProfile } from './types';
+import { Deck, Flashcard, UserProfile, SM2Rating, ReviewLog } from './types';
 
 export function getTodayDateString(): string {
   const now = new Date();
@@ -305,6 +306,109 @@ export async function recordUserStudyProgress(
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, path);
   }
+}
+
+/**
+ * Record a flashcard review log entry and update aggregate daily counters in Firestore
+ */
+export async function recordReviewInFirestore(
+  userId: string,
+  deckId: string,
+  cardId: string,
+  rating: SM2Rating,
+  intervalDays: number
+): Promise<void> {
+  const reviewId = `rev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const path = `users/${userId}/reviews/${reviewId}`;
+  const todayStr = getTodayDateString();
+  const timestamp = new Date().toISOString();
+
+  try {
+    const batch = writeBatch(db);
+
+    // 1. Write individual review log entry under users/{uid}/reviews/{reviewId}
+    const reviewRef = doc(db, 'users', userId, 'reviews', reviewId);
+    const reviewData: ReviewLog = {
+      id: reviewId,
+      userId,
+      deckId,
+      cardId,
+      rating,
+      intervalDays,
+      reviewedAt: timestamp,
+      timestamp,
+      dateStr: todayStr,
+    };
+    batch.set(reviewRef, reviewData);
+
+    // 2. Increment aggregate progress counters under users/{uid}/progress/daily
+    const progressRef = doc(db, 'users', userId, 'progress', 'daily');
+    batch.set(
+      progressRef,
+      {
+        userId,
+        totalReviews: increment(1),
+        [`dailyReviews.${todayStr}`]: increment(1),
+        updatedAt: timestamp,
+      },
+      { merge: true }
+    );
+
+    await batch.commit();
+  } catch (err) {
+    console.warn('Failed to record review in Firestore:', err);
+    // Non-fatal fallback for network blips
+  }
+}
+
+/**
+ * Fetch real aggregate daily review counts from Firestore for the user
+ */
+export async function fetchUserDailyReviewsFromFirestore(
+  userId: string
+): Promise<{ dailyReviews: Record<string, number>; totalReviews: number }> {
+  const path = `users/${userId}/progress/daily`;
+  try {
+    const snap = await getDoc(doc(db, 'users', userId, 'progress', 'daily'));
+    if (snap.exists()) {
+      const data = snap.data();
+      return {
+        dailyReviews: (data.dailyReviews as Record<string, number>) || {},
+        totalReviews: (data.totalReviews as number) || 0,
+      };
+    }
+    return { dailyReviews: {}, totalReviews: 0 };
+  } catch (err) {
+    console.warn('Failed to fetch daily reviews from Firestore:', err);
+    return { dailyReviews: {}, totalReviews: 0 };
+  }
+}
+
+/**
+ * Subscribe to real-time daily review progress updates from Firestore
+ */
+export function subscribeToUserDailyReviews(
+  userId: string,
+  onUpdate: (dailyRecord: Record<string, number>, totalReviews: number) => void
+): Unsubscribe {
+  const docRef = doc(db, 'users', userId, 'progress', 'daily');
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        onUpdate(
+          (data.dailyReviews as Record<string, number>) || {},
+          (data.totalReviews as number) || 0
+        );
+      } else {
+        onUpdate({}, 0);
+      }
+    },
+    (error) => {
+      console.warn('Daily reviews subscription error:', error);
+    }
+  );
 }
 
 /**

@@ -321,6 +321,8 @@ export default function HomePage() {
             onNavigateToImport={() => setActiveTab('import')}
             onDeleteDeck={handleDeleteDeck}
             onInspectDeck={setInspectingDeck}
+            currentStreak={effectiveStreak}
+            userId={user?.uid}
           />
         )}
 

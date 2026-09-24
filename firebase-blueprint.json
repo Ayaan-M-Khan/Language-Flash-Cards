@@ -189,6 +189,72 @@
         }
       },
       "required": ["id", "deckId", "userId", "english", "targetWord", "state", "repetitions", "intervalDays", "easeFactor", "dueDate"]
+    },
+    "ReviewLog": {
+      "title": "ReviewLog",
+      "description": "Individual card review event logs with rating and interval for user",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique review record ID",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID"
+        },
+        "cardId": {
+          "type": "string",
+          "description": "Reviewed flashcard ID",
+          "maxLength": 128
+        },
+        "rating": {
+          "type": "string",
+          "description": "Rating score: again, hard, good, easy",
+          "maxLength": 20
+        },
+        "intervalDays": {
+          "type": "number",
+          "description": "Calculated spaced repetition interval in days"
+        },
+        "dateStr": {
+          "type": "string",
+          "description": "Calendar date string YYYY-MM-DD",
+          "maxLength": 20
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO timestamp of review completion",
+          "maxLength": 40
+        }
+      },
+      "required": ["id", "userId", "cardId", "rating", "intervalDays", "dateStr", "timestamp"]
+    },
+    "DailyProgress": {
+      "title": "DailyProgress",
+      "description": "Aggregated daily review counters and historical metrics",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID"
+        },
+        "totalReviews": {
+          "type": "number",
+          "description": "Total lifetime reviews count"
+        },
+        "dailyReviews": {
+          "type": "object",
+          "description": "Mapping from YYYY-MM-DD to count of cards reviewed that day"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp when last updated",
+          "maxLength": 40
+        }
+      },
+      "required": ["userId", "totalReviews", "dailyReviews"]
     }
   },
   "firestore": {
@@ -203,6 +269,14 @@
     "/users/{userId}/decks/{deckId}/cards/{cardId}": {
       "schema": "Flashcard",
       "description": "Flashcards belonging to a deck with SM-2 spaced repetition state"
+    },
+    "/users/{userId}/reviews/{reviewId}": {
+      "schema": "ReviewLog",
+      "description": "Individual card review event logs with rating and interval for user"
+    },
+    "/users/{userId}/progress/daily": {
+      "schema": "DailyProgress",
+      "description": "Aggregated daily review counts and progress metrics for the user"
     }
   }
 }

@@ -114,6 +114,20 @@ service cloud.firestore {
           allow delete: if isOwner(userId) && isValidId(deckId) && isValidId(cardId);
         }
       }
+
+      // Review event logs
+      match /reviews/{reviewId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update, delete: if isOwner(userId);
+      }
+
+      // Aggregated progress tracking
+      match /progress/{progressId} {
+        allow get, list: if isOwner(userId);
+        allow create, update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
     }
   }
 }

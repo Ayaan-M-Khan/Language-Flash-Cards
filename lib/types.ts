@@ -8,8 +8,12 @@ export interface ReviewLog {
   rating: SM2Rating;
   reviewedAt: string; // ISO date
   intervalDays: number;
-  easeFactor: number;
-  repetitions: number;
+  easeFactor?: number;
+  repetitions?: number;
+  userId?: string;
+  deckId?: string;
+  timestamp?: string;
+  dateStr?: string;
 }
 
 export interface Flashcard {

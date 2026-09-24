@@ -107,64 +107,68 @@ export const Flashcard: React.FC<FlashcardProps> = ({
           !isFlipped ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
-        {/* Top row: Target echo & audio button */}
-        <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-          <div className="text-left">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-600 block">
-              {language || card.language}
-            </span>
-            <span className="text-sm font-semibold text-neutral-800">
-              {card.targetWord}
-            </span>
-          </div>
-          <button
-            id="card-speak-back-btn"
-            onClick={onSpeak}
-            className="w-9 h-9 rounded-2xl bg-neutral-100 text-neutral-700 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-center transition-colors"
-            title="Pronounce again"
-          >
-            <Volume2 className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Center Meaning & Context */}
-        <div className="my-auto py-3">
-          <span className="text-xs text-neutral-400 uppercase tracking-wider font-semibold block mb-1">
-            English Translation
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight mb-4">
-            {card.english}
-          </h2>
-
-          {/* Example sentence if provided */}
-          {card.exampleSentence?.target && (
-            <div className="p-3.5 rounded-2xl bg-neutral-50/80 border border-black/5 text-left mb-3">
-              <p className="text-sm font-medium text-neutral-900 mb-1">
-                “{card.exampleSentence.target}”
-              </p>
-              <p className="text-xs text-neutral-500">
-                {card.exampleSentence.english}
-              </p>
+        {isFlipped ? (
+          <>
+            {/* Top row: Target echo & audio button */}
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+              <div className="text-left">
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-600 block">
+                  {language || card.language}
+                </span>
+                <span className="text-sm font-semibold text-neutral-800">
+                  {card.targetWord}
+                </span>
+              </div>
+              <button
+                id="card-speak-back-btn"
+                onClick={onSpeak}
+                className="w-9 h-9 rounded-2xl bg-neutral-100 text-neutral-700 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-center transition-colors"
+                title="Pronounce again"
+              >
+                <Volume2 className="w-4 h-4" />
+              </button>
             </div>
-          )}
 
-          {/* Memory / Mnemonic notes */}
-          {card.notes && (
-            <div className="text-left px-1">
-              <span className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block mb-0.5">
-                Usage & Memory Note
+            {/* Center Meaning & Context */}
+            <div className="my-auto py-3">
+              <span className="text-xs text-neutral-400 uppercase tracking-wider font-semibold block mb-1">
+                English Translation
               </span>
-              <p className="text-xs text-neutral-600 leading-relaxed">
-                {card.notes}
-              </p>
-            </div>
-          )}
-        </div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight mb-4">
+                {card.english}
+              </h2>
 
-        {/* Hint at bottom of back */}
-        <div className="text-center pt-2 text-xs text-neutral-400">
-          Rate your recall below to calculate next review schedule
-        </div>
+              {/* Example sentence if provided */}
+              {card.exampleSentence?.target && (
+                <div className="p-3.5 rounded-2xl bg-neutral-50/80 border border-black/5 text-left mb-3">
+                  <p className="text-sm font-medium text-neutral-900 mb-1">
+                    “{card.exampleSentence.target}”
+                  </p>
+                  <p className="text-xs text-neutral-500">
+                    {card.exampleSentence.english}
+                  </p>
+                </div>
+              )}
+
+              {/* Memory / Mnemonic notes */}
+              {card.notes && (
+                <div className="text-left px-1">
+                  <span className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block mb-0.5">
+                    Usage & Memory Note
+                  </span>
+                  <p className="text-xs text-neutral-600 leading-relaxed">
+                    {card.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Hint at bottom of back */}
+            <div className="text-center pt-2 text-xs text-neutral-400">
+              Rate your recall below to calculate next review schedule
+            </div>
+          </>
+        ) : null}
       </div>
     </div>
   );

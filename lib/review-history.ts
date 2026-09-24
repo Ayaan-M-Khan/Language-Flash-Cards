@@ -136,14 +136,12 @@ export function incrementTodayReviewCount(userId?: string | null): number {
 }
 
 /**
- * Get weekly consistency data for the rolling past 7 days up to today
+ * Build 7-day consistency stats from an arbitrary record of daily reviews (e.g. from Firestore)
  */
-export function getWeeklyConsistencyStats(
-  targetDaily: number = DEFAULT_DAILY_TARGET,
-  _version?: number,
-  userId?: string | null
+export function buildConsistencyStatsFromRecord(
+  record: Record<string, number>,
+  targetDaily: number = DEFAULT_DAILY_TARGET
 ): WeeklyConsistencyStats {
-  const record = getDailyReviewsRecord(userId);
   const today = new Date();
   const todayKey = formatDateKey(today);
 
@@ -189,7 +187,6 @@ export function getWeeklyConsistencyStats(
   }
 
   const dailyAverage = Math.round((totalWeeklyReviews / 7) * 10) / 10;
-  // Consistency rate based on active days and meeting study goals
   const consistencyRate = Math.min(100, Math.round((activeDaysCount / 7) * 100));
 
   return {
@@ -202,4 +199,16 @@ export function getWeeklyConsistencyStats(
     bestDay,
     dailyBreakdown,
   };
+}
+
+/**
+ * Get weekly consistency data for the rolling past 7 days up to today
+ */
+export function getWeeklyConsistencyStats(
+  targetDaily: number = DEFAULT_DAILY_TARGET,
+  _version?: number,
+  userId?: string | null
+): WeeklyConsistencyStats {
+  const record = getDailyReviewsRecord(userId);
+  return buildConsistencyStatsFromRecord(record, targetDaily);
 }

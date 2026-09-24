@@ -20,6 +20,7 @@ import { calculateSM2, getPreviewIntervals, isCardDue } from '@/lib/srs';
 import { speakWord, playHapticFeedback } from '@/lib/audio';
 import { WeeklyReviewTracker } from './WeeklyReviewTracker';
 import { incrementTodayReviewCount } from '@/lib/review-history';
+import { recordReviewInFirestore } from '@/lib/firestore-sync';
 import { Flashcard } from './Flashcard';
 
 interface CardStudyViewProps {
@@ -51,6 +52,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     rating: SM2Rating;
   }[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const isAdvancingRef = useRef(false);
 
   // Filter study queue based on selected deck and due status
@@ -95,6 +97,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   const handleRating = useCallback(
     (rating: SM2Rating) => {
       if (!currentCard || isAdvancingRef.current) return;
+      isAdvancingRef.current = true;
 
       if (rating === 'again') {
         playHapticFeedback('fail');
@@ -116,16 +119,35 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
       onCardReviewed(updatedCard, rating);
       setSessionReviews((prev) => [...prev, { cardId: currentCard.id, rating }]);
 
-      // Log review to local weekly review consistency tracker
+      // 1. Write study log entry and update aggregate progress in Firebase Firestore
+      if (userId) {
+        recordReviewInFirestore(
+          userId,
+          currentCard.deckId,
+          currentCard.id,
+          rating,
+          updatedCard.intervalDays
+        ).catch((err) => console.warn('Record review in Firestore failed:', err));
+      }
+
+      // 2. Trigger reactive state update for local session trackers
       incrementTodayReviewCount(userId);
       setReviewRefreshTrigger((v) => v + 1);
 
-      // Immediately reset flipped state and advance card without delay or visible un-flip
-      isAdvancingRef.current = true;
-      setIsFlipped(false);
-      setSessionIndex((prev) => prev + 1);
+      // 3. Decouple Card Advancement from Un-flipping:
+      // Instantly fade out / exit transition for current card
+      setIsExiting(true);
+
+      // 4. Only once opacity reaches 0 (after 150ms), advance index & reset isFlipped
       setTimeout(() => {
-        isAdvancingRef.current = false;
+        setIsFlipped(false);
+        setSessionIndex((prev) => prev + 1);
+
+        // 5. Fade new card in, mounting cleanly on front side (rotateY(0deg))
+        requestAnimationFrame(() => {
+          setIsExiting(false);
+          isAdvancingRef.current = false;
+        });
       }, 150);
     },
     [currentCard, onCardReviewed, userId]
@@ -465,28 +487,21 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         />
       </div>
 
-      {/* 3D Flip Card Container with key remounting and clean exit transition */}
-      <div className="perspective-1000 w-full mb-6">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={currentCard.id || sessionIndex}
-            initial={{ opacity: 0, y: 6, scale: 0.99 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.99 }}
-            transition={{ duration: 0.12, ease: 'easeOut' }}
-            className="w-full"
-          >
-            <Flashcard
-              key={currentCard.id || sessionIndex}
-              card={currentCard}
-              language={currentDeck?.language || currentCard.language}
-              isFlipped={isFlipped}
-              onFlip={handleFlip}
-              onSpeak={handleSpeak}
-              isSpeaking={isSpeaking}
-            />
-          </motion.div>
-        </AnimatePresence>
+      {/* 3D Flip Card Container with key remounting and clean decoupled exit/entry transition */}
+      <div
+        className={`perspective-1000 w-full mb-6 transition-all duration-150 ease-out ${
+          isExiting ? 'opacity-0 scale-[0.98] pointer-events-none' : 'opacity-100 scale-100'
+        }`}
+      >
+        <Flashcard
+          key={currentCard.id || sessionIndex}
+          card={currentCard}
+          language={currentDeck?.language || currentCard.language}
+          isFlipped={isFlipped}
+          onFlip={handleFlip}
+          onSpeak={handleSpeak}
+          isSpeaking={isSpeaking}
+        />
       </div>
 
       {/* Action Tray: 4-Level SuperMemo SM-2 Interval Buttons */}

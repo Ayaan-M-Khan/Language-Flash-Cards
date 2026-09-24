@@ -18,6 +18,7 @@ import {
 import { Deck, Flashcard } from '@/lib/types';
 import { isCardDue } from '@/lib/srs';
 import { playHapticFeedback } from '@/lib/audio';
+import { WeeklyReviewTracker } from './WeeklyReviewTracker';
 
 interface DecksViewProps {
   decks: Deck[];
@@ -26,6 +27,8 @@ interface DecksViewProps {
   onNavigateToImport: () => void;
   onDeleteDeck: (deckId: string) => void;
   onInspectDeck: (deck: Deck) => void;
+  currentStreak?: number;
+  userId?: string | null;
 }
 
 export const DecksView: React.FC<DecksViewProps> = ({
@@ -35,6 +38,8 @@ export const DecksView: React.FC<DecksViewProps> = ({
   onNavigateToImport,
   onDeleteDeck,
   onInspectDeck,
+  currentStreak = 0,
+  userId = null,
 }) => {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
@@ -279,6 +284,9 @@ export const DecksView: React.FC<DecksViewProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Dashboard Progress Chart Component */}
+      <WeeklyReviewTracker currentStreak={currentStreak} userId={userId} />
     </div>
   );
 };
