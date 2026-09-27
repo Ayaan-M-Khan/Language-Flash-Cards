@@ -297,9 +297,10 @@ ${
 }
 
 export async function POST(req: NextRequest) {
+  let body: any = null;
   try {
-    const body = await req.json();
-    const { words, deckTitle, targetLanguage } = body as {
+    body = await req.json();
+    const { words, deckTitle, targetLanguage } = (body || {}) as {
       words: TableRowInput[];
       deckTitle?: string;
       targetLanguage?: string;
@@ -386,7 +387,6 @@ export async function POST(req: NextRequest) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.warn('Handling request error with local fallback:', errMsg.slice(0, 100));
     // Safe graceful return with ALL words retained so user is never blocked
-    const body = await req.json().catch(() => ({}));
     const fallbackWords = Array.isArray(body?.words) ? body.words : [];
     return NextResponse.json(
       generateLocalSmartDeck(fallbackWords, body?.deckTitle, body?.targetLanguage)

@@ -52,19 +52,38 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     rating: SM2Rating;
   }[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isExiting, setIsExiting] = useState(false);
   const isAdvancingRef = useRef(false);
 
-  // Filter study queue based on selected deck and due status
-  const queueCards = useMemo(() => {
-    return cards.filter((card) => {
-      const matchesDeck = !selectedDeckId || card.deckId === selectedDeckId;
-      return matchesDeck && isCardDue(card);
-    });
-  }, [cards, selectedDeckId]);
+  // Stable study session queue: retains all cards scheduled for this session
+  // so updating a card's dueDate does not shrink the queue mid-session and cause skipped cards
+  const [sessionQueue, setSessionQueue] = useState<FlashcardType[]>(() => {
+    const matching = cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId);
+    return matching.filter((card) => isCardDue(card));
+  });
 
-  // Current active card
-  const currentCard: FlashcardType | undefined = queueCards[sessionIndex];
+  // Track props for render-phase state adjustments per React best practices
+  const [prevSelectedDeckId, setPrevSelectedDeckId] = useState(selectedDeckId);
+  const [prevCards, setPrevCards] = useState(cards);
+
+  // When selected deck changes, re-initialize the session queue during render
+  if (selectedDeckId !== prevSelectedDeckId) {
+    setPrevSelectedDeckId(selectedDeckId);
+    const matching = cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId);
+    const due = matching.filter((card) => isCardDue(card));
+    setSessionQueue(due);
+    setSessionIndex(0);
+    setSessionReviews([]);
+    setIsFlipped(false);
+  } else if (prevCards !== cards && sessionReviews.length === 0 && sessionIndex === 0) {
+    // If cards hydrate or update from external storage before the user starts studying
+    setPrevCards(cards);
+    const matching = cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId);
+    const due = matching.filter((card) => isCardDue(card));
+    setSessionQueue(due);
+  }
+
+  // Current active card in the stable queue
+  const currentCard: FlashcardType | undefined = sessionQueue[sessionIndex];
 
   // Associated deck for current card
   const currentDeck = useMemo(() => {
@@ -93,7 +112,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     [currentCard, currentDeck]
   );
 
-  // Handle User Evaluation (Again, Hard, Good, Easy)
+  // Handle User Evaluation (Again, Hard, Good, Easy) & Progress Counting
   const handleRating = useCallback(
     (rating: SM2Rating) => {
       if (!currentCard || isAdvancingRef.current) return;
@@ -116,10 +135,13 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         lastReviewedAt: new Date().toISOString(),
       };
 
+      // 1. Write updated card state back to parent (syncs to localStorage & cloud)
       onCardReviewed(updatedCard, rating);
+
+      // 2. Track this session's review history
       setSessionReviews((prev) => [...prev, { cardId: currentCard.id, rating }]);
 
-      // 1. Write study log entry and update aggregate progress in Firebase Firestore
+      // 3. Write study log entry and update aggregate progress in Firebase Firestore
       if (userId) {
         recordReviewInFirestore(
           userId,
@@ -130,30 +152,36 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         ).catch((err) => console.warn('Record review in Firestore failed:', err));
       }
 
-      // 2. Trigger reactive state update for local session trackers
+      // 4. Trigger reactive state update for local session trackers
       incrementTodayReviewCount(userId);
       setReviewRefreshTrigger((v) => v + 1);
 
-      // 3. Decouple Card Advancement from Un-flipping:
-      // Instantly fade out / exit transition for current card
-      setIsExiting(true);
+      // 5. If rating is 'again', re-queue card to end of session so user reinforces it
+      if (rating === 'again') {
+        setSessionQueue((prev) => [...prev, currentCard]);
+      }
 
-      // 4. Only once opacity reaches 0 (after 150ms), advance index & reset isFlipped
+      // 6. Reset flip state cleanly so next card mounts unflipped on front face
+      setIsFlipped(false);
+
+      // 7. Advance session index strictly by +1 without skipping
+      setSessionIndex((prev) => prev + 1);
+
+      // 8. Release advancing lock after transition
       setTimeout(() => {
-        setIsFlipped(false);
-        setSessionIndex((prev) => prev + 1);
-
-        // 5. Fade new card in, mounting cleanly on front side (rotateY(0deg))
-        requestAnimationFrame(() => {
-          setIsExiting(false);
-          isAdvancingRef.current = false;
-        });
-      }, 150);
+        isAdvancingRef.current = false;
+      }, 200);
     },
     [currentCard, onCardReviewed, userId]
   );
 
-  // Keyboard shortcut listeners (Space = flip, 1-4 = ratings, S = speak)
+  // Handle Next card button or keyboard shortcut (advances and counts as 'good' progress)
+  const handleNext = useCallback(() => {
+    if (isAdvancingRef.current || !currentCard) return;
+    handleRating('good');
+  }, [handleRating, currentCard]);
+
+  // Keyboard shortcut listeners (Space = flip or good, Enter/ArrowRight = Next, 1-4 = ratings, S = speak)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't intercept typing in input fields
@@ -165,7 +193,14 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
       if (e.code === 'Space') {
         e.preventDefault();
-        handleFlip();
+        if (!isFlipped) {
+          handleFlip();
+        } else {
+          handleRating('good');
+        }
+      } else if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        e.preventDefault();
+        handleNext();
       } else if (e.key.toLowerCase() === 's') {
         e.preventDefault();
         handleSpeak();
@@ -188,10 +223,10 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleFlip, handleSpeak, handleRating, isFlipped, currentCard]);
+  }, [handleFlip, handleSpeak, handleRating, handleNext, isFlipped, currentCard]);
 
   // Check if session completed
-  const isSessionComplete = queueCards.length > 0 && sessionIndex >= queueCards.length;
+  const isSessionComplete = sessionQueue.length > 0 && sessionIndex >= sessionQueue.length;
 
   // Trigger celebration on completion
   useEffect(() => {
@@ -210,13 +245,29 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     }
   }, [isSessionComplete, sessionReviews.length]);
 
-  // Restart session
-  const restartSession = () => {
+  // Restart session with fresh cards or practice deck
+  const restartSession = useCallback(() => {
     playHapticFeedback('tap');
+    const matching = cards.filter((c) => !selectedDeckId || c.deckId === selectedDeckId);
+    const due = matching.filter((c) => isCardDue(c));
+    const nextQueue = due.length > 0 ? due : matching;
+    setSessionQueue(nextQueue);
     setSessionIndex(0);
     setSessionReviews([]);
     setIsFlipped(false);
-  };
+    isAdvancingRef.current = false;
+  }, [cards, selectedDeckId]);
+
+  // Start practice session for all cards in deck even if not due
+  const startPracticeAnyway = useCallback(() => {
+    playHapticFeedback('tap');
+    const matching = cards.filter((c) => !selectedDeckId || c.deckId === selectedDeckId);
+    setSessionQueue(matching);
+    setSessionIndex(0);
+    setSessionReviews([]);
+    setIsFlipped(false);
+    isAdvancingRef.current = false;
+  }, [cards, selectedDeckId]);
 
   // Preview intervals for current card ratings
   const previewIntervals = useMemo(() => {
@@ -225,7 +276,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   }, [currentCard]);
 
   // ===================== ZERO DUE CARDS EMPTY STATE =====================
-  if (queueCards.length === 0) {
+  if (sessionQueue.length === 0) {
     const totalDeckCards = cards.filter((c) => !selectedDeckId || c.deckId === selectedDeckId).length;
 
     return (
@@ -278,6 +329,16 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          {totalDeckCards > 0 && (
+            <button
+              id="empty-practice-anyway-btn"
+              onClick={startPracticeAnyway}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-neutral-900 text-white font-semibold text-sm hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xs"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>Practice All Cards ({totalDeckCards})</span>
+            </button>
+          )}
           <button
             id="empty-import-table-btn"
             onClick={onNavigateToImport}
@@ -421,7 +482,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   }
 
   // ===================== ACTIVE STUDY CARD =====================
-  const progressPercent = Math.round((sessionIndex / queueCards.length) * 100);
+  const progressPercent = Math.round((sessionIndex / sessionQueue.length) * 100);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-4 sm:py-8">
@@ -459,7 +520,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         <div className="flex items-center gap-2 text-xs text-neutral-500 font-medium">
           <Clock className="w-3.5 h-3.5 text-neutral-400" />
           <span>
-            {sessionIndex + 1} of {queueCards.length}
+            {sessionIndex + 1} of {sessionQueue.length}
           </span>
           <span
             className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -487,24 +548,30 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         />
       </div>
 
-      {/* 3D Flip Card Container with key remounting and clean decoupled exit/entry transition */}
-      <div
-        className={`perspective-1000 w-full mb-6 transition-all duration-150 ease-out ${
-          isExiting ? 'opacity-0 scale-[0.98] pointer-events-none' : 'opacity-100 scale-100'
-        }`}
-      >
-        <Flashcard
-          key={currentCard.id || sessionIndex}
-          card={currentCard}
-          language={currentDeck?.language || currentCard.language}
-          isFlipped={isFlipped}
-          onFlip={handleFlip}
-          onSpeak={handleSpeak}
-          isSpeaking={isSpeaking}
-        />
+      {/* 3D Flip Card Container with decoupled cross-card transition */}
+      <div className="w-full mb-6 min-h-[380px] sm:min-h-[420px]">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={currentCard.id}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full"
+          >
+            <Flashcard
+              card={currentCard}
+              language={currentDeck?.language || currentCard.language}
+              isFlipped={isFlipped}
+              onFlip={handleFlip}
+              onSpeak={handleSpeak}
+              isSpeaking={isSpeaking}
+            />
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* Action Tray: 4-Level SuperMemo SM-2 Interval Buttons */}
+      {/* Action Tray: 4-Level SuperMemo SM-2 Interval Buttons & Next Navigation */}
       <AnimatePresence>
         {isFlipped ? (
           <motion.div
@@ -541,16 +608,19 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               </span>
             </button>
 
-            {/* GOOD BUTTON */}
+            {/* GOOD / NEXT BUTTON */}
             <button
               id="rating-good-btn"
               onClick={() => handleRating('good')}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-blue-50 hover:bg-blue-100/90 border border-blue-200/80 text-blue-700 transition-all active:scale-98 shadow-2xs group"
+              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white transition-all active:scale-98 shadow-sm shadow-blue-500/25 group relative"
             >
-              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 mb-0.5">
-                Good [3]
-              </span>
-              <span className="text-xs text-blue-900 font-medium">
+              <div className="flex items-center gap-1 mb-0.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-100">
+                  Good / Next [3]
+                </span>
+                <ChevronRight className="w-3.5 h-3.5 text-blue-200" />
+              </div>
+              <span className="text-xs text-white font-medium">
                 {previewIntervals.good}
               </span>
             </button>
@@ -574,11 +644,23 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             <button
               id="show-answer-btn"
               onClick={handleFlip}
-              className="w-full sm:w-80 py-3.5 px-6 rounded-2xl bg-neutral-900 hover:bg-black text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-98"
+              className="flex-1 sm:flex-initial sm:w-64 py-3.5 px-6 rounded-2xl bg-neutral-900 hover:bg-black text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-98"
             >
               <span>Show Answer</span>
               <span className="text-[11px] text-neutral-400 font-normal px-2 py-0.5 rounded-md bg-neutral-800">
                 Space
+              </span>
+            </button>
+            <button
+              id="next-card-front-btn"
+              onClick={handleNext}
+              title="Next card (counts as Good recall)"
+              className="py-3.5 px-5 rounded-2xl bg-white hover:bg-neutral-100 border border-black/10 text-neutral-800 font-semibold text-sm shadow-2xs transition-all flex items-center justify-center gap-2 active:scale-98"
+            >
+              <span>Next</span>
+              <ChevronRight className="w-4 h-4 text-neutral-500" />
+              <span className="text-[11px] text-neutral-400 font-normal px-1.5 py-0.5 rounded-md bg-neutral-100">
+                →
               </span>
             </button>
           </div>

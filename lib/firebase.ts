@@ -3,20 +3,11 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import { defaultFirebaseConfig } from './defaultFirebaseConfig';
 
-let appletConfig = {};
-try {
-  appletConfig = require('../firebase-applet-config.json');
-} catch {
-  // Optional external config
-}
-
 const effectiveConfig = {
   ...defaultFirebaseConfig,
-  ...appletConfig,
   apiKey:
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
     process.env.FIREBASE_API_KEY ||
-    (appletConfig as Record<string, string>).apiKey ||
     defaultFirebaseConfig.apiKey,
 };
 

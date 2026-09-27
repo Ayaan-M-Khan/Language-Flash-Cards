@@ -105,29 +105,36 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
   // Subscribe to real-time Firestore progress when authenticated
   useEffect(() => {
     if (!effectiveUserId) {
-      setDailyReviewsMap({});
       return;
     }
 
-    setIsLoadingHistory(true);
+    let isMounted = true;
 
     // Initial fetch from Firestore
     fetchUserDailyReviewsFromFirestore(effectiveUserId)
       .then((res) => {
+        if (!isMounted) return;
         if (res && res.dailyReviews) {
           setDailyReviewsMap(res.dailyReviews);
         }
       })
       .catch((err) => console.warn('Fetch reviews error:', err))
-      .finally(() => setIsLoadingHistory(false));
+      .finally(() => {
+        if (isMounted) setIsLoadingHistory(false);
+      });
 
     // Real-time snapshot listener on users/{uid}/progress/daily
     const unsub = subscribeToUserDailyReviews(effectiveUserId, (realtimeMap) => {
+      if (!isMounted) return;
       setDailyReviewsMap(realtimeMap);
       setIsLoadingHistory(false);
     });
 
-    return () => unsub();
+    return () => {
+      isMounted = false;
+      unsub();
+      setDailyReviewsMap({});
+    };
   }, [effectiveUserId]);
 
   // Reactive listener to local events for immediate 0ms UI feedback on review
@@ -151,8 +158,10 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
 
   // Build real stats strictly from verified review data (0 placeholder / 0 mock)
   const stats = useMemo(() => {
-    return buildConsistencyStatsFromRecord(dailyReviewsMap, DEFAULT_DAILY_TARGET);
-  }, [dailyReviewsMap, refreshTrigger]);
+    void refreshTrigger;
+    const mapToUse = effectiveUserId ? dailyReviewsMap : {};
+    return buildConsistencyStatsFromRecord(mapToUse, DEFAULT_DAILY_TARGET);
+  }, [dailyReviewsMap, effectiveUserId, refreshTrigger]);
 
   const maxReviews = useMemo(() => {
     const highest = Math.max(...stats.dailyBreakdown.map((d) => d.reviews), DEFAULT_DAILY_TARGET);
