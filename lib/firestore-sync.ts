@@ -412,6 +412,59 @@ export function subscribeToUserDailyReviews(
 }
 
 /**
+ * Delete an individual card from Firestore
+ */
+export async function deleteCardFromFirestore(
+  userId: string,
+  deckId: string,
+  cardId: string
+): Promise<void> {
+  const path = `users/${userId}/decks/${deckId}/cards/${cardId}`;
+  try {
+    const cardRef = doc(db, 'users', userId, 'decks', deckId, 'cards', cardId);
+    await deleteDoc(cardRef);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, path);
+  }
+}
+
+/**
+ * Save an individual card to Firestore
+ */
+export async function saveCardToFirestore(
+  userId: string,
+  deckId: string,
+  card: Flashcard
+): Promise<void> {
+  const path = `users/${userId}/decks/${deckId}/cards/${card.id}`;
+  try {
+    const cardRef = doc(db, 'users', userId, 'decks', deckId, 'cards', card.id);
+    await setDoc(cardRef, {
+      id: card.id,
+      deckId,
+      userId,
+      english: card.english.slice(0, 500),
+      targetWord: card.targetWord.slice(0, 500),
+      language: (card.language || '').slice(0, 50),
+      phonetic: (card.phonetic || '').slice(0, 200),
+      partOfSpeech: (card.partOfSpeech || 'phrase').slice(0, 50),
+      category: (card.category || 'General').slice(0, 100),
+      notes: (card.notes || '').slice(0, 1000),
+      state: card.state,
+      repetitions: card.repetitions,
+      intervalDays: card.intervalDays,
+      easeFactor: Math.max(1.3, card.easeFactor || 2.5),
+      dueDate: card.dueDate,
+      lastReviewedAt: card.lastReviewedAt || undefined,
+      exampleSentence: card.exampleSentence || undefined,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+  }
+}
+
+/**
  * Load all user decks and their flashcards from Firestore
  */
 export async function loadUserDecksAndCards(
@@ -465,5 +518,171 @@ export async function loadUserDecksAndCards(
     return { decks: loadedDecks, cards: loadedCards };
   } catch (err) {
     handleFirestoreError(err, OperationType.LIST, decksPath);
+  }
+}
+
+/**
+ * Subscribe to real-time live synchronization of all user decks and cards across devices
+ */
+export function subscribeToUserDecksAndCards(
+  userId: string,
+  onUpdate: (data: { decks: Deck[]; cards: Flashcard[] }) => void,
+  onError?: (error: unknown) => void
+): Unsubscribe {
+  let isDisposed = false;
+  const cardUnsubs: Map<string, Unsubscribe> = new Map();
+  let currentDecks: Deck[] = [];
+  const currentCardsByDeck: Map<string, Flashcard[]> = new Map();
+
+  const emitUpdate = () => {
+    if (isDisposed) return;
+    const allCards: Flashcard[] = [];
+    for (const deck of currentDecks) {
+      const deckCards = currentCardsByDeck.get(deck.id) || [];
+      allCards.push(...deckCards);
+    }
+    onUpdate({ decks: currentDecks, cards: allCards });
+  };
+
+  const decksColRef = collection(db, 'users', userId, 'decks');
+  const unsubDecks = onSnapshot(
+    decksColRef,
+    (decksSnapshot) => {
+      if (isDisposed) return;
+      const newDecks: Deck[] = [];
+      const activeDeckIds = new Set<string>();
+
+      decksSnapshot.docs.forEach((docSnap) => {
+        const dData = docSnap.data() as Deck;
+        newDecks.push({
+          id: dData.id,
+          title: dData.title,
+          language: dData.language,
+          languageCode: dData.languageCode,
+          color: dData.color,
+          description: dData.description || '',
+          icon: dData.icon || 'Sparkles',
+          createdAt: dData.createdAt,
+        });
+        activeDeckIds.add(dData.id);
+      });
+
+      currentDecks = newDecks;
+
+      // Clean up listeners for decks that were deleted on another device
+      for (const [deckId, unsub] of cardUnsubs.entries()) {
+        if (!activeDeckIds.has(deckId)) {
+          unsub();
+          cardUnsubs.delete(deckId);
+          currentCardsByDeck.delete(deckId);
+        }
+      }
+
+      // Ensure listeners for all active decks
+      newDecks.forEach((deck) => {
+        if (!cardUnsubs.has(deck.id)) {
+          const cardsColRef = collection(db, 'users', userId, 'decks', deck.id, 'cards');
+          const unsubCard = onSnapshot(
+            cardsColRef,
+            (cardsSnapshot) => {
+              if (isDisposed) return;
+              const deckCards: Flashcard[] = [];
+              cardsSnapshot.docs.forEach((cDoc) => {
+                const cData = cDoc.data() as Flashcard;
+                deckCards.push({
+                  id: cData.id,
+                  deckId: deck.id,
+                  english: cData.english,
+                  targetWord: cData.targetWord,
+                  language: cData.language || deck.language,
+                  phonetic: cData.phonetic,
+                  partOfSpeech: cData.partOfSpeech,
+                  category: cData.category,
+                  exampleSentence: cData.exampleSentence,
+                  notes: cData.notes,
+                  state: cData.state || 'new',
+                  repetitions: cData.repetitions ?? 0,
+                  intervalDays: cData.intervalDays ?? 0,
+                  easeFactor: cData.easeFactor ?? 2.5,
+                  dueDate: cData.dueDate || new Date().toISOString(),
+                  lastReviewedAt: cData.lastReviewedAt,
+                });
+              });
+              currentCardsByDeck.set(deck.id, deckCards);
+              emitUpdate();
+            },
+            (err) => {
+              console.warn(`Card sync error for deck ${deck.id}:`, err);
+              if (onError) onError(err);
+            }
+          );
+          cardUnsubs.set(deck.id, unsubCard);
+        }
+      });
+
+      emitUpdate();
+    },
+    (err) => {
+      console.warn('Decks sync error:', err);
+      if (onError) onError(err);
+    }
+  );
+
+  return () => {
+    isDisposed = true;
+    unsubDecks();
+    cardUnsubs.forEach((unsub) => unsub());
+    cardUnsubs.clear();
+    currentCardsByDeck.clear();
+  };
+}
+
+/**
+ * Synchronize local decks with cloud when user logs in from any device
+ */
+export async function syncDecksOnLogin(
+  userId: string,
+  localDecks: Deck[],
+  localCards: Flashcard[]
+): Promise<{ decks: Deck[]; cards: Flashcard[] }> {
+  try {
+    const cloudData = await loadUserDecksAndCards(userId);
+    if (!cloudData) {
+      return { decks: localDecks, cards: localCards };
+    }
+
+    if (cloudData.decks.length === 0) {
+      // Cloud has no decks yet. Upload all initial/local decks to cloud.
+      for (const d of localDecks) {
+        const dCards = localCards.filter((c) => c.deckId === d.id);
+        await saveDeckAndCardsToFirestore(userId, d, dCards);
+      }
+      return { decks: localDecks, cards: localCards };
+    }
+
+    // Cloud has decks from this or other devices!
+    // Check if user has created any new custom local decks before logging in
+    const cloudDeckIds = new Set(cloudData.decks.map((d) => d.id));
+    const newLocalDecks = localDecks.filter(
+      (d) =>
+        !cloudDeckIds.has(d.id) &&
+        !d.id.startsWith('deck-spanish-core') &&
+        !d.id.startsWith('deck-japanese-travel') &&
+        !d.id.startsWith('deck-french-cafe')
+    );
+
+    if (newLocalDecks.length > 0) {
+      for (const d of newLocalDecks) {
+        const dCards = localCards.filter((c) => c.deckId === d.id);
+        await saveDeckAndCardsToFirestore(userId, d, dCards);
+        cloudData.decks.push(d);
+        cloudData.cards.push(...dCards);
+      }
+    }
+
+    return cloudData;
+  } catch (err) {
+    console.warn('syncDecksOnLogin error:', err);
+    return { decks: localDecks, cards: localCards };
   }
 }

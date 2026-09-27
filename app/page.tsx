@@ -7,6 +7,7 @@ import { TableImporter } from '@/components/TableImporter';
 import { DecksView } from '@/components/DecksView';
 import { ScheduleInspector } from '@/components/ScheduleInspector';
 import { DeckDetailModal } from '@/components/DeckDetailModal';
+import { Footer } from '@/components/Footer';
 import { Deck, Flashcard, SM2Rating } from '@/lib/types';
 import { INITIAL_DECKS, INITIAL_CARDS } from '@/lib/default-data';
 import { isCardDue } from '@/lib/srs';
@@ -19,8 +20,12 @@ import {
   deleteDeckFromFirestore,
   recordUserStudyProgress,
   calculateNewStreak,
+  subscribeToUserDecksAndCards,
+  syncDecksOnLogin,
+  deleteCardFromFirestore,
+  saveCardToFirestore,
 } from '@/lib/firestore-sync';
-import { Cloud } from 'lucide-react';
+import { Cloud, CheckCircle2, RefreshCw } from 'lucide-react';
 
 const STORAGE_KEY_DECKS = 'language_flashcards_decks_v1';
 const STORAGE_KEY_CARDS = 'language_flashcards_cards_v1';
@@ -38,6 +43,9 @@ export default function HomePage() {
   const [hasDismissedAuthBanner, setHasDismissedAuthBanner] = useState(false);
   const [streakDays, setStreakDays] = useState<number>(0);
   const [soundState, setSoundState] = useState<boolean>(true);
+  const [lastSyncedTime, setLastSyncedTime] = useState<Date | null>(null);
+  const [isManualSyncing, setIsManualSyncing] = useState<boolean>(false);
+  const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
 
   // Storage hydration guard to prevent overwriting saved items with initial placeholders
   const isStorageLoadedRef = useRef(false);
@@ -81,36 +89,57 @@ export default function HomePage() {
   // Derive effective streak from profile when authenticated, or guest streak
   const effectiveStreak = profile?.streak ?? streakDays;
 
-  // Load cloud data when user signs in
+  // Two-way cross-device cloud sync:
+  // 1. On login or app start, synchronize local and cloud decks across platforms
+  // 2. Attach real-time Firestore onSnapshot listeners so any changes made on another device
+  //    (phone, tablet, computer) immediately update this browser live!
   useEffect(() => {
     if (!user) return;
     const currentUserId = user.uid;
     let isCancelled = false;
 
-    async function loadCloudData() {
+    async function initializeCloudSync() {
       try {
-        const cloudData = await loadUserDecksAndCards(currentUserId);
+        setIsManualSyncing(true);
+        // Smart merge: pulls cloud decks from other devices and uploads any offline/custom local decks
+        const synced = await syncDecksOnLogin(currentUserId, decksRef.current, cardsRef.current);
         if (isCancelled) return;
 
-        if (cloudData && cloudData.decks.length > 0) {
-          setDecks(cloudData.decks);
-          setCards(cloudData.cards);
-        } else {
-          // If the account has no decks yet, migrate current initial/local decks to cloud
-          for (const d of decksRef.current) {
-            const dCards = cardsRef.current.filter((c) => c.deckId === d.id);
-            await saveDeckAndCardsToFirestore(currentUserId, d, dCards);
-          }
+        if (synced && synced.decks.length > 0) {
+          setDecks(synced.decks);
+          setCards(synced.cards);
+          setLastSyncedTime(new Date());
+          setSyncToastMessage('Cloud sync active • Decks synchronized across devices');
+          setTimeout(() => setSyncToastMessage(null), 4000);
         }
       } catch (err) {
-        console.warn('Failed to load user cloud data:', err);
+        console.warn('Cloud sync error on login:', err);
+      } finally {
+        if (!isCancelled) setIsManualSyncing(false);
       }
     }
 
-    loadCloudData();
+    initializeCloudSync();
+
+    // Subscribe to live multi-device updates so changes on another phone/tablet reflect immediately
+    const unsub = subscribeToUserDecksAndCards(
+      currentUserId,
+      (liveData) => {
+        if (isCancelled) return;
+        if (liveData.decks.length > 0) {
+          setDecks(liveData.decks);
+          setCards(liveData.cards);
+          setLastSyncedTime(new Date());
+        }
+      },
+      (err) => {
+        console.warn('Live subscription error:', err);
+      }
+    );
 
     return () => {
       isCancelled = true;
+      unsub();
     };
   }, [user]);
 
@@ -134,6 +163,26 @@ export default function HomePage() {
     return cards.filter((c) => isCardDue(c)).length;
   }, [cards]);
 
+  // Manual force sync handler
+  const handleManualSync = async () => {
+    if (!user) return;
+    setIsManualSyncing(true);
+    try {
+      const fresh = await loadUserDecksAndCards(user.uid);
+      if (fresh && fresh.decks.length > 0) {
+        setDecks(fresh.decks);
+        setCards(fresh.cards);
+        setLastSyncedTime(new Date());
+        setSyncToastMessage('Synchronized with cloud');
+        setTimeout(() => setSyncToastMessage(null), 3000);
+      }
+    } catch (err) {
+      console.warn('Manual sync failed:', err);
+    } finally {
+      setIsManualSyncing(false);
+    }
+  };
+
   // Handlers
   const handleCardReviewed = (updatedCard: Flashcard, _rating: SM2Rating) => {
     const nextCards = cards.map((c) => (c.id === updatedCard.id ? updatedCard : c));
@@ -151,6 +200,7 @@ export default function HomePage() {
           if (updatedProfile) {
             updateLocalProfileStats(() => updatedProfile);
             setStreakDays(updatedProfile.streak);
+            setLastSyncedTime(new Date());
           }
         })
         .catch((err) => console.warn('Sync progress error:', err));
@@ -171,9 +221,13 @@ export default function HomePage() {
     setCards((prev) => [...newCards, ...prev]);
 
     if (user) {
-      saveDeckAndCardsToFirestore(user.uid, newDeck, newCards).catch((err) =>
-        console.warn('Save deck to cloud failed:', err)
-      );
+      saveDeckAndCardsToFirestore(user.uid, newDeck, newCards)
+        .then(() => {
+          setLastSyncedTime(new Date());
+          setSyncToastMessage(`Saved "${newDeck.title}" to cloud`);
+          setTimeout(() => setSyncToastMessage(null), 3000);
+        })
+        .catch((err) => console.warn('Save deck to cloud failed:', err));
     }
   };
 
@@ -184,9 +238,9 @@ export default function HomePage() {
     if (inspectingDeck?.id === deckId) setInspectingDeck(null);
 
     if (user) {
-      deleteDeckFromFirestore(user.uid, deckId).catch((err) =>
-        console.warn('Delete deck from cloud failed:', err)
-      );
+      deleteDeckFromFirestore(user.uid, deckId)
+        .then(() => setLastSyncedTime(new Date()))
+        .catch((err) => console.warn('Delete deck from cloud failed:', err));
     }
   };
 
@@ -237,20 +291,23 @@ export default function HomePage() {
   const handleAddCardToDeck = (newCard: Flashcard) => {
     setCards((prev) => [newCard, ...prev]);
     if (user) {
-      const parentDeck = decks.find((d) => d.id === newCard.deckId);
-      if (parentDeck) {
-        saveDeckAndCardsToFirestore(user.uid, parentDeck, [newCard]).catch((err) =>
-          console.warn('Add card to cloud failed:', err)
-        );
-      }
+      saveCardToFirestore(user.uid, newCard.deckId, newCard)
+        .then(() => setLastSyncedTime(new Date()))
+        .catch((err) => console.warn('Add card to cloud failed:', err));
     }
   };
 
   const handleDeleteCard = (cardId: string) => {
+    const cardToDelete = cards.find((c) => c.id === cardId);
     setCards((prev) => prev.filter((c) => c.id !== cardId));
+    if (user && cardToDelete) {
+      deleteCardFromFirestore(user.uid, cardToDelete.deckId, cardId)
+        .then(() => setLastSyncedTime(new Date()))
+        .catch((err) => console.warn('Delete card cloud error:', err));
+    }
   };
 
-  const handleSelectDeckToStudy = (deckId: string) => {
+  const handleSelectDeckToStudy = (deckId: string | null) => {
     setSelectedStudyDeckId(deckId);
     setActiveTab('study');
   };
@@ -276,13 +333,13 @@ export default function HomePage() {
             <div className="flex items-center gap-2">
               <Cloud className="w-4 h-4 shrink-0 text-blue-200" />
               <span>
-                <strong>Save your progress:</strong> Sign in to sync your study streaks, custom decks, and word mastery to your Google account.
+                <strong>Save your progress across devices:</strong> Sign in with Google to sync your decks, review schedules, and streaks.
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={signInWithGoogle}
-                className="px-2.5 py-1 rounded-full bg-white text-blue-700 font-semibold text-[11px] shadow-2xs hover:bg-blue-50 transition-colors"
+                className="px-2.5 py-1 rounded-full bg-white text-blue-700 font-semibold text-[11px] shadow-2xs hover:bg-blue-50 active:scale-95 transition-all"
               >
                 Sign In
               </button>
@@ -298,8 +355,18 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* Sync Toast Feedback Indicator */}
+      {syncToastMessage && (
+        <div className="fixed top-20 right-4 z-50 animate-in fade-in slide-in-from-top-3 duration-200">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-neutral-900/90 backdrop-blur-md text-white text-xs font-medium shadow-lg border border-white/10">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>{syncToastMessage}</span>
+          </div>
+        </div>
+      )}
+
       {/* Main App Content Body */}
-      <main className="flex-1 w-full pb-16">
+      <main className="flex-1 w-full pb-8">
         {activeTab === 'study' && (
           <CardStudyView
             cards={cards}
@@ -317,7 +384,7 @@ export default function HomePage() {
           <DecksView
             decks={decks}
             cards={cards}
-            onSelectDeckToStudy={handleSelectDeckToStudy}
+            onSelectDeckToStudy={(deckId) => handleSelectDeckToStudy(deckId)}
             onNavigateToImport={() => setActiveTab('import')}
             onDeleteDeck={handleDeleteDeck}
             onInspectDeck={setInspectingDeck}
@@ -364,6 +431,16 @@ export default function HomePage() {
           onDeleteCard={handleDeleteCard}
         />
       )}
+
+      {/* Apple-styled Footer with Ayaan Khan Credits */}
+      <Footer
+        user={user}
+        isSyncing={isManualSyncing}
+        totalDecks={decks.length}
+        totalCards={cards.length}
+        lastSyncedTime={lastSyncedTime}
+        onManualSync={handleManualSync}
+      />
     </div>
   );
 }

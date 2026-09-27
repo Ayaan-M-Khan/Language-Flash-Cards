@@ -196,7 +196,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
           </div>
 
           {/* Cloud Storage Status Details */}
-          <div className="mb-3 px-3 py-2 rounded-2xl bg-neutral-50 border border-neutral-200/60 text-xs text-neutral-600 flex items-center justify-between">
+          <div className="mb-2 px-3 py-2 rounded-2xl bg-neutral-50 border border-neutral-200/60 text-xs text-neutral-600 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Cloud className="w-3.5 h-3.5 text-neutral-500" />
               <span>Saved Decks</span>
@@ -204,6 +204,14 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
             <span className="font-semibold text-neutral-900">
               {totalDecks} decks ({totalCards} cards)
             </span>
+          </div>
+
+          <div className="mb-3 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-100/80 text-[11px] text-emerald-800 flex items-center justify-between">
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Multi-Device Live Sync
+            </span>
+            <span className="font-semibold text-emerald-700">Active</span>
           </div>
 
           {/* Sign Out Button */}
