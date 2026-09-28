@@ -28,7 +28,7 @@ import { WeeklyReviewTracker } from './WeeklyReviewTracker';
 interface DecksViewProps {
   decks: Deck[];
   cards: Flashcard[];
-  onSelectDeckToStudy: (deckId: string) => void;
+  onSelectDeckToStudy: (deckId: string | null) => void;
   onNavigateToImport: () => void;
   onDeleteDeck: (deckId: string) => void;
   onInspectDeck: (deck: Deck) => void;
