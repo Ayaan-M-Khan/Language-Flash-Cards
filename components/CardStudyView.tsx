@@ -52,13 +52,15 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     rating: SM2Rating;
   }[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isAdvancing, setIsAdvancing] = useState(false);
   const isAdvancingRef = useRef(false);
 
   // Stable study session queue: retains all cards scheduled for this session
   // so updating a card's dueDate does not shrink the queue mid-session and cause skipped cards
   const [sessionQueue, setSessionQueue] = useState<FlashcardType[]>(() => {
     const matching = cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId);
-    return matching.filter((card) => isCardDue(card));
+    const due = matching.filter((card) => isCardDue(card));
+    return due.length > 0 ? due : matching;
   });
 
   // Track props for render-phase state adjustments per React best practices
@@ -70,16 +72,18 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     setPrevSelectedDeckId(selectedDeckId);
     const matching = cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId);
     const due = matching.filter((card) => isCardDue(card));
-    setSessionQueue(due);
+    setSessionQueue(due.length > 0 ? due : matching);
     setSessionIndex(0);
     setSessionReviews([]);
     setIsFlipped(false);
-  } else if (prevCards !== cards && sessionReviews.length === 0 && sessionIndex === 0) {
-    // If cards hydrate or update from external storage before the user starts studying
+  } else if (prevCards !== cards) {
     setPrevCards(cards);
-    const matching = cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId);
-    const due = matching.filter((card) => isCardDue(card));
-    setSessionQueue(due);
+    if (sessionReviews.length === 0 && sessionIndex === 0) {
+      // If cards hydrate or update from external storage before the user starts studying
+      const matching = cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId);
+      const due = matching.filter((card) => isCardDue(card));
+      setSessionQueue(due.length > 0 ? due : matching);
+    }
   }
 
   // Current active card in the stable queue
@@ -117,6 +121,12 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     (rating: SM2Rating) => {
       if (!currentCard || isAdvancingRef.current) return;
       isAdvancingRef.current = true;
+      setIsAdvancing(true);
+
+      // Blur any currently focused button so keyboard Space/Enter does not re-trigger it
+      if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
 
       if (rating === 'again') {
         playHapticFeedback('fail');
@@ -167,21 +177,36 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
       // 7. Advance session index strictly by +1 without skipping
       setSessionIndex((prev) => prev + 1);
 
-      // 8. Release advancing lock after transition
+      // 8. Release advancing lock after transition (450ms protects against mobile 300ms tap delay & ghost clicks)
       setTimeout(() => {
         isAdvancingRef.current = false;
-      }, 200);
+        setIsAdvancing(false);
+      }, 450);
     },
     [currentCard, onCardReviewed, userId]
   );
 
-  // Handle Next card button or keyboard shortcut (advances and counts as 'good' progress)
-  const handleNext = useCallback(() => {
+  // Handle Skip card without rating (pure queue traversal, does not score as good recall)
+  const handleSkip = useCallback(() => {
     if (isAdvancingRef.current || !currentCard) return;
-    handleRating('good');
-  }, [handleRating, currentCard]);
+    isAdvancingRef.current = true;
+    setIsAdvancing(true);
 
-  // Keyboard shortcut listeners (Space = flip or good, Enter/ArrowRight = Next, 1-4 = ratings, S = speak)
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
+    playHapticFeedback('tap');
+    setIsFlipped(false);
+    setSessionIndex((prev) => prev + 1);
+
+    setTimeout(() => {
+      isAdvancingRef.current = false;
+      setIsAdvancing(false);
+    }, 450);
+  }, [currentCard]);
+
+  // Keyboard shortcut listeners (Space/Enter/ArrowRight = flip when front, 1-4 = ratings when back, S = speak)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't intercept typing in input fields
@@ -189,18 +214,25 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         return;
       }
 
+      // Prevent repeated key fires from held down keys
+      if (e.repeat) return;
+
       if (isAdvancingRef.current) return;
 
-      if (e.code === 'Space') {
+      if (e.code === 'Space' || e.key === 'Enter') {
         e.preventDefault();
         if (!isFlipped) {
           handleFlip();
         } else {
           handleRating('good');
         }
-      } else if (e.key === 'ArrowRight' || e.key === 'Enter') {
+      } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        handleNext();
+        if (!isFlipped) {
+          handleFlip();
+        } else {
+          handleRating('good');
+        }
       } else if (e.key.toLowerCase() === 's') {
         e.preventDefault();
         handleSpeak();
@@ -223,7 +255,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleFlip, handleSpeak, handleRating, handleNext, isFlipped, currentCard]);
+  }, [handleFlip, handleSpeak, handleRating, isFlipped, currentCard]);
 
   // Check if session completed
   const isSessionComplete = sessionQueue.length > 0 && sessionIndex >= sessionQueue.length;
@@ -571,20 +603,30 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Action Tray: 4-Level SuperMemo SM-2 Interval Buttons & Next Navigation */}
-      <AnimatePresence>
+      {/* Action Tray: 4-Level SuperMemo SM-2 Interval Buttons & Navigation */}
+      <AnimatePresence mode="wait">
         {isFlipped ? (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            key="rating-tray"
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="grid grid-cols-2 sm:grid-cols-4 gap-2.5"
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.14 }}
+            className={`grid grid-cols-2 sm:grid-cols-4 gap-2.5 ${
+              isAdvancing ? 'pointer-events-none opacity-60' : ''
+            }`}
           >
             {/* AGAIN BUTTON */}
             <button
               id="rating-again-btn"
-              onClick={() => handleRating('again')}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 text-rose-700 transition-all active:scale-98 shadow-2xs group"
+              type="button"
+              disabled={isAdvancing}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleRating('again');
+              }}
+              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 text-rose-700 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
             >
               <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 mb-0.5">
                 Again [1]
@@ -597,8 +639,14 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             {/* HARD BUTTON */}
             <button
               id="rating-hard-btn"
-              onClick={() => handleRating('hard')}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100/90 border border-amber-200/80 text-amber-800 transition-all active:scale-98 shadow-2xs group"
+              type="button"
+              disabled={isAdvancing}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleRating('hard');
+              }}
+              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100/90 border border-amber-200/80 text-amber-800 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
             >
               <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 mb-0.5">
                 Hard [2]
@@ -608,15 +656,21 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               </span>
             </button>
 
-            {/* GOOD / NEXT BUTTON */}
+            {/* GOOD / MEDIUM BUTTON */}
             <button
               id="rating-good-btn"
-              onClick={() => handleRating('good')}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white transition-all active:scale-98 shadow-sm shadow-blue-500/25 group relative"
+              type="button"
+              disabled={isAdvancing}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleRating('good');
+              }}
+              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white transition-all active:scale-98 shadow-sm shadow-blue-500/25 group relative disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
             >
               <div className="flex items-center gap-1 mb-0.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-blue-100">
-                  Good / Next [3]
+                  Good [3]
                 </span>
                 <ChevronRight className="w-3.5 h-3.5 text-blue-200" />
               </div>
@@ -628,8 +682,14 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             {/* EASY BUTTON */}
             <button
               id="rating-easy-btn"
-              onClick={() => handleRating('easy')}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/90 border border-emerald-200/80 text-emerald-700 transition-all active:scale-98 shadow-2xs group"
+              type="button"
+              disabled={isAdvancing}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleRating('easy');
+              }}
+              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/90 border border-emerald-200/80 text-emerald-700 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
             >
               <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 mb-0.5">
                 Easy [4]
@@ -640,11 +700,26 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             </button>
           </motion.div>
         ) : (
-          <div className="flex items-center justify-center gap-3">
+          <motion.div
+            key="front-tray"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.14 }}
+            className={`flex items-center justify-center gap-3 ${
+              isAdvancing ? 'pointer-events-none opacity-60' : ''
+            }`}
+          >
             <button
               id="show-answer-btn"
-              onClick={handleFlip}
-              className="flex-1 sm:flex-initial sm:w-64 py-3.5 px-6 rounded-2xl bg-neutral-900 hover:bg-black text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-98"
+              type="button"
+              disabled={isAdvancing}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleFlip();
+              }}
+              className="flex-1 sm:flex-initial sm:w-64 py-3.5 px-6 rounded-2xl bg-neutral-900 hover:bg-black text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
             >
               <span>Show Answer</span>
               <span className="text-[11px] text-neutral-400 font-normal px-2 py-0.5 rounded-md bg-neutral-800">
@@ -652,18 +727,21 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               </span>
             </button>
             <button
-              id="next-card-front-btn"
-              onClick={handleNext}
-              title="Next card (counts as Good recall)"
-              className="py-3.5 px-5 rounded-2xl bg-white hover:bg-neutral-100 border border-black/10 text-neutral-800 font-semibold text-sm shadow-2xs transition-all flex items-center justify-center gap-2 active:scale-98"
+              id="skip-card-front-btn"
+              type="button"
+              disabled={isAdvancing}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSkip();
+              }}
+              title="Skip this card without rating"
+              className="py-3.5 px-4 rounded-2xl bg-white hover:bg-neutral-100 border border-black/10 text-neutral-600 font-medium text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
             >
-              <span>Next</span>
-              <ChevronRight className="w-4 h-4 text-neutral-500" />
-              <span className="text-[11px] text-neutral-400 font-normal px-1.5 py-0.5 rounded-md bg-neutral-100">
-                →
-              </span>
+              <span>Skip</span>
+              <ChevronRight className="w-3.5 h-3.5 text-neutral-400" />
             </button>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
