@@ -251,9 +251,12 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
                 <CheckCircle2 className="w-3 h-3" />
                 {stats.consistencyRate}% Consistent
               </span>
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200/50">
+                Synced to Account
+              </span>
             </div>
             <p className="text-xs text-neutral-500">
-              Spaced repetition daily retention & 7-day review activity for {profile?.displayName || user.displayName || user.email?.split('@')[0]}
+              Spaced repetition daily retention & 7-day review activity for {profile?.displayName || user.displayName || user.email}
             </p>
           </div>
         </div>

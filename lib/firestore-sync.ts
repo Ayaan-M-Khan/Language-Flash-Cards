@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { Deck, Flashcard, UserProfile, SM2Rating, ReviewLog } from './types';
+import { INITIAL_DECKS, INITIAL_CARDS } from './default-data';
 
 export function getTodayDateString(): string {
   const now = new Date();
@@ -309,6 +310,27 @@ export async function recordUserStudyProgress(
 }
 
 /**
+ * Helper to safely extract daily review counts mapping from Firestore document
+ */
+export function parseDailyReviews(data: Record<string, any>): Record<string, number> {
+  const result: Record<string, number> = {};
+  if (data.dailyReviews && typeof data.dailyReviews === 'object') {
+    for (const [k, v] of Object.entries(data.dailyReviews)) {
+      if (typeof v === 'number') {
+        result[k] = v;
+      }
+    }
+  }
+  for (const [k, v] of Object.entries(data)) {
+    if (k.startsWith('dailyReviews.') && typeof v === 'number') {
+      const dateKey = k.substring('dailyReviews.'.length);
+      result[dateKey] = (result[dateKey] || 0) + v;
+    }
+  }
+  return result;
+}
+
+/**
  * Record a flashcard review log entry and update aggregate daily counters in Firestore
  */
 export async function recordReviewInFirestore(
@@ -348,7 +370,9 @@ export async function recordReviewInFirestore(
       {
         userId,
         totalReviews: increment(1),
-        [`dailyReviews.${todayStr}`]: increment(1),
+        dailyReviews: {
+          [todayStr]: increment(1),
+        },
         updatedAt: timestamp,
       },
       { merge: true }
@@ -373,7 +397,7 @@ export async function fetchUserDailyReviewsFromFirestore(
     if (snap.exists()) {
       const data = snap.data();
       return {
-        dailyReviews: (data.dailyReviews as Record<string, number>) || {},
+        dailyReviews: parseDailyReviews(data),
         totalReviews: (data.totalReviews as number) || 0,
       };
     }
@@ -397,10 +421,7 @@ export function subscribeToUserDailyReviews(
     (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        onUpdate(
-          (data.dailyReviews as Record<string, number>) || {},
-          (data.totalReviews as number) || 0
-        );
+        onUpdate(parseDailyReviews(data), (data.totalReviews as number) || 0);
       } else {
         onUpdate({}, 0);
       }
@@ -638,51 +659,32 @@ export function subscribeToUserDecksAndCards(
 }
 
 /**
- * Synchronize local decks with cloud when user logs in from any device
+ * Synchronize and load an account's decks from Firestore on login.
+ * Ensures the account in Firestore is the true source of truth.
+ * If this account is brand new (0 decks), initializes it with default starter decks in Firestore.
  */
 export async function syncDecksOnLogin(
-  userId: string,
-  localDecks: Deck[],
-  localCards: Flashcard[]
+  userId: string
 ): Promise<{ decks: Deck[]; cards: Flashcard[] }> {
   try {
     const cloudData = await loadUserDecksAndCards(userId);
     if (!cloudData) {
-      return { decks: localDecks, cards: localCards };
+      return { decks: [], cards: [] };
     }
 
     if (cloudData.decks.length === 0) {
-      // Cloud has no decks yet. Upload all initial/local decks to cloud.
-      for (const d of localDecks) {
-        const dCards = localCards.filter((c) => c.deckId === d.id);
+      // Initialize brand new user account with starter decks saved directly to their account
+      for (const d of INITIAL_DECKS) {
+        const dCards = INITIAL_CARDS.filter((c) => c.deckId === d.id);
         await saveDeckAndCardsToFirestore(userId, d, dCards);
       }
-      return { decks: localDecks, cards: localCards };
+      return { decks: INITIAL_DECKS, cards: INITIAL_CARDS };
     }
 
-    // Cloud has decks from this or other devices!
-    // Check if user has created any new custom local decks before logging in
-    const cloudDeckIds = new Set(cloudData.decks.map((d) => d.id));
-    const newLocalDecks = localDecks.filter(
-      (d) =>
-        !cloudDeckIds.has(d.id) &&
-        !d.id.startsWith('deck-spanish-core') &&
-        !d.id.startsWith('deck-japanese-travel') &&
-        !d.id.startsWith('deck-french-cafe')
-    );
-
-    if (newLocalDecks.length > 0) {
-      for (const d of newLocalDecks) {
-        const dCards = localCards.filter((c) => c.deckId === d.id);
-        await saveDeckAndCardsToFirestore(userId, d, dCards);
-        cloudData.decks.push(d);
-        cloudData.cards.push(...dCards);
-      }
-    }
-
+    // Return the authenticated account's exact decks from cloud
     return cloudData;
   } catch (err) {
     console.warn('syncDecksOnLogin error:', err);
-    return { decks: localDecks, cards: localCards };
+    return { decks: [], cards: [] };
   }
 }

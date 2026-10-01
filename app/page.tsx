@@ -27,9 +27,15 @@ import {
 } from '@/lib/firestore-sync';
 import { Cloud, CheckCircle2, RefreshCw } from 'lucide-react';
 
-const STORAGE_KEY_DECKS = 'language_flashcards_decks_v1';
-const STORAGE_KEY_CARDS = 'language_flashcards_cards_v1';
-const STORAGE_KEY_STREAK = 'language_flashcards_streak_v2';
+// Account-isolated storage keys to prevent mixing between guest and user accounts
+const getDecksStorageKey = (uid?: string | null) =>
+  uid ? `language_flashcards_decks_${uid}` : 'language_flashcards_decks_guest';
+
+const getCardsStorageKey = (uid?: string | null) =>
+  uid ? `language_flashcards_cards_${uid}` : 'language_flashcards_cards_guest';
+
+const getStreakStorageKey = (uid?: string | null) =>
+  uid ? `language_flashcards_streak_${uid}` : 'language_flashcards_streak_guest';
 
 export default function HomePage() {
   const { user, profile, updateLocalProfileStats, signInWithGoogle } = useAuth();
@@ -47,123 +53,141 @@ export default function HomePage() {
   const [isManualSyncing, setIsManualSyncing] = useState<boolean>(false);
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
 
-  // Storage hydration guard to prevent overwriting saved items with initial placeholders
-  const isStorageLoadedRef = useRef(false);
-
-  // Hydrate client storage after mount
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      try {
-        const savedDecks = localStorage.getItem(STORAGE_KEY_DECKS);
-        if (savedDecks) {
-          const parsed = JSON.parse(savedDecks);
-          if (Array.isArray(parsed) && parsed.length > 0) setDecks(parsed);
-        }
-        const savedCards = localStorage.getItem(STORAGE_KEY_CARDS);
-        if (savedCards) {
-          const parsed = JSON.parse(savedCards);
-          if (Array.isArray(parsed) && parsed.length > 0) setCards(parsed);
-        }
-        const savedStreak = localStorage.getItem(STORAGE_KEY_STREAK);
-        if (savedStreak) setStreakDays(Number(savedStreak) || 0);
-      } catch (err) {
-        console.warn('Failed to load local state:', err);
-      } finally {
-        isStorageLoadedRef.current = true;
-      }
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Keep refs to current decks and cards for initial cloud migration
-  const decksRef = useRef(decks);
-  const cardsRef = useRef(cards);
-  useEffect(() => {
-    decksRef.current = decks;
-  }, [decks]);
-  useEffect(() => {
-    cardsRef.current = cards;
-  }, [cards]);
-
   // Derive effective streak from profile when authenticated, or guest streak
   const effectiveStreak = profile?.streak ?? streakDays;
 
-  // Two-way cross-device cloud sync:
-  // 1. On login or app start, synchronize local and cloud decks across platforms
-  // 2. Attach real-time Firestore onSnapshot listeners so any changes made on another device
-  //    (phone, tablet, computer) immediately update this browser live!
+  // Account-Based Data Synchronization:
+  // When user logs in, load ONLY that account's decks from Firestore and attach real-time multi-device listeners.
+  // When user logs out, cleanly revert to guest data without leaving account data in system storage.
   useEffect(() => {
-    if (!user) return;
-    const currentUserId = user.uid;
     let isCancelled = false;
+    let unsubDecks: (() => void) | null = null;
 
-    async function initializeCloudSync() {
-      try {
+    const initAccountOrGuestData = async () => {
+      if (user) {
+        const currentUserId = user.uid;
+
+        // Fast display from account-specific cache if available
+        try {
+          const cachedDecks = localStorage.getItem(getDecksStorageKey(currentUserId));
+          const cachedCards = localStorage.getItem(getCardsStorageKey(currentUserId));
+          if (cachedDecks && cachedCards) {
+            const pDecks = JSON.parse(cachedDecks);
+            const pCards = JSON.parse(cachedCards);
+            if (Array.isArray(pDecks) && pDecks.length > 0 && !isCancelled) {
+              setDecks(pDecks);
+              setCards(pCards);
+            }
+          }
+        } catch {}
+
         setIsManualSyncing(true);
-        // Smart merge: pulls cloud decks from other devices and uploads any offline/custom local decks
-        const synced = await syncDecksOnLogin(currentUserId, decksRef.current, cardsRef.current);
-        if (isCancelled) return;
 
-        if (synced && synced.decks.length > 0) {
-          setDecks(synced.decks);
-          setCards(synced.cards);
-          setLastSyncedTime(new Date());
-          setSyncToastMessage('Cloud sync active • Decks synchronized across devices');
-          setTimeout(() => setSyncToastMessage(null), 4000);
+        // Load this account's authoritative decks and cards from Firestore
+        try {
+          const synced = await syncDecksOnLogin(currentUserId);
+          if (isCancelled) return;
+          if (synced && synced.decks.length > 0) {
+            setDecks(synced.decks);
+            setCards(synced.cards);
+            setLastSyncedTime(new Date());
+            setSyncToastMessage(`Account active • Synchronized with cloud`);
+            setTimeout(() => setSyncToastMessage(null), 3500);
+            try {
+              localStorage.setItem(getDecksStorageKey(currentUserId), JSON.stringify(synced.decks));
+              localStorage.setItem(getCardsStorageKey(currentUserId), JSON.stringify(synced.cards));
+            } catch {}
+          }
+        } catch (err) {
+          console.warn('Account sync error on login:', err);
+        } finally {
+          if (!isCancelled) setIsManualSyncing(false);
         }
-      } catch (err) {
-        console.warn('Cloud sync error on login:', err);
-      } finally {
-        if (!isCancelled) setIsManualSyncing(false);
-      }
-    }
 
-    initializeCloudSync();
-
-    // Subscribe to live multi-device updates so changes on another phone/tablet reflect immediately
-    const unsub = subscribeToUserDecksAndCards(
-      currentUserId,
-      (liveData) => {
-        if (isCancelled) return;
-        if (liveData.decks.length > 0) {
-          setDecks(liveData.decks);
-          setCards(liveData.cards);
-          setLastSyncedTime(new Date());
+        // Subscribe to real-time updates for this account so changes on other devices sync live
+        if (!isCancelled) {
+          unsubDecks = subscribeToUserDecksAndCards(
+            currentUserId,
+            (liveData) => {
+              if (isCancelled) return;
+              if (liveData.decks.length > 0) {
+                setDecks(liveData.decks);
+                setCards(liveData.cards);
+                setLastSyncedTime(new Date());
+                try {
+                  localStorage.setItem(getDecksStorageKey(currentUserId), JSON.stringify(liveData.decks));
+                  localStorage.setItem(getCardsStorageKey(currentUserId), JSON.stringify(liveData.cards));
+                } catch {}
+              }
+            },
+            (err) => {
+              console.warn('Live subscription error:', err);
+            }
+          );
         }
-      },
-      (err) => {
-        console.warn('Live subscription error:', err);
+      } else {
+        // Guest Mode: load guest storage or initial starter decks
+        try {
+          const guestDecksStr = localStorage.getItem(getDecksStorageKey(null));
+          const guestCardsStr = localStorage.getItem(getCardsStorageKey(null));
+          const guestStreakStr = localStorage.getItem(getStreakStorageKey(null));
+
+          if (guestDecksStr && guestCardsStr) {
+            const parsedDecks = JSON.parse(guestDecksStr);
+            const parsedCards = JSON.parse(guestCardsStr);
+            if (Array.isArray(parsedDecks) && parsedDecks.length > 0 && !isCancelled) {
+              setDecks(parsedDecks);
+              setCards(parsedCards);
+            } else if (!isCancelled) {
+              setDecks(INITIAL_DECKS);
+              setCards(INITIAL_CARDS);
+            }
+          } else if (!isCancelled) {
+            setDecks(INITIAL_DECKS);
+            setCards(INITIAL_CARDS);
+          }
+
+          if (guestStreakStr && !isCancelled) {
+            setStreakDays(Number(guestStreakStr) || 0);
+          } else if (!isCancelled) {
+            setStreakDays(0);
+          }
+        } catch {
+          if (!isCancelled) {
+            setDecks(INITIAL_DECKS);
+            setCards(INITIAL_CARDS);
+          }
+        }
       }
-    );
+    };
+
+    initAccountOrGuestData();
 
     return () => {
       isCancelled = true;
-      unsub();
+      if (unsubDecks) unsubDecks();
     };
   }, [user]);
 
-  // Save changes to localStorage as fallback only after initial storage hydration is complete
+  // Persist decks and cards to account-specific local cache for offline/instant resume
   useEffect(() => {
-    if (!isStorageLoadedRef.current) return;
     try {
-      localStorage.setItem(STORAGE_KEY_DECKS, JSON.stringify(decks));
+      localStorage.setItem(getDecksStorageKey(user?.uid), JSON.stringify(decks));
     } catch {}
-  }, [decks]);
+  }, [decks, user?.uid]);
 
   useEffect(() => {
-    if (!isStorageLoadedRef.current) return;
     try {
-      localStorage.setItem(STORAGE_KEY_CARDS, JSON.stringify(cards));
+      localStorage.setItem(getCardsStorageKey(user?.uid), JSON.stringify(cards));
     } catch {}
-  }, [cards]);
+  }, [cards, user?.uid]);
 
   // Calculate cards due today across all decks
   const dueTodayCount = useMemo(() => {
     return cards.filter((c) => isCardDue(c)).length;
   }, [cards]);
 
-  // Manual force sync handler
+  // Manual force sync handler for current account
   const handleManualSync = async () => {
     if (!user) return;
     setIsManualSyncing(true);
@@ -173,7 +197,7 @@ export default function HomePage() {
         setDecks(fresh.decks);
         setCards(fresh.cards);
         setLastSyncedTime(new Date());
-        setSyncToastMessage('Synchronized with cloud');
+        setSyncToastMessage('Synchronized with account');
         setTimeout(() => setSyncToastMessage(null), 3000);
       }
     } catch (err) {
@@ -189,12 +213,12 @@ export default function HomePage() {
     setCards(nextCards);
 
     if (user && profile) {
-      // Sync card state to Firestore
+      // Sync card state to Firestore for this account
       updateFlashcardReviewInFirestore(user.uid, updatedCard.deckId, updatedCard).catch((err) =>
         console.warn('Sync review card error:', err)
       );
 
-      // Record study session progress (streak, total reviews, mastery)
+      // Record study session progress (streak, total reviews, mastery) for this account
       recordUserStudyProgress(user.uid, profile, nextCards)
         .then((updatedProfile) => {
           if (updatedProfile) {
@@ -208,11 +232,11 @@ export default function HomePage() {
       // Guest local calculation
       const { newStreak, todayStr } = calculateNewStreak(
         streakDays,
-        localStorage.getItem('last_studied_date') || undefined
+        localStorage.getItem('language_flashcards_last_studied_guest') || undefined
       );
-      localStorage.setItem('last_studied_date', todayStr);
+      localStorage.setItem('language_flashcards_last_studied_guest', todayStr);
       setStreakDays(newStreak);
-      localStorage.setItem(STORAGE_KEY_STREAK, String(newStreak));
+      localStorage.setItem(getStreakStorageKey(null), String(newStreak));
     }
   };
 
@@ -224,10 +248,13 @@ export default function HomePage() {
       saveDeckAndCardsToFirestore(user.uid, newDeck, newCards)
         .then(() => {
           setLastSyncedTime(new Date());
-          setSyncToastMessage(`Saved "${newDeck.title}" to cloud`);
+          setSyncToastMessage(`Saved "${newDeck.title}" to your account`);
           setTimeout(() => setSyncToastMessage(null), 3000);
         })
         .catch((err) => console.warn('Save deck to cloud failed:', err));
+    } else {
+      setSyncToastMessage(`Created "${newDeck.title}" (Guest Mode)`);
+      setTimeout(() => setSyncToastMessage(null), 3000);
     }
   };
 

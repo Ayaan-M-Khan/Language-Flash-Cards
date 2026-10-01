@@ -30,6 +30,7 @@ const nextConfig: NextConfig = {
   },
   transpilePackages: ['motion'],
   experimental: {
+    devtoolSegmentExplorer: false,
     optimizePackageImports: ['lucide-react', 'motion'],
   },
   webpack: (config, {dev}) => {
