@@ -1,27 +1,25 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
 import {
-  Volume2,
-  RotateCw,
   Sparkles,
   ChevronRight,
   CheckCircle2,
   Layers,
-  ArrowRight,
   RefreshCw,
   Clock,
   BookOpen,
 } from 'lucide-react';
-import { Flashcard as FlashcardType, Deck, SM2Rating, CardState } from '@/lib/types';
-import { calculateSM2, getPreviewIntervals, isCardDue } from '@/lib/srs';
+import { Flashcard as FlashcardType, Deck, SM2Rating } from '@/lib/types';
+import { getPreviewIntervals, isCardDue } from '@/lib/srs';
 import { speakWord, playHapticFeedback } from '@/lib/audio';
 import { WeeklyReviewTracker } from './WeeklyReviewTracker';
 import { incrementTodayReviewCount } from '@/lib/review-history';
-import { recordReviewInFirestore } from '@/lib/firestore-sync';
+import { deckService } from '@/lib/deckService';
 import { Flashcard } from './Flashcard';
+import { useStudySession } from '@/hooks/useStudySession';
 
 interface CardStudyViewProps {
   cards: FlashcardType[];
@@ -44,86 +42,110 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   currentStreak = 0,
   userId = null,
 }) => {
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [sessionIndex, setSessionIndex] = useState(0);
   const [reviewRefreshTrigger, setReviewRefreshTrigger] = useState(0);
-  const [sessionReviews, setSessionReviews] = useState<{
-    cardId: string;
-    rating: SM2Rating;
-  }[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isAdvancing, setIsAdvancing] = useState(false);
-  const isAdvancingRef = useRef(false);
 
-  // Stable study session queue: retains all cards scheduled for this session
-  // so updating a card's dueDate does not shrink the queue mid-session and cause skipped cards
-  const [sessionQueue, setSessionQueue] = useState<FlashcardType[]>(() => {
+  // Compute session initial cards deterministically based on active deck filter
+  const initialSessionCards = useMemo(() => {
     const matching = cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId);
     const due = matching.filter((card) => isCardDue(card));
     return due.length > 0 ? due : matching;
+  }, [cards, selectedDeckId]);
+
+  // Use the queue-based study manager (ZERO skipped cards, active card is ALWAYS queue[0])
+  const {
+    currentCard,
+    cardsRemaining,
+    totalSessionCards,
+    completedCount,
+    progressPercent,
+    isFlipped,
+    flipCard,
+    rateCard,
+    skipCard,
+    isProcessing,
+    isComplete,
+    stats,
+    restartSession,
+  } = useStudySession(initialSessionCards, {
+    onCardReviewed: (updatedCard, rating) => {
+      // 1. Notify parent handler for local state
+      onCardReviewed(updatedCard, rating);
+
+      // 2. Persist study log & aggregate progress directly to user's Firestore account
+      if (userId) {
+        deckService
+          .recordStudyLog(
+            userId,
+            updatedCard.deckId,
+            updatedCard.id,
+            rating,
+            updatedCard.intervalDays
+          )
+          .catch((err) => console.warn('Record study log in Firestore failed:', err));
+      }
+
+      // 3. Trigger reactive refresh for session review trackers
+      incrementTodayReviewCount(userId);
+      setReviewRefreshTrigger((v) => v + 1);
+    },
+    onSessionComplete: () => {
+      playHapticFeedback('celebrate');
+      try {
+        confetti({
+          particleCount: 75,
+          spread: 60,
+          origin: { y: 0.65 },
+          colors: ['#007AFF', '#5856D6', '#34C759', '#FF9500', '#FF2D55'],
+        });
+      } catch {
+        // Fallback
+      }
+    },
   });
 
-  // Track props for render-phase state adjustments per React best practices
-  const [prevSelectedDeckId, setPrevSelectedDeckId] = useState(selectedDeckId);
-  const [prevCards, setPrevCards] = useState(cards);
-
-  // When selected deck changes, re-initialize the session queue during render
-  if (selectedDeckId !== prevSelectedDeckId) {
-    setPrevSelectedDeckId(selectedDeckId);
+  // Re-sync queue when selected deck changes
+  const [prevDeckId, setPrevDeckId] = useState(selectedDeckId);
+  if (selectedDeckId !== prevDeckId) {
+    setPrevDeckId(selectedDeckId);
     const matching = cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId);
     const due = matching.filter((card) => isCardDue(card));
-    setSessionQueue(due.length > 0 ? due : matching);
-    setSessionIndex(0);
-    setSessionReviews([]);
-    setIsFlipped(false);
-  } else if (prevCards !== cards) {
-    setPrevCards(cards);
-    if (sessionReviews.length === 0 && sessionIndex === 0) {
-      // If cards hydrate or update from external storage before the user starts studying
-      const matching = cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId);
-      const due = matching.filter((card) => isCardDue(card));
-      setSessionQueue(due.length > 0 ? due : matching);
-    }
+    restartSession(due.length > 0 ? due : matching);
   }
 
-  // Current active card in the stable queue
-  const currentCard: FlashcardType | undefined = sessionQueue[sessionIndex];
-
-  // Associated deck for current card
+  // Associated deck for active card
   const currentDeck = useMemo(() => {
     if (!currentCard) return undefined;
     return decks.find((d) => d.id === currentCard.deckId);
   }, [currentCard, decks]);
 
-  // Handle Flip
-  const handleFlip = useCallback(() => {
-    if (isAdvancingRef.current) return;
-    playHapticFeedback('flip');
-    setIsFlipped((prev) => !prev);
-  }, []);
-
   // Handle Audio Speech
   const handleSpeak = useCallback(
     async (e?: React.MouseEvent) => {
       if (e) e.stopPropagation();
-      if (!currentCard) return;
+      if (!currentCard || isSpeaking) return;
       playHapticFeedback('tap');
       setIsSpeaking(true);
       const code = currentDeck?.languageCode || currentCard.language || 'es-ES';
       await speakWord(currentCard.targetWord, code);
       setIsSpeaking(false);
     },
-    [currentCard, currentDeck]
+    [currentCard, currentDeck, isSpeaking]
   );
 
-  // Handle User Evaluation (Again, Hard, Good, Easy) & Progress Counting
-  const handleRating = useCallback(
-    (rating: SM2Rating) => {
-      if (!currentCard || isAdvancingRef.current) return;
-      isAdvancingRef.current = true;
-      setIsAdvancing(true);
+  // Handle Flip with haptic feedback
+  const handleFlip = useCallback(() => {
+    if (isProcessing) return;
+    playHapticFeedback('flip');
+    flipCard();
+  }, [isProcessing, flipCard]);
 
-      // Blur any currently focused button so keyboard Space/Enter does not re-trigger it
+  // Handle Rating with haptic feedback
+  const handleRating = useCallback(
+    async (rating: SM2Rating) => {
+      if (!currentCard || isProcessing) return;
+
+      // Blur focused buttons to avoid duplicate Enter/Space hits
       if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
@@ -134,99 +156,21 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         playHapticFeedback('rating');
       }
 
-      const sm2 = calculateSM2(currentCard, rating);
-      const updatedCard: FlashcardType = {
-        ...currentCard,
-        repetitions: sm2.repetitions,
-        intervalDays: sm2.intervalDays,
-        easeFactor: sm2.easeFactor,
-        state: sm2.state,
-        dueDate: sm2.dueDate,
-        lastReviewedAt: new Date().toISOString(),
-      };
-
-      // 1. Write updated card state back to parent (syncs to localStorage & cloud)
-      onCardReviewed(updatedCard, rating);
-
-      // 2. Track this session's review history
-      setSessionReviews((prev) => [...prev, { cardId: currentCard.id, rating }]);
-
-      // 3. Write study log entry and update aggregate progress in Firebase Firestore
-      if (userId) {
-        recordReviewInFirestore(
-          userId,
-          currentCard.deckId,
-          currentCard.id,
-          rating,
-          updatedCard.intervalDays
-        ).catch((err) => console.warn('Record review in Firestore failed:', err));
-      }
-
-      // 4. Trigger reactive state update for local session trackers
-      incrementTodayReviewCount(userId);
-      setReviewRefreshTrigger((v) => v + 1);
-
-      // 5. If rating is 'again', re-queue card to end of session so user reinforces it
-      if (rating === 'again') {
-        setSessionQueue((prev) => [...prev, currentCard]);
-      }
-
-      // 6. Reset flip state cleanly so next card mounts unflipped on front face
-      setIsFlipped(false);
-
-      // 7. Advance session index strictly by +1 without skipping
-      setSessionIndex((prev) => prev + 1);
-
-      // 8. Release advancing lock after transition (450ms protects against mobile 300ms tap delay & ghost clicks)
-      setTimeout(() => {
-        isAdvancingRef.current = false;
-        setIsAdvancing(false);
-      }, 450);
+      await rateCard(rating);
     },
-    [currentCard, onCardReviewed, userId]
+    [currentCard, isProcessing, rateCard]
   );
 
-  // Handle Skip card without rating (pure queue traversal, does not score as good recall)
-  const handleSkip = useCallback(() => {
-    if (isAdvancingRef.current || !currentCard) return;
-    isAdvancingRef.current = true;
-    setIsAdvancing(true);
-
-    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-
-    playHapticFeedback('tap');
-    setIsFlipped(false);
-    setSessionIndex((prev) => prev + 1);
-
-    setTimeout(() => {
-      isAdvancingRef.current = false;
-      setIsAdvancing(false);
-    }, 450);
-  }, [currentCard]);
-
-  // Keyboard shortcut listeners (Space/Enter/ArrowRight = flip when front, 1-4 = ratings when back, S = speak)
+  // Keyboard shortcut listeners (Space/Enter/ArrowRight = flip/good, 1-4 = ratings when flipped, S = speak)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't intercept typing in input fields
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
         return;
       }
+      if (e.repeat || isProcessing) return;
 
-      // Prevent repeated key fires from held down keys
-      if (e.repeat) return;
-
-      if (isAdvancingRef.current) return;
-
-      if (e.code === 'Space' || e.key === 'Enter') {
-        e.preventDefault();
-        if (!isFlipped) {
-          handleFlip();
-        } else {
-          handleRating('good');
-        }
-      } else if (e.key === 'ArrowRight') {
+      if (e.code === 'Space' || e.key === 'Enter' || e.key === 'ArrowRight') {
         e.preventDefault();
         if (!isFlipped) {
           handleFlip();
@@ -255,51 +199,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleFlip, handleSpeak, handleRating, isFlipped, currentCard]);
-
-  // Check if session completed
-  const isSessionComplete = sessionQueue.length > 0 && sessionIndex >= sessionQueue.length;
-
-  // Trigger celebration on completion
-  useEffect(() => {
-    if (isSessionComplete && sessionReviews.length > 0) {
-      playHapticFeedback('celebrate');
-      try {
-        confetti({
-          particleCount: 70,
-          spread: 60,
-          origin: { y: 0.65 },
-          colors: ['#007AFF', '#5856D6', '#34C759', '#FF9500', '#FF2D55'],
-        });
-      } catch {
-        // Safe fallback
-      }
-    }
-  }, [isSessionComplete, sessionReviews.length]);
-
-  // Restart session with fresh cards or practice deck
-  const restartSession = useCallback(() => {
-    playHapticFeedback('tap');
-    const matching = cards.filter((c) => !selectedDeckId || c.deckId === selectedDeckId);
-    const due = matching.filter((c) => isCardDue(c));
-    const nextQueue = due.length > 0 ? due : matching;
-    setSessionQueue(nextQueue);
-    setSessionIndex(0);
-    setSessionReviews([]);
-    setIsFlipped(false);
-    isAdvancingRef.current = false;
-  }, [cards, selectedDeckId]);
-
-  // Start practice session for all cards in deck even if not due
-  const startPracticeAnyway = useCallback(() => {
-    playHapticFeedback('tap');
-    const matching = cards.filter((c) => !selectedDeckId || c.deckId === selectedDeckId);
-    setSessionQueue(matching);
-    setSessionIndex(0);
-    setSessionReviews([]);
-    setIsFlipped(false);
-    isAdvancingRef.current = false;
-  }, [cards, selectedDeckId]);
+  }, [handleFlip, handleSpeak, handleRating, isFlipped, currentCard, isProcessing]);
 
   // Preview intervals for current card ratings
   const previewIntervals = useMemo(() => {
@@ -308,7 +208,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   }, [currentCard]);
 
   // ===================== ZERO DUE CARDS EMPTY STATE =====================
-  if (sessionQueue.length === 0) {
+  if (totalSessionCards === 0) {
     const totalDeckCards = cards.filter((c) => !selectedDeckId || c.deckId === selectedDeckId).length;
 
     return (
@@ -364,8 +264,11 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           {totalDeckCards > 0 && (
             <button
               id="empty-practice-anyway-btn"
-              onClick={startPracticeAnyway}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-neutral-900 text-white font-semibold text-sm hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xs"
+              onClick={() => {
+                const matching = cards.filter((c) => !selectedDeckId || c.deckId === selectedDeckId);
+                restartSession(matching);
+              }}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-neutral-900 text-white font-semibold text-sm hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
             >
               <BookOpen className="w-4 h-4" />
               <span>Practice All Cards ({totalDeckCards})</span>
@@ -374,7 +277,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           <button
             id="empty-import-table-btn"
             onClick={onNavigateToImport}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 shadow-sm shadow-blue-500/25 transition-all flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 shadow-sm shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Sparkles className="w-4 h-4" />
             <span>Import Vocabulary Table</span>
@@ -382,7 +285,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           <button
             id="empty-preview-deck-btn"
             onClick={() => onSelectDeck(null)}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-white text-neutral-700 font-medium text-sm hover:bg-neutral-100 border border-black/10 transition-all flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-white text-neutral-700 font-medium text-sm hover:bg-neutral-100 border border-black/10 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Layers className="w-4 h-4 text-neutral-500" />
             <span>View All Decks</span>
@@ -396,12 +299,9 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   }
 
   // ===================== SESSION COMPLETE SUMMARY =====================
-  if (isSessionComplete) {
-    const againCount = sessionReviews.filter((r) => r.rating === 'again').length;
-    const hardCount = sessionReviews.filter((r) => r.rating === 'hard').length;
-    const goodCount = sessionReviews.filter((r) => r.rating === 'good').length;
-    const easyCount = sessionReviews.filter((r) => r.rating === 'easy').length;
-    const total = sessionReviews.length;
+  if (isComplete) {
+    const { againCount, hardCount, goodCount, easyCount, cardsReviewed } = stats;
+    const total = cardsReviewed;
     const retentionRate = total > 0 ? Math.round(((goodCount + easyCount) / total) * 100) : 100;
 
     return (
@@ -490,8 +390,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               id="study-again-btn"
-              onClick={restartSession}
-              className="flex-1 py-3 px-4 rounded-2xl bg-neutral-900 text-white font-medium text-sm hover:bg-black transition-colors flex items-center justify-center gap-2"
+              onClick={() => restartSession()}
+              className="flex-1 py-3 px-4 rounded-2xl bg-neutral-900 text-white font-medium text-sm hover:bg-black transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Review Again</span>
@@ -499,7 +399,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             <button
               id="study-import-more-btn"
               onClick={onNavigateToImport}
-              className="flex-1 py-3 px-4 rounded-2xl bg-blue-600 text-white font-medium text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+              className="flex-1 py-3 px-4 rounded-2xl bg-blue-600 text-white font-medium text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <Sparkles className="w-4 h-4" />
               <span>Add More Words</span>
@@ -513,12 +413,15 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     );
   }
 
-  // ===================== ACTIVE STUDY CARD =====================
-  const progressPercent = Math.round((sessionIndex / sessionQueue.length) * 100);
+  // Guard: if no current card, render loading or caught up
+  if (!currentCard) {
+    return null;
+  }
 
+  // ===================== ACTIVE STUDY CARD =====================
   return (
     <div className="max-w-2xl mx-auto px-4 py-4 sm:py-8">
-      {/* Top Header: Deck selection & Progress */}
+      {/* Top Header: Deck selection & Queue Counter */}
       <div className="flex items-center justify-between gap-3 mb-4">
         {/* Deck Chip Dropdown / Info */}
         <div className="flex items-center gap-2">
@@ -528,8 +431,6 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             onChange={(e) => {
               const val = e.target.value === 'all' ? null : e.target.value;
               onSelectDeck(val);
-              setSessionIndex(0);
-              setIsFlipped(false);
             }}
             className="px-3 py-1.5 text-xs font-semibold bg-white border border-black/10 rounded-xl text-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-2xs cursor-pointer"
           >
@@ -548,11 +449,11 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           )}
         </div>
 
-        {/* Counter Badge */}
+        {/* Deterministic Queue Counter Badge */}
         <div className="flex items-center gap-2 text-xs text-neutral-500 font-medium">
           <Clock className="w-3.5 h-3.5 text-neutral-400" />
           <span>
-            {sessionIndex + 1} of {sessionQueue.length}
+            {completedCount + 1} of {totalSessionCards} ({cardsRemaining} remaining)
           </span>
           <span
             className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -570,7 +471,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         </div>
       </div>
 
-      {/* Progress Bar */}
+      {/* Queue Progress Bar */}
       <div className="w-full h-1.5 bg-neutral-200/80 rounded-full overflow-hidden mb-6">
         <motion.div
           className="h-full bg-blue-500 rounded-full"
@@ -613,20 +514,20 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.14 }}
             className={`grid grid-cols-2 sm:grid-cols-4 gap-2.5 ${
-              isAdvancing ? 'pointer-events-none opacity-60' : ''
+              isProcessing ? 'pointer-events-none opacity-60' : ''
             }`}
           >
             {/* AGAIN BUTTON */}
             <button
               id="rating-again-btn"
               type="button"
-              disabled={isAdvancing}
+              disabled={isProcessing}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleRating('again');
               }}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 text-rose-700 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
+              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 text-rose-700 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
             >
               <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 mb-0.5">
                 Again [1]
@@ -640,13 +541,13 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             <button
               id="rating-hard-btn"
               type="button"
-              disabled={isAdvancing}
+              disabled={isProcessing}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleRating('hard');
               }}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100/90 border border-amber-200/80 text-amber-800 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
+              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100/90 border border-amber-200/80 text-amber-800 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
             >
               <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 mb-0.5">
                 Hard [2]
@@ -660,13 +561,13 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             <button
               id="rating-good-btn"
               type="button"
-              disabled={isAdvancing}
+              disabled={isProcessing}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleRating('good');
               }}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white transition-all active:scale-98 shadow-sm shadow-blue-500/25 group relative disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
+              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white transition-all active:scale-98 shadow-sm shadow-blue-500/25 group relative disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
             >
               <div className="flex items-center gap-1 mb-0.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-blue-100">
@@ -683,13 +584,13 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             <button
               id="rating-easy-btn"
               type="button"
-              disabled={isAdvancing}
+              disabled={isProcessing}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleRating('easy');
               }}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/90 border border-emerald-200/80 text-emerald-700 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
+              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/90 border border-emerald-200/80 text-emerald-700 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
             >
               <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 mb-0.5">
                 Easy [4]
@@ -707,19 +608,19 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.14 }}
             className={`flex items-center justify-center gap-3 ${
-              isAdvancing ? 'pointer-events-none opacity-60' : ''
+              isProcessing ? 'pointer-events-none opacity-60' : ''
             }`}
           >
             <button
               id="show-answer-btn"
               type="button"
-              disabled={isAdvancing}
+              disabled={isProcessing}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleFlip();
               }}
-              className="flex-1 sm:flex-initial sm:w-64 py-3.5 px-6 rounded-2xl bg-neutral-900 hover:bg-black text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
+              className="flex-1 sm:flex-initial sm:w-64 py-3.5 px-6 rounded-2xl bg-neutral-900 hover:bg-black text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
             >
               <span>Show Answer</span>
               <span className="text-[11px] text-neutral-400 font-normal px-2 py-0.5 rounded-md bg-neutral-800">
@@ -729,14 +630,14 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             <button
               id="skip-card-front-btn"
               type="button"
-              disabled={isAdvancing}
+              disabled={isProcessing}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                handleSkip();
+                skipCard();
               }}
-              title="Skip this card without rating"
-              className="py-3.5 px-4 rounded-2xl bg-white hover:bg-neutral-100 border border-black/10 text-neutral-600 font-medium text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
+              title="Move this card to end of session queue"
+              className="py-3.5 px-4 rounded-2xl bg-white hover:bg-neutral-100 border border-black/10 text-neutral-600 font-medium text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
             >
               <span>Skip</span>
               <ChevronRight className="w-3.5 h-3.5 text-neutral-400" />

@@ -115,8 +115,14 @@ service cloud.firestore {
         }
       }
 
-      // Review event logs
+      // Review event logs and study logs
       match /reviews/{reviewId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update, delete: if isOwner(userId);
+      }
+
+      match /studyLogs/{logId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId);
         allow update, delete: if isOwner(userId);

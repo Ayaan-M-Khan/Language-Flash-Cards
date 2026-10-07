@@ -13,17 +13,10 @@ import { INITIAL_DECKS, INITIAL_CARDS } from '@/lib/default-data';
 import { isCardDue } from '@/lib/srs';
 import { isSoundEnabled } from '@/lib/audio';
 import { useAuth } from '@/lib/AuthContext';
+import { deckService } from '@/lib/deckService';
 import {
-  loadUserDecksAndCards,
-  saveDeckAndCardsToFirestore,
-  updateFlashcardReviewInFirestore,
-  deleteDeckFromFirestore,
   recordUserStudyProgress,
   calculateNewStreak,
-  subscribeToUserDecksAndCards,
-  syncDecksOnLogin,
-  deleteCardFromFirestore,
-  saveCardToFirestore,
 } from '@/lib/firestore-sync';
 import { Cloud, CheckCircle2, RefreshCw } from 'lucide-react';
 
@@ -85,7 +78,7 @@ export default function HomePage() {
 
         // Load this account's authoritative decks and cards from Firestore
         try {
-          const synced = await syncDecksOnLogin(currentUserId);
+          const synced = await deckService.migrateLocalDecksToAccount(currentUserId);
           if (isCancelled) return;
           if (synced && synced.decks.length > 0) {
             setDecks(synced.decks);
@@ -106,7 +99,7 @@ export default function HomePage() {
 
         // Subscribe to real-time updates for this account so changes on other devices sync live
         if (!isCancelled) {
-          unsubDecks = subscribeToUserDecksAndCards(
+          unsubDecks = deckService.subscribeUserDecks(
             currentUserId,
             (liveData) => {
               if (isCancelled) return;
@@ -192,7 +185,7 @@ export default function HomePage() {
     if (!user) return;
     setIsManualSyncing(true);
     try {
-      const fresh = await loadUserDecksAndCards(user.uid);
+      const fresh = await deckService.getUserDecks(user.uid);
       if (fresh && fresh.decks.length > 0) {
         setDecks(fresh.decks);
         setCards(fresh.cards);
@@ -214,7 +207,7 @@ export default function HomePage() {
 
     if (user && profile) {
       // Sync card state to Firestore for this account
-      updateFlashcardReviewInFirestore(user.uid, updatedCard.deckId, updatedCard).catch((err) =>
+      deckService.updateCardReview(user.uid, updatedCard.deckId, updatedCard).catch((err) =>
         console.warn('Sync review card error:', err)
       );
 
@@ -245,7 +238,7 @@ export default function HomePage() {
     setCards((prev) => [...newCards, ...prev]);
 
     if (user) {
-      saveDeckAndCardsToFirestore(user.uid, newDeck, newCards)
+      deckService.saveDeck(user.uid, newDeck, newCards)
         .then(() => {
           setLastSyncedTime(new Date());
           setSyncToastMessage(`Saved "${newDeck.title}" to your account`);
@@ -265,7 +258,7 @@ export default function HomePage() {
     if (inspectingDeck?.id === deckId) setInspectingDeck(null);
 
     if (user) {
-      deleteDeckFromFirestore(user.uid, deckId)
+      deckService.deleteDeck(user.uid, deckId)
         .then(() => setLastSyncedTime(new Date()))
         .catch((err) => console.warn('Delete deck from cloud failed:', err));
     }
@@ -284,7 +277,7 @@ export default function HomePage() {
             dueDate: new Date().toISOString(),
           };
           if (user) {
-            updateFlashcardReviewInFirestore(user.uid, resetCard.deckId, resetCard).catch((err) =>
+            deckService.updateCardReview(user.uid, resetCard.deckId, resetCard).catch((err) =>
               console.warn('Reset card schedule in cloud failed:', err)
             );
           }
@@ -304,7 +297,7 @@ export default function HomePage() {
             dueDate: new Date().toISOString(),
           };
           if (user) {
-            updateFlashcardReviewInFirestore(user.uid, dueCard.deckId, dueCard).catch((err) =>
+            deckService.updateCardReview(user.uid, dueCard.deckId, dueCard).catch((err) =>
               console.warn('Make card due in cloud failed:', err)
             );
           }
@@ -318,7 +311,7 @@ export default function HomePage() {
   const handleAddCardToDeck = (newCard: Flashcard) => {
     setCards((prev) => [newCard, ...prev]);
     if (user) {
-      saveCardToFirestore(user.uid, newCard.deckId, newCard)
+      deckService.saveCard(user.uid, newCard.deckId, newCard)
         .then(() => setLastSyncedTime(new Date()))
         .catch((err) => console.warn('Add card to cloud failed:', err));
     }
@@ -328,7 +321,7 @@ export default function HomePage() {
     const cardToDelete = cards.find((c) => c.id === cardId);
     setCards((prev) => prev.filter((c) => c.id !== cardId));
     if (user && cardToDelete) {
-      deleteCardFromFirestore(user.uid, cardToDelete.deckId, cardId)
+      deckService.deleteCard(user.uid, cardToDelete.deckId, cardId)
         .then(() => setLastSyncedTime(new Date()))
         .catch((err) => console.warn('Delete card cloud error:', err));
     }
