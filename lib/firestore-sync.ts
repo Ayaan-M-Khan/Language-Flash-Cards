@@ -74,34 +74,60 @@ export async function syncUserProfile(
 
     if (snap.exists()) {
       const data = snap.data() as UserProfile;
-      // Update profile info if changed
-      const updates: Partial<UserProfile> = {
+      const updates: Record<string, unknown> = {
         updatedAt: new Date().toISOString(),
       };
-      if (displayName && data.displayName !== displayName) updates.displayName = displayName;
-      if (photoURL && data.photoURL !== photoURL) updates.photoURL = photoURL;
-      if (userEmail && data.email !== userEmail) updates.email = userEmail;
+      if (displayName && data.displayName !== displayName) {
+        updates.displayName = displayName.slice(0, 100);
+      }
+      if (photoURL && data.photoURL !== photoURL) {
+        updates.photoURL = photoURL.slice(0, 500);
+      }
+      if (userEmail && data.email !== userEmail) {
+        updates.email = userEmail.slice(0, 200);
+      }
 
       if (Object.keys(updates).length > 1) {
         await updateDoc(userDocRef, updates);
       }
-      return { ...data, ...updates };
+      return { ...data, ...(updates as Partial<UserProfile>) };
     }
 
-    const newProfile: UserProfile = {
+    const nowIso = new Date().toISOString();
+    const safeDisplayName = (
+      displayName ||
+      userEmail.split('@')[0] ||
+      'Language Learner'
+    ).slice(0, 100);
+
+    const firestoreDoc: Record<string, unknown> = {
       userId,
-      email: userEmail,
-      displayName: displayName || userEmail.split('@')[0] || 'Language Learner',
-      photoURL: photoURL || undefined,
-      streak: initialStreak,
+      email: (userEmail || 'user@example.com').slice(0, 200),
+      displayName: safeDisplayName,
+      streak: Math.max(0, initialStreak),
       totalReviews: 0,
       cardsMastered: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
     };
 
-    await setDoc(userDocRef, newProfile);
-    return newProfile;
+    if (photoURL && photoURL.trim().length > 0) {
+      firestoreDoc.photoURL = photoURL.trim().slice(0, 500);
+    }
+
+    await setDoc(userDocRef, firestoreDoc);
+
+    return {
+      userId,
+      email: firestoreDoc.email as string,
+      displayName: safeDisplayName,
+      ...(photoURL ? { photoURL: photoURL.trim().slice(0, 500) } : {}),
+      streak: Math.max(0, initialStreak),
+      totalReviews: 0,
+      cardsMastered: 0,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
   }

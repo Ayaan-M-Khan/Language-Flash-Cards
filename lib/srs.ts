@@ -134,6 +134,54 @@ export function isCardDue(card: Flashcard, referenceDate: Date = new Date()): bo
 }
 
 /**
+ * Extracts a numeric sequence index from a card (explicit orderIndex or trailing numeric ID suffix)
+ * so cards always sort 1-by-1 in creation/import order rather than lexicographical string order.
+ */
+export function getCardSequenceNumber(card: Flashcard): number {
+  if (typeof card.orderIndex === 'number' && Number.isFinite(card.orderIndex)) {
+    return card.orderIndex;
+  }
+  const match = card.id.match(/-(\d+)$/);
+  if (match && match[1]) {
+    const parsed = parseInt(match[1], 10);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * Deterministically sorts flashcards in strict 1-by-1 sequential order per deck.
+ */
+export function sortCardsSequentially(
+  cards: Flashcard[],
+  decks?: { id: string }[]
+): Flashcard[] {
+  const deckOrderMap = new Map<string, number>();
+  if (decks) {
+    decks.forEach((d, idx) => deckOrderMap.set(d.id, idx));
+  }
+
+  return [...cards].sort((a, b) => {
+    if (a.deckId !== b.deckId) {
+      const deckIdxA = deckOrderMap.get(a.deckId) ?? Number.MAX_SAFE_INTEGER;
+      const deckIdxB = deckOrderMap.get(b.deckId) ?? Number.MAX_SAFE_INTEGER;
+      if (deckIdxA !== deckIdxB) return deckIdxA - deckIdxB;
+      return a.deckId.localeCompare(b.deckId);
+    }
+
+    const seqA = getCardSequenceNumber(a);
+    const seqB = getCardSequenceNumber(b);
+    if (seqA !== seqB) {
+      return seqA - seqB;
+    }
+
+    return a.id.localeCompare(b.id, undefined, { numeric: true });
+  });
+}
+
+/**
  * Helper to generate optimal initial spaced schedules for imported cards.
  * Avoids dumping all cards onto the exact same minute by applying gentle spacing.
  */
@@ -149,6 +197,8 @@ export function initializeCardSchedule(
   return {
     ...baseCard,
     id,
+    orderIndex: baseCard.orderIndex ?? staggerIndex,
+    createdAt: baseCard.createdAt || now.toISOString(),
     state: 'new',
     repetitions: 0,
     intervalDays: 0,

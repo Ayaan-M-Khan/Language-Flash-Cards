@@ -7,11 +7,13 @@
       "properties": {
         "userId": {
           "type": "string",
-          "description": "Unique Firebase Authentication UID of user"
+          "description": "Unique Firebase Authentication UID of user",
+          "maxLength": 128
         },
         "email": {
           "type": "string",
-          "description": "User's verified email address"
+          "description": "User's email address",
+          "maxLength": 200
         },
         "displayName": {
           "type": "string",
@@ -30,7 +32,7 @@
         "lastStudiedDate": {
           "type": "string",
           "description": "Date string of last study session (YYYY-MM-DD)",
-          "maxLength": 20
+          "maxLength": 30
         },
         "totalReviews": {
           "type": "number",
@@ -42,11 +44,13 @@
         },
         "createdAt": {
           "type": "string",
-          "description": "Creation timestamp"
+          "description": "Creation timestamp",
+          "maxLength": 40
         },
         "updatedAt": {
           "type": "string",
-          "description": "Last updated timestamp"
+          "description": "Last updated timestamp",
+          "maxLength": 40
         }
       },
       "required": ["userId", "email", "streak", "totalReviews", "cardsMastered"]
@@ -59,25 +63,30 @@
         "id": {
           "type": "string",
           "description": "Deck identifier",
-          "maxLength": 128
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
         },
         "userId": {
           "type": "string",
-          "description": "UID of the deck owner"
+          "description": "UID of the deck owner",
+          "maxLength": 128
         },
         "title": {
           "type": "string",
           "description": "Title of the deck",
+          "minLength": 1,
           "maxLength": 120
         },
         "language": {
           "type": "string",
           "description": "Target language name",
+          "minLength": 1,
           "maxLength": 50
         },
         "languageCode": {
           "type": "string",
           "description": "BCP 47 language code for audio speech synthesis",
+          "minLength": 1,
           "maxLength": 20
         },
         "color": {
@@ -97,24 +106,27 @@
         },
         "createdAt": {
           "type": "string",
-          "description": "ISO timestamp when deck was created"
+          "description": "ISO timestamp when deck was created",
+          "maxLength": 40
         },
         "updatedAt": {
           "type": "string",
-          "description": "ISO timestamp when deck was last updated"
+          "description": "ISO timestamp when deck was last updated",
+          "maxLength": 40
         }
       },
       "required": ["id", "userId", "title", "language", "languageCode", "color"]
     },
     "Flashcard": {
       "title": "Flashcard",
-      "description": "Individual flashcard with spaced repetition (SM-2) scheduling",
+      "description": "Individual flashcard with sequential orderIndex and spaced repetition (SM-2) scheduling",
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
           "description": "Card identifier",
-          "maxLength": 128
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
         },
         "deckId": {
           "type": "string",
@@ -123,7 +135,12 @@
         },
         "userId": {
           "type": "string",
-          "description": "UID of the card owner"
+          "description": "UID of the card owner",
+          "maxLength": 128
+        },
+        "orderIndex": {
+          "type": "number",
+          "description": "0-based sequential position within parent deck"
         },
         "english": {
           "type": "string",
@@ -160,6 +177,10 @@
           "description": "Mnemonic memory hook or context notes",
           "maxLength": 1000
         },
+        "exampleSentence": {
+          "type": "object",
+          "description": "Target and English example sentence pair"
+        },
         "state": {
           "type": "string",
           "description": "Spaced repetition state (new, learning, review, mastered)",
@@ -186,6 +207,16 @@
           "type": "string",
           "description": "ISO date string of last review",
           "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when card was created",
+          "maxLength": 40
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp when card was last updated",
+          "maxLength": 40
         }
       },
       "required": ["id", "deckId", "userId", "english", "targetWord", "state", "repetitions", "intervalDays", "easeFactor", "dueDate"]
@@ -202,7 +233,13 @@
         },
         "userId": {
           "type": "string",
-          "description": "Owner user ID"
+          "description": "Owner user ID",
+          "maxLength": 128
+        },
+        "deckId": {
+          "type": "string",
+          "description": "Deck ID associated with review",
+          "maxLength": 128
         },
         "cardId": {
           "type": "string",
@@ -218,6 +255,11 @@
           "type": "number",
           "description": "Calculated spaced repetition interval in days"
         },
+        "reviewedAt": {
+          "type": "string",
+          "description": "ISO timestamp when card was reviewed",
+          "maxLength": 40
+        },
         "dateStr": {
           "type": "string",
           "description": "Calendar date string YYYY-MM-DD",
@@ -229,7 +271,7 @@
           "maxLength": 40
         }
       },
-      "required": ["id", "userId", "cardId", "rating", "intervalDays", "dateStr", "timestamp"]
+      "required": ["id", "userId", "cardId", "rating", "intervalDays"]
     },
     "DailyProgress": {
       "title": "DailyProgress",
@@ -238,7 +280,8 @@
       "properties": {
         "userId": {
           "type": "string",
-          "description": "Owner user ID"
+          "description": "Owner user ID",
+          "maxLength": 128
         },
         "totalReviews": {
           "type": "number",
@@ -268,7 +311,7 @@
     },
     "/users/{userId}/decks/{deckId}/cards/{cardId}": {
       "schema": "Flashcard",
-      "description": "Flashcards belonging to a deck with SM-2 spaced repetition state"
+      "description": "Flashcards belonging to a deck with sequential orderIndex and SM-2 spaced repetition state"
     },
     "/users/{userId}/reviews/{reviewId}": {
       "schema": "ReviewLog",
@@ -278,7 +321,7 @@
       "schema": "ReviewLog",
       "description": "Historical study logs recorded for each card interaction"
     },
-    "/users/{userId}/progress/daily": {
+    "/users/{userId}/progress/{progressId}": {
       "schema": "DailyProgress",
       "description": "Aggregated daily review counts and progress metrics for the user"
     }

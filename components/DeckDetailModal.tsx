@@ -38,12 +38,14 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
     const newCard = initializeCardSchedule(
       {
         deckId: deck.id,
+        orderIndex: cards.length,
         english: newEnglish.trim(),
         targetWord: newTarget.trim(),
         language: deck.language,
         category: newCategory.trim() || 'General',
       },
-      `card-manual-${Date.now()}`
+      `card-manual-${Date.now()}-${String(cards.length).padStart(5, '0')}`,
+      cards.length
     );
 
     onAddCardToDeck(newCard);

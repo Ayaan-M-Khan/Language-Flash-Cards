@@ -31,6 +31,11 @@ export interface Flashcard {
   notes?: string;
   category?: string; // e.g., "Food", "Travel", "Essentials", "Grammar"
   
+  // Ordering & Metadata
+  orderIndex?: number; // 0-based deterministic position within deck
+  createdAt?: string; // ISO string
+  updatedAt?: string; // ISO string
+
   // Spaced Repetition (SM-2 Algorithm)
   state: CardState;
   repetitions: number; // Consecutive successful reviews
@@ -49,6 +54,7 @@ export interface Deck {
   description: string;
   icon: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface TableRowInput {

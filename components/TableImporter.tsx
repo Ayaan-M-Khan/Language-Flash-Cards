@@ -146,11 +146,13 @@ export const TableImporter: React.FC<TableImporterProps> = ({
       createdAt: new Date().toISOString(),
     };
 
+    const batchTimestamp = Date.now();
     const newCards: Flashcard[] = validRows.map((row, idx) => {
       const staggerOffset = scheduleMode === 'staggered' ? idx : 0;
       return initializeCardSchedule(
         {
           deckId: newDeckId,
+          orderIndex: idx,
           english: row.english.trim(),
           targetWord: row.targetWord.trim(),
           language: cleanLanguage,
@@ -159,7 +161,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
           category: row.category || 'Core Vocabulary',
           notes: row.notes,
         },
-        `card-${Date.now()}-${idx}`,
+        `card-${batchTimestamp}-${String(idx).padStart(5, '0')}`,
         staggerOffset
       );
     });
@@ -269,6 +271,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
       // 3. MERGE GENERATED DATA BACK INTO THE ORIGINAL ARRAY WITHOUT LOSING ANY CARDS
       // Strictly map over ALL original validRows (e.g. all 81 cards).
       // Never replace the array with a partial response.
+      const aiBatchTimestamp = Date.now();
       const newCards: Flashcard[] = validRows.map((row, idx) => {
         const staggerOffset = scheduleMode === 'staggered' ? idx : 0;
 
@@ -286,6 +289,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
         return initializeCardSchedule(
           {
             deckId: newDeckId,
+            orderIndex: idx,
             english: row.english.trim(),
             targetWord: row.targetWord.trim(),
             language: newDeck.language,
@@ -303,7 +307,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
               : undefined,
             notes: row.notes?.trim() || aiCard?.notes?.trim() || '',
           },
-          `card-ai-${Date.now()}-${idx}`,
+          `card-ai-${aiBatchTimestamp}-${String(idx).padStart(5, '0')}`,
           staggerOffset
         );
       });

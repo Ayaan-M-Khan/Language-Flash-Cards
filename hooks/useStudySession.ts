@@ -9,171 +9,209 @@ export interface UseStudySessionOptions {
   onCardReviewed?: (updatedCard: Flashcard, rating: SM2Rating) => void;
 }
 
-export function useStudySession(
-  initialCards: Flashcard[],
-  optionsOrComplete?: UseStudySessionOptions | (() => void)
-) {
-  // Normalize options whether passed as an object or a direct completion callback
-  const normalizedOptions: UseStudySessionOptions =
-    typeof optionsOrComplete === 'function'
-      ? { onSessionComplete: () => optionsOrComplete() }
-      : optionsOrComplete || {};
-  // Immutable deterministic queue: the active card is ALWAYS queue[0]
-  const [queue, setQueue] = useState<Flashcard[]>(() => [...initialCards]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const totalCardsRef = useRef(initialCards.length);
-
-  const [stats, setStats] = useState<StudySessionStats>({
+function createInitialStats(): StudySessionStats {
+  return {
     cardsReviewed: 0,
     againCount: 0,
     hardCount: 0,
     goodCount: 0,
     easyCount: 0,
     startTime: Date.now(),
-  });
+  };
+}
 
-  // Keep options in a ref so we never re-bind rateCard due to callback changes
-  const optionsRef = useRef(normalizedOptions);
+export function useStudySession(
+  initialCards: Flashcard[],
+  optionsOrComplete?: UseStudySessionOptions | (() => void)
+) {
+  const normalizedOptions: UseStudySessionOptions =
+    typeof optionsOrComplete === 'function'
+      ? { onSessionComplete: () => optionsOrComplete() }
+      : optionsOrComplete || {};
+
+  // Immutable deterministic queue: active card is ALWAYS queue[0]
+  const [queue, setQueue] = useState<Flashcard[]>(() => [...initialCards]);
+  const [totalSessionCards, setTotalSessionCards] = useState<number>(() => initialCards.length);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isFlipped, setIsFlippedState] = useState(false);
+  const [stats, setStats] = useState<StudySessionStats>(createInitialStats);
+
+  // Synchronous refs eliminate stale closures and prevent same-tick double advances
+  const queueRef = useRef<Flashcard[]>([...initialCards]);
+  const totalCardsRef = useRef<number>(initialCards.length);
+  const processingLockRef = useRef<boolean>(false);
+  const isFlippedRef = useRef<boolean>(false);
+  const statsRef = useRef<StudySessionStats>(stats);
+  const optionsRef = useRef<UseStudySessionOptions>(normalizedOptions);
+  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     optionsRef.current = normalizedOptions;
   }, [normalizedOptions]);
 
-  // Keep a ref to queue for concurrency guards
-  const queueRef = useRef(queue);
   useEffect(() => {
-    queueRef.current = queue;
-  }, [queue]);
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+      }
+    };
+  }, []);
 
-  const currentCard = queue[0] || null;
-  const isComplete = queue.length === 0 && totalCardsRef.current > 0;
+  const setIsFlipped = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof value === 'function' ? value(isFlippedRef.current) : value;
+    isFlippedRef.current = next;
+    setIsFlippedState(next);
+  }, []);
 
   const flipCard = useCallback(() => {
-    if (isProcessing) return;
-    setIsFlipped((prev) => !prev);
-  }, [isProcessing]);
+    if (processingLockRef.current || queueRef.current.length === 0) return;
+    const next = !isFlippedRef.current;
+    isFlippedRef.current = next;
+    setIsFlippedState(next);
+  }, []);
 
-  const rateCard = useCallback(
-    async (rating: SM2Rating) => {
-      const activeCard = queueRef.current[0];
-      if (!activeCard || isProcessing) return;
+  const rateCard = useCallback(async (rating: SM2Rating, expectedCardId?: string) => {
+    if (processingLockRef.current) return;
 
-      // Lock processing to prevent double-clicks or fast-click race conditions
-      setIsProcessing(true);
+    const currentQueue = queueRef.current;
+    const activeCard = currentQueue[0];
+    if (!activeCard) return;
 
-      // Unflip card immediately for smooth visual transition
-      setIsFlipped(false);
+    // Guard against duplicate events targeting an already-advanced card
+    if (expectedCardId && activeCard.id !== expectedCardId) return;
 
-      // Allow card rotation animation to commence before queue update
-      await new Promise((resolve) => setTimeout(resolve, 140));
+    // Engage synchronous lock immediately before any state updates
+    processingLockRef.current = true;
+    setIsProcessing(true);
 
-      const sm2 = calculateSM2(activeCard, rating);
-      const updatedCard: Flashcard = {
-        ...activeCard,
-        repetitions: sm2.repetitions,
-        intervalDays: sm2.intervalDays,
-        easeFactor: sm2.easeFactor,
-        state: sm2.state,
-        dueDate: sm2.dueDate,
-        lastReviewedAt: new Date().toISOString(),
+    const sm2 = calculateSM2(activeCard, rating);
+    const updatedCard: Flashcard = {
+      ...activeCard,
+      repetitions: sm2.repetitions,
+      intervalDays: sm2.intervalDays,
+      easeFactor: sm2.easeFactor,
+      state: sm2.state,
+      dueDate: sm2.dueDate,
+      lastReviewedAt: new Date().toISOString(),
+    };
+
+    // Advance strictly 1 card: pop ONLY currentQueue[0], making currentQueue[1] the next card
+    const [, ...remaining] = currentQueue;
+    let nextQueue: Flashcard[];
+    if (rating === 'again' || rating === 'hard') {
+      const insertIndex = Math.min(3, remaining.length);
+      nextQueue = [...remaining];
+      nextQueue.splice(insertIndex, 0, updatedCard);
+    } else {
+      nextQueue = remaining;
+    }
+
+    const nextStats: StudySessionStats = {
+      ...statsRef.current,
+      cardsReviewed: statsRef.current.cardsReviewed + 1,
+      againCount: statsRef.current.againCount + (rating === 'again' ? 1 : 0),
+      hardCount: statsRef.current.hardCount + (rating === 'hard' ? 1 : 0),
+      goodCount: statsRef.current.goodCount + (rating === 'good' ? 1 : 0),
+      easyCount: statsRef.current.easyCount + (rating === 'easy' ? 1 : 0),
+    };
+
+    // Commit synchronous refs first
+    queueRef.current = nextQueue;
+    isFlippedRef.current = false;
+    statsRef.current = nextStats;
+
+    // Batch pure state updates together
+    setIsFlippedState(false);
+    setQueue(nextQueue);
+    setStats(nextStats);
+
+    // Notify parent for local & Firestore persistence
+    optionsRef.current?.onCardReviewed?.(updatedCard, rating);
+
+    if (nextQueue.length === 0 && totalCardsRef.current > 0 && optionsRef.current?.onSessionComplete) {
+      const completedStats: StudySessionStats = {
+        ...nextStats,
+        endTime: Date.now(),
       };
-
-      // Notify parent/service of review for Firestore & local persistence
-      if (optionsRef.current?.onCardReviewed) {
-        optionsRef.current.onCardReviewed(updatedCard, rating);
-      }
-
-      // Update session statistics
-      setStats((prev) => ({
-        ...prev,
-        cardsReviewed: prev.cardsReviewed + 1,
-        againCount: prev.againCount + (rating === 'again' ? 1 : 0),
-        hardCount: prev.hardCount + (rating === 'hard' ? 1 : 0),
-        goodCount: prev.goodCount + (rating === 'good' ? 1 : 0),
-        easyCount: prev.easyCount + (rating === 'easy' ? 1 : 0),
-      }));
-
-      // Queue transformation:
-      // If rated 'again' or 'hard' (< 3): Remove from front and re-insert 3 positions back (or at end)
-      // If rated 'good' or 'easy' (>= 3): Remove permanently from this session
-      setQueue((prevQueue) => {
-        const [finishedCard, ...remaining] = prevQueue;
-        if (!finishedCard) return [];
-
-        let nextQueue: Flashcard[];
-        if (rating === 'again' || rating === 'hard') {
-          const insertIndex = Math.min(3, remaining.length);
-          nextQueue = [...remaining];
-          nextQueue.splice(insertIndex, 0, updatedCard);
-        } else {
-          nextQueue = remaining;
-        }
-
-        // If session just finished, trigger complete callback
-        if (nextQueue.length === 0 && optionsRef.current?.onSessionComplete) {
-          setTimeout(() => {
-            optionsRef.current?.onSessionComplete?.({
-              ...stats,
-              cardsReviewed: stats.cardsReviewed + 1,
-              againCount: stats.againCount + (rating === 'again' ? 1 : 0),
-              hardCount: stats.hardCount + (rating === 'hard' ? 1 : 0),
-              goodCount: stats.goodCount + (rating === 'good' ? 1 : 0),
-              easyCount: stats.easyCount + (rating === 'easy' ? 1 : 0),
-              endTime: Date.now(),
-            });
-          }, 200);
-        }
-
-        return nextQueue;
-      });
-
-      // Brief transition delay before accepting next card input
       setTimeout(() => {
-        setIsProcessing(false);
-      }, 160);
+        optionsRef.current?.onSessionComplete?.(completedStats);
+      }, 180);
+    }
+
+    if (cooldownTimerRef.current) {
+      clearTimeout(cooldownTimerRef.current);
+    }
+    cooldownTimerRef.current = setTimeout(() => {
+      processingLockRef.current = false;
+      setIsProcessing(false);
+      cooldownTimerRef.current = null;
+    }, 220);
+  }, []);
+
+  // Moves ONLY queue[0] to the end of the queue so queue[1] is shown next (strictly 1-by-1)
+  const skipCard = useCallback((expectedCardId?: string) => {
+    if (processingLockRef.current || queueRef.current.length <= 1) return;
+
+    const currentQueue = queueRef.current;
+    const head = currentQueue[0];
+    if (!head) return;
+    if (expectedCardId && head.id !== expectedCardId) return;
+
+    processingLockRef.current = true;
+    setIsProcessing(true);
+
+    const [, ...rest] = currentQueue;
+    const nextQueue = [...rest, head];
+
+    queueRef.current = nextQueue;
+    isFlippedRef.current = false;
+
+    setIsFlippedState(false);
+    setQueue(nextQueue);
+
+    if (cooldownTimerRef.current) {
+      clearTimeout(cooldownTimerRef.current);
+    }
+    cooldownTimerRef.current = setTimeout(() => {
+      processingLockRef.current = false;
+      setIsProcessing(false);
+      cooldownTimerRef.current = null;
+    }, 180);
+  }, []);
+
+  // Deterministically reset session queue with an ordered card snapshot
+  const restartSession = useCallback(
+    (newCards?: Flashcard[]) => {
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
+      const cardsToUse = [...(newCards ?? initialCards)];
+      const freshStats = createInitialStats();
+
+      processingLockRef.current = false;
+      isFlippedRef.current = false;
+      queueRef.current = cardsToUse;
+      totalCardsRef.current = cardsToUse.length;
+      statsRef.current = freshStats;
+
+      setTotalSessionCards(cardsToUse.length);
+      setQueue(cardsToUse);
+      setIsFlippedState(false);
+      setIsProcessing(false);
+      setStats(freshStats);
     },
-    [isProcessing, stats]
+    [initialCards]
   );
 
-  // Safely moves current card to end of queue without skipping or modifying others
-  const skipCard = useCallback(() => {
-    if (isProcessing || queueRef.current.length <= 1) return;
-    setIsProcessing(true);
-    setIsFlipped(false);
-
-    setTimeout(() => {
-      setQueue((prevQueue) => {
-        const [head, ...rest] = prevQueue;
-        if (!head) return [];
-        return [...rest, head];
-      });
-      setIsProcessing(false);
-    }, 120);
-  }, [isProcessing]);
-
-  // Restart session with fresh cards
-  const restartSession = useCallback((newCards?: Flashcard[]) => {
-    const cardsToUse = newCards || initialCards;
-    totalCardsRef.current = cardsToUse.length;
-    setQueue([...cardsToUse]);
-    setIsFlipped(false);
-    setIsProcessing(false);
-    setStats({
-      cardsReviewed: 0,
-      againCount: 0,
-      hardCount: 0,
-      goodCount: 0,
-      easyCount: 0,
-      startTime: Date.now(),
-    });
-  }, [initialCards]);
-
+  const currentCard = queue[0] || null;
+  const isComplete = queue.length === 0 && totalSessionCards > 0;
   const cardsRemaining = queue.length;
-  const totalSessionCards = totalCardsRef.current;
   const completedCount = Math.max(0, totalSessionCards - cardsRemaining);
-  const progressPercent = totalSessionCards > 0
-    ? Math.min(100, Math.round((completedCount / totalSessionCards) * 100))
-    : 0;
+  const progressPercent =
+    totalSessionCards > 0
+      ? Math.min(100, Math.round((completedCount / totalSessionCards) * 100))
+      : 0;
 
   return {
     currentCard,

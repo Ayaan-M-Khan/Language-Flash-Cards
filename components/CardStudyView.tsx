@@ -11,9 +11,10 @@ import {
   RefreshCw,
   Clock,
   BookOpen,
+  ListOrdered,
 } from 'lucide-react';
 import { Flashcard as FlashcardType, Deck, SM2Rating } from '@/lib/types';
-import { getPreviewIntervals, isCardDue } from '@/lib/srs';
+import { getPreviewIntervals, isCardDue, sortCardsSequentially } from '@/lib/srs';
 import { speakWord, playHapticFeedback } from '@/lib/audio';
 import { WeeklyReviewTracker } from './WeeklyReviewTracker';
 import { incrementTodayReviewCount } from '@/lib/review-history';
@@ -30,6 +31,7 @@ interface CardStudyViewProps {
   onNavigateToImport: () => void;
   currentStreak?: number;
   userId?: string | null;
+  syncVersion?: number;
 }
 
 export const CardStudyView: React.FC<CardStudyViewProps> = ({
@@ -41,18 +43,31 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   onNavigateToImport,
   currentStreak = 0,
   userId = null,
+  syncVersion = 0,
 }) => {
   const [reviewRefreshTrigger, setReviewRefreshTrigger] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [studyMode, setStudyMode] = useState<'due' | 'sequential'>('due');
 
-  // Compute session initial cards deterministically based on active deck filter
-  const initialSessionCards = useMemo(() => {
+  // Strictly sort matching deck cards 1-by-1 in sequential order
+  const orderedMatchingCards = useMemo(() => {
     const matching = cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId);
-    const due = matching.filter((card) => isCardDue(card));
-    return due.length > 0 ? due : matching;
-  }, [cards, selectedDeckId]);
+    return sortCardsSequentially(matching, decks);
+  }, [cards, decks, selectedDeckId]);
 
-  // Use the queue-based study manager (ZERO skipped cards, active card is ALWAYS queue[0])
+  const orderedDueCards = useMemo(() => {
+    return orderedMatchingCards.filter((card) => isCardDue(card));
+  }, [orderedMatchingCards]);
+
+  // Compute deterministic session cards based on active deck filter and mode
+  const initialSessionCards = useMemo(() => {
+    if (studyMode === 'sequential') {
+      return orderedMatchingCards;
+    }
+    return orderedDueCards.length > 0 ? orderedDueCards : orderedMatchingCards;
+  }, [studyMode, orderedDueCards, orderedMatchingCards]);
+
+  // Deterministic queue-based study manager (active card is ALWAYS queue[0], advances 1-by-1)
   const {
     currentCard,
     cardsRemaining,
@@ -69,10 +84,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     restartSession,
   } = useStudySession(initialSessionCards, {
     onCardReviewed: (updatedCard, rating) => {
-      // 1. Notify parent handler for local state
       onCardReviewed(updatedCard, rating);
 
-      // 2. Persist study log & aggregate progress directly to user's Firestore account
       if (userId) {
         deckService
           .recordStudyLog(
@@ -85,7 +98,6 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           .catch((err) => console.warn('Record study log in Firestore failed:', err));
       }
 
-      // 3. Trigger reactive refresh for session review trackers
       incrementTodayReviewCount(userId);
       setReviewRefreshTrigger((v) => v + 1);
     },
@@ -104,13 +116,19 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     },
   });
 
-  // Re-sync queue when selected deck changes
-  const [prevDeckId, setPrevDeckId] = useState(selectedDeckId);
-  if (selectedDeckId !== prevDeckId) {
-    setPrevDeckId(selectedDeckId);
-    const matching = cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId);
+  // Re-initialize session queue ONLY when selected deck, study mode, or account hydration changes
+  // (Never re-initializes mid-session when rating a card updates `cards` state)
+  const sessionKey = `${userId ?? 'guest'}::${selectedDeckId ?? 'all'}::${studyMode}::${syncVersion}`;
+  const [prevSessionKey, setPrevSessionKey] = useState(sessionKey);
+  if (sessionKey !== prevSessionKey) {
+    setPrevSessionKey(sessionKey);
+    const matching = sortCardsSequentially(
+      cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId),
+      decks
+    );
     const due = matching.filter((card) => isCardDue(card));
-    restartSession(due.length > 0 ? due : matching);
+    const nextCards = studyMode === 'sequential' ? matching : due.length > 0 ? due : matching;
+    restartSession(nextCards);
   }
 
   // Associated deck for active card
@@ -118,6 +136,15 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     if (!currentCard) return undefined;
     return decks.find((d) => d.id === currentCard.deckId);
   }, [currentCard, decks]);
+
+  const blurActiveElement = () => {
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      const tag = document.activeElement.tagName;
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+        document.activeElement.blur();
+      }
+    }
+  };
 
   // Handle Audio Speech
   const handleSpeak = useCallback(
@@ -136,19 +163,17 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   // Handle Flip with haptic feedback
   const handleFlip = useCallback(() => {
     if (isProcessing) return;
+    blurActiveElement();
     playHapticFeedback('flip');
     flipCard();
   }, [isProcessing, flipCard]);
 
-  // Handle Rating with haptic feedback
+  // Handle Rating with card-ID lock to prevent any duplicate event from advancing 2 cards
   const handleRating = useCallback(
     async (rating: SM2Rating) => {
       if (!currentCard || isProcessing) return;
-
-      // Blur focused buttons to avoid duplicate Enter/Space hits
-      if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
-      }
+      const targetCardId = currentCard.id;
+      blurActiveElement();
 
       if (rating === 'again') {
         playHapticFeedback('fail');
@@ -156,22 +181,32 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         playHapticFeedback('rating');
       }
 
-      await rateCard(rating);
+      await rateCard(rating, targetCardId);
     },
     [currentCard, isProcessing, rateCard]
   );
 
-  // Keyboard shortcut listeners (Space/Enter/ArrowRight = flip/good, 1-4 = ratings when flipped, S = speak)
+  // Handle Skip with card-ID lock
+  const handleSkip = useCallback(() => {
+    if (!currentCard || isProcessing) return;
+    const targetCardId = currentCard.id;
+    blurActiveElement();
+    playHapticFeedback('tap');
+    skipCard(targetCardId);
+  }, [currentCard, isProcessing, skipCard]);
+
+  // Capture-phase keyboard listener prevents focused <button> elements from double-firing on Enter/Space
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept typing in input fields
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
+      const target = e.target as HTMLElement | null;
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
         return;
       }
-      if (e.repeat || isProcessing) return;
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || isProcessing) return;
 
       if (e.code === 'Space' || e.key === 'Enter' || e.key === 'ArrowRight') {
         e.preventDefault();
+        e.stopPropagation();
         if (!isFlipped) {
           handleFlip();
         } else {
@@ -179,26 +214,31 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         }
       } else if (e.key.toLowerCase() === 's') {
         e.preventDefault();
+        e.stopPropagation();
         handleSpeak();
       } else if (isFlipped && currentCard) {
         if (e.key === '1') {
           e.preventDefault();
+          e.stopPropagation();
           handleRating('again');
         } else if (e.key === '2') {
           e.preventDefault();
+          e.stopPropagation();
           handleRating('hard');
         } else if (e.key === '3') {
           e.preventDefault();
+          e.stopPropagation();
           handleRating('good');
         } else if (e.key === '4') {
           e.preventDefault();
+          e.stopPropagation();
           handleRating('easy');
         }
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, [handleFlip, handleSpeak, handleRating, isFlipped, currentCard, isProcessing]);
 
   // Preview intervals for current card ratings
@@ -209,7 +249,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
   // ===================== ZERO DUE CARDS EMPTY STATE =====================
   if (totalSessionCards === 0) {
-    const totalDeckCards = cards.filter((c) => !selectedDeckId || c.deckId === selectedDeckId).length;
+    const totalDeckCards = orderedMatchingCards.length;
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
@@ -265,13 +305,13 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             <button
               id="empty-practice-anyway-btn"
               onClick={() => {
-                const matching = cards.filter((c) => !selectedDeckId || c.deckId === selectedDeckId);
-                restartSession(matching);
+                setStudyMode('sequential');
+                restartSession(orderedMatchingCards);
               }}
               className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-neutral-900 text-white font-semibold text-sm hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
             >
               <BookOpen className="w-4 h-4" />
-              <span>Practice All Cards ({totalDeckCards})</span>
+              <span>Practice All Cards in Order ({totalDeckCards})</span>
             </button>
           )}
           <button
@@ -292,8 +332,11 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           </button>
         </div>
 
-        {/* Visual Progress Tracking Section */}
-        <WeeklyReviewTracker currentStreak={currentStreak} refreshTrigger={reviewRefreshTrigger} userId={userId} />
+        <WeeklyReviewTracker
+          currentStreak={currentStreak}
+          refreshTrigger={reviewRefreshTrigger}
+          userId={userId}
+        />
       </div>
     );
   }
@@ -390,11 +433,14 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               id="study-again-btn"
-              onClick={() => restartSession()}
+              onClick={() => {
+                setStudyMode('sequential');
+                restartSession(orderedMatchingCards);
+              }}
               className="flex-1 py-3 px-4 rounded-2xl bg-neutral-900 text-white font-medium text-sm hover:bg-black transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>Review Again</span>
+              <span>Review All Again (1-by-1)</span>
             </button>
             <button
               id="study-import-more-btn"
@@ -407,13 +453,16 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           </div>
         </motion.div>
 
-        {/* Visual Progress Tracking Section */}
-        <WeeklyReviewTracker currentStreak={currentStreak} refreshTrigger={reviewRefreshTrigger} userId={userId} />
+        <WeeklyReviewTracker
+          currentStreak={currentStreak}
+          refreshTrigger={reviewRefreshTrigger}
+          userId={userId}
+        />
       </div>
     );
   }
 
-  // Guard: if no current card, render loading or caught up
+  // Guard: if no current card, render null
   if (!currentCard) {
     return null;
   }
@@ -421,10 +470,9 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   // ===================== ACTIVE STUDY CARD =====================
   return (
     <div className="max-w-2xl mx-auto px-4 py-4 sm:py-8">
-      {/* Top Header: Deck selection & Queue Counter */}
-      <div className="flex items-center justify-between gap-3 mb-4">
-        {/* Deck Chip Dropdown / Info */}
-        <div className="flex items-center gap-2">
+      {/* Top Header: Deck selection, Order Mode & Queue Counter */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             id="study-deck-select"
             value={selectedDeckId || 'all'}
@@ -442,8 +490,34 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             ))}
           </select>
 
+          {orderedDueCards.length > 0 && orderedDueCards.length < orderedMatchingCards.length && (
+            <button
+              type="button"
+              onClick={() =>
+                setStudyMode((prev) => (prev === 'due' ? 'sequential' : 'due'))
+              }
+              title={
+                studyMode === 'sequential'
+                  ? 'Showing all deck cards 1-by-1 in order. Click to show only due cards.'
+                  : 'Showing due cards. Click to study all cards 1-by-1 from the beginning.'
+              }
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-colors cursor-pointer ${
+                studyMode === 'sequential'
+                  ? 'bg-neutral-900 text-white border-neutral-900'
+                  : 'bg-white text-neutral-700 border-black/10 hover:bg-neutral-100'
+              }`}
+            >
+              <ListOrdered className="w-3 h-3" />
+              <span>
+                {studyMode === 'sequential'
+                  ? `All 1-by-1 (${orderedMatchingCards.length})`
+                  : `Study All (${orderedMatchingCards.length})`}
+              </span>
+            </button>
+          )}
+
           {currentCard.category && (
-            <span className="hidden xs:inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-neutral-100 text-neutral-600">
+            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-neutral-100 text-neutral-600">
               {currentCard.category}
             </span>
           )}
@@ -453,7 +527,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         <div className="flex items-center gap-2 text-xs text-neutral-500 font-medium">
           <Clock className="w-3.5 h-3.5 text-neutral-400" />
           <span>
-            {completedCount + 1} of {totalSessionCards} ({cardsRemaining} remaining)
+            {Math.min(completedCount + 1, totalSessionCards)} of {totalSessionCards} ({cardsRemaining}{' '}
+            remaining)
           </span>
           <span
             className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -481,15 +556,15 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         />
       </div>
 
-      {/* 3D Flip Card Container with decoupled cross-card transition */}
+      {/* 3D Flip Card Container */}
       <div className="w-full mb-6 min-h-[380px] sm:min-h-[420px]">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={currentCard.id}
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: 18 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ opacity: 0, x: -18 }}
+            transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
             className="w-full"
           >
             <Flashcard
@@ -512,7 +587,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.14 }}
+            transition={{ duration: 0.12 }}
             className={`grid grid-cols-2 sm:grid-cols-4 gap-2.5 ${
               isProcessing ? 'pointer-events-none opacity-60' : ''
             }`}
@@ -606,7 +681,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.14 }}
+            transition={{ duration: 0.12 }}
             className={`flex items-center justify-center gap-3 ${
               isProcessing ? 'pointer-events-none opacity-60' : ''
             }`}
@@ -634,7 +709,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                skipCard();
+                handleSkip();
               }}
               title="Move this card to end of session queue"
               className="py-3.5 px-4 rounded-2xl bg-white hover:bg-neutral-100 border border-black/10 text-neutral-600 font-medium text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
@@ -647,7 +722,11 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
       </AnimatePresence>
 
       {/* Visual Progress Tracking Section */}
-      <WeeklyReviewTracker currentStreak={currentStreak} refreshTrigger={reviewRefreshTrigger} userId={userId} />
+      <WeeklyReviewTracker
+        currentStreak={currentStreak}
+        refreshTrigger={reviewRefreshTrigger}
+        userId={userId}
+      />
     </div>
   );
 };
