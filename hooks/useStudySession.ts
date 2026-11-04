@@ -179,6 +179,46 @@ export function useStudySession(
     }, 180);
   }, []);
 
+  // Randomizes the remaining in-memory session queue (Fisher-Yates) without altering SRS schedules
+  const shuffleQueue = useCallback(() => {
+    if (processingLockRef.current || queueRef.current.length <= 1) return;
+
+    const currentQueue = queueRef.current;
+    const previousHeadId = currentQueue[0]?.id;
+
+    processingLockRef.current = true;
+    setIsProcessing(true);
+
+    const nextQueue = [...currentQueue];
+    for (let i = nextQueue.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [nextQueue[i], nextQueue[j]] = [nextQueue[j], nextQueue[i]];
+    }
+
+    // Ensure the top card visibly changes when at least 2 distinct cards remain
+    if (nextQueue.length >= 2 && nextQueue[0].id === previousHeadId) {
+      const swapIndex = nextQueue.findIndex((c) => c.id !== previousHeadId);
+      if (swapIndex > 0) {
+        [nextQueue[0], nextQueue[swapIndex]] = [nextQueue[swapIndex], nextQueue[0]];
+      }
+    }
+
+    queueRef.current = nextQueue;
+    isFlippedRef.current = false;
+
+    setIsFlippedState(false);
+    setQueue(nextQueue);
+
+    if (cooldownTimerRef.current) {
+      clearTimeout(cooldownTimerRef.current);
+    }
+    cooldownTimerRef.current = setTimeout(() => {
+      processingLockRef.current = false;
+      setIsProcessing(false);
+      cooldownTimerRef.current = null;
+    }, 180);
+  }, []);
+
   // Deterministically reset session queue with an ordered card snapshot
   const restartSession = useCallback(
     (newCards?: Flashcard[]) => {
@@ -225,6 +265,7 @@ export function useStudySession(
     flipCard,
     rateCard,
     skipCard,
+    shuffleQueue,
     isProcessing,
     isComplete,
     stats,

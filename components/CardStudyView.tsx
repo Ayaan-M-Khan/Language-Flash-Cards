@@ -12,6 +12,7 @@ import {
   Clock,
   BookOpen,
   ListOrdered,
+  Shuffle,
 } from 'lucide-react';
 import { Flashcard as FlashcardType, Deck, SM2Rating } from '@/lib/types';
 import { getPreviewIntervals, isCardDue, sortCardsSequentially } from '@/lib/srs';
@@ -48,6 +49,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   const [reviewRefreshTrigger, setReviewRefreshTrigger] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [studyMode, setStudyMode] = useState<'due' | 'sequential'>('due');
+  const [justShuffled, setJustShuffled] = useState(false);
 
   // Strictly sort matching deck cards 1-by-1 in sequential order
   const orderedMatchingCards = useMemo(() => {
@@ -78,6 +80,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     flipCard,
     rateCard,
     skipCard,
+    shuffleQueue,
     isProcessing,
     isComplete,
     stats,
@@ -194,6 +197,16 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     playHapticFeedback('tap');
     skipCard(targetCardId);
   }, [currentCard, isProcessing, skipCard]);
+
+  // Handle Shuffle of current in-memory session queue (leaves SRS due dates & intervals untouched)
+  const handleShuffle = useCallback(() => {
+    if (cardsRemaining <= 1 || isProcessing) return;
+    blurActiveElement();
+    playHapticFeedback('tap');
+    shuffleQueue();
+    setJustShuffled(true);
+    setTimeout(() => setJustShuffled(false), 1200);
+  }, [cardsRemaining, isProcessing, shuffleQueue]);
 
   // Capture-phase keyboard listener prevents focused <button> elements from double-firing on Enter/Space
   useEffect(() => {
@@ -490,6 +503,26 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             ))}
           </select>
 
+          <button
+            id="shuffle-queue-btn"
+            type="button"
+            disabled={isProcessing || cardsRemaining <= 1}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleShuffle();
+            }}
+            title="Randomize current session queue without changing long-term SRS schedules"
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border shadow-2xs transition-all select-none touch-manipulation cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed active:scale-98 ${
+              justShuffled
+                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                : 'bg-white text-neutral-700 border-black/10 hover:bg-neutral-100'
+            }`}
+          >
+            <Shuffle className={`w-3.5 h-3.5 ${justShuffled ? 'text-indigo-600' : 'text-neutral-500'}`} />
+            <span>{justShuffled ? 'Shuffled' : 'Shuffle'}</span>
+          </button>
+
           {orderedDueCards.length > 0 && orderedDueCards.length < orderedMatchingCards.length && (
             <button
               type="button"
@@ -501,13 +534,13 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
                   ? 'Showing all deck cards 1-by-1 in order. Click to show only due cards.'
                   : 'Showing due cards. Click to study all cards 1-by-1 from the beginning.'
               }
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-colors cursor-pointer ${
+              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
                 studyMode === 'sequential'
                   ? 'bg-neutral-900 text-white border-neutral-900'
                   : 'bg-white text-neutral-700 border-black/10 hover:bg-neutral-100'
               }`}
             >
-              <ListOrdered className="w-3 h-3" />
+              <ListOrdered className="w-3.5 h-3.5" />
               <span>
                 {studyMode === 'sequential'
                   ? `All 1-by-1 (${orderedMatchingCards.length})`
