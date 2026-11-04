@@ -13,8 +13,9 @@ import {
   ArrowRight,
   Layers,
   Filter,
+  ArrowLeftRight,
 } from 'lucide-react';
-import { Flashcard, Deck, TableRowInput } from '@/lib/types';
+import { CardDirection, Flashcard, Deck, TableRowInput } from '@/lib/types';
 import { parseTableText } from '@/lib/table-parser';
 import { initializeCardSchedule } from '@/lib/srs';
 import { SAMPLE_TABLE_PRESETS } from '@/lib/default-data';
@@ -22,7 +23,7 @@ import { playHapticFeedback } from '@/lib/audio';
 
 interface TableImporterProps {
   onDeckCreated: (newDeck: Deck, newCards: Flashcard[]) => void;
-  onNavigateToStudy: (deckId: string) => void;
+  onNavigateToStudy: (deckId: string, direction?: CardDirection) => void;
 }
 
 export const TableImporter: React.FC<TableImporterProps> = ({
@@ -42,6 +43,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
     deckTitle: string;
     isFallback?: boolean;
   } | null>(null);
+  const [studyDirection, setStudyDirection] = useState<CardDirection>('target-first');
 
   const parsed = useMemo(() => parseTableText(rawText), [rawText]);
 
@@ -382,14 +384,52 @@ export const TableImporter: React.FC<TableImporterProps> = ({
               </p>
             </div>
           </div>
-          <button
-            id="start-study-imported-btn"
-            onClick={() => onNavigateToStudy(successInfo.deckId)}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors shadow-xs flex items-center justify-center gap-1.5"
-          >
-            <span>Start Studying Now</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+            <div
+              role="group"
+              aria-label="Card definition order"
+              className="inline-flex items-center p-0.5 bg-white/90 rounded-xl border border-emerald-200 text-xs font-medium shrink-0"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  playHapticFeedback('tap');
+                  setStudyDirection('target-first');
+                }}
+                className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  studyDirection === 'target-first'
+                    ? 'bg-emerald-700 text-white font-semibold'
+                    : 'text-emerald-800 hover:bg-emerald-100/70'
+                }`}
+              >
+                Word → Def
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  playHapticFeedback('tap');
+                  setStudyDirection('definition-first');
+                }}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  studyDirection === 'definition-first'
+                    ? 'bg-indigo-600 text-white font-semibold'
+                    : 'text-emerald-800 hover:bg-emerald-100/70'
+                }`}
+              >
+                <ArrowLeftRight className="w-3 h-3 shrink-0" />
+                <span>Def → Translit</span>
+              </button>
+            </div>
+
+            <button
+              id="start-study-imported-btn"
+              onClick={() => onNavigateToStudy(successInfo.deckId, studyDirection)}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>Start Studying Now</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 

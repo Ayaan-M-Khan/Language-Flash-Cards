@@ -8,7 +8,7 @@ import { DecksView } from '@/components/DecksView';
 import { ScheduleInspector } from '@/components/ScheduleInspector';
 import { DeckDetailModal } from '@/components/DeckDetailModal';
 import { Footer } from '@/components/Footer';
-import { Deck, Flashcard, SM2Rating } from '@/lib/types';
+import { CardDirection, Deck, Flashcard, SM2Rating } from '@/lib/types';
 import { INITIAL_DECKS, INITIAL_CARDS } from '@/lib/default-data';
 import { isCardDue, sortCardsSequentially } from '@/lib/srs';
 import { useAuth } from '@/lib/AuthContext';
@@ -30,6 +30,9 @@ const getCardsStorageKey = (uid?: string | null) =>
 const getStreakStorageKey = (uid?: string | null) =>
   uid ? `language_flashcards_streak_${uid}` : 'language_flashcards_streak_guest';
 
+const getDirectionsStorageKey = (uid?: string | null) =>
+  uid ? `language_flashcards_directions_${uid}` : 'language_flashcards_directions_guest';
+
 export default function HomePage() {
   const { user, profile, updateLocalProfileStats, signInWithGoogle } = useAuth();
 
@@ -48,6 +51,7 @@ export default function HomePage() {
   const [isManualSyncing, setIsManualSyncing] = useState<boolean>(false);
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
   const [studySyncVersion, setStudySyncVersion] = useState<number>(0);
+  const [deckDirections, setDeckDirections] = useState<Record<string, CardDirection>>({});
 
   // Track which owner ('guest' or user.uid) has finished hydrating so we NEVER overwrite
   // a newly logged-in user's localStorage cache with stale guest state (or vice versa on logout).
@@ -55,6 +59,7 @@ export default function HomePage() {
   const lastOwnerBeforeAuthChangeRef = useRef<string | null>(null);
   const decksRef = useRef<Deck[]>(decks);
   const cardsRef = useRef<Flashcard[]>(cards);
+  const deckDirectionsRef = useRef<Record<string, CardDirection>>(deckDirections);
 
   useEffect(() => {
     decksRef.current = decks;
@@ -63,6 +68,10 @@ export default function HomePage() {
   useEffect(() => {
     cardsRef.current = cards;
   }, [cards]);
+
+  useEffect(() => {
+    deckDirectionsRef.current = deckDirections;
+  }, [deckDirections]);
 
   // Derive effective streak from profile when authenticated, or guest streak
   const effectiveStreak = profile?.streak ?? streakDays;
@@ -93,6 +102,19 @@ export default function HomePage() {
         try {
           const cachedDecks = localStorage.getItem(getDecksStorageKey(currentUserId));
           const cachedCards = localStorage.getItem(getCardsStorageKey(currentUserId));
+          const cachedDirections = localStorage.getItem(getDirectionsStorageKey(currentUserId));
+          const guestDirections =
+            previousOwner === 'guest' ? { ...deckDirectionsRef.current } : {};
+
+          if (cachedDirections) {
+            const parsedDirs = JSON.parse(cachedDirections);
+            if (parsedDirs && typeof parsedDirs === 'object' && !isCancelled) {
+              setDeckDirections({ ...guestDirections, ...parsedDirs });
+            }
+          } else if (Object.keys(guestDirections).length > 0 && !isCancelled) {
+            setDeckDirections(guestDirections);
+          }
+
           if (cachedDecks && cachedCards) {
             const pDecks = JSON.parse(cachedDecks);
             const pCards = JSON.parse(cachedCards);
@@ -150,6 +172,10 @@ export default function HomePage() {
               getCardsStorageKey(currentUserId),
               JSON.stringify(synced.cards)
             );
+            localStorage.setItem(
+              getDirectionsStorageKey(currentUserId),
+              JSON.stringify(deckDirectionsRef.current)
+            );
           } catch {}
         } catch (err) {
           console.warn('Account sync error on login:', err);
@@ -206,6 +232,16 @@ export default function HomePage() {
           const guestDecksStr = localStorage.getItem(getDecksStorageKey(null));
           const guestCardsStr = localStorage.getItem(getCardsStorageKey(null));
           const guestStreakStr = localStorage.getItem(getStreakStorageKey(null));
+          const guestDirectionsStr = localStorage.getItem(getDirectionsStorageKey(null));
+
+          if (guestDirectionsStr && !isCancelled) {
+            try {
+              const parsedDirs = JSON.parse(guestDirectionsStr);
+              if (parsedDirs && typeof parsedDirs === 'object') {
+                setDeckDirections(parsedDirs);
+              }
+            } catch {}
+          }
 
           if (guestDecksStr && guestCardsStr) {
             const parsedDecks = JSON.parse(guestDecksStr);
@@ -270,6 +306,17 @@ export default function HomePage() {
       localStorage.setItem(getCardsStorageKey(user?.uid), JSON.stringify(cards));
     } catch {}
   }, [cards, user]);
+
+  useEffect(() => {
+    const activeOwner = user ? user.uid : 'guest';
+    if (hydratedOwnerRef.current !== activeOwner) return;
+    try {
+      localStorage.setItem(
+        getDirectionsStorageKey(user?.uid),
+        JSON.stringify(deckDirections)
+      );
+    } catch {}
+  }, [deckDirections, user]);
 
   // Calculate cards due today across all decks
   const dueTodayCount = useMemo(() => {
@@ -454,7 +501,23 @@ export default function HomePage() {
     }
   };
 
-  const handleSelectDeckToStudy = (deckId: string | null) => {
+  const getDeckDirection = (deckId: string | null): CardDirection => {
+    const key = deckId ?? 'all';
+    return deckDirections[key] ?? 'target-first';
+  };
+
+  const handleSetDeckDirection = (deckId: string | null, direction: CardDirection) => {
+    const key = deckId ?? 'all';
+    setDeckDirections((prev) => ({
+      ...prev,
+      [key]: direction,
+    }));
+  };
+
+  const handleSelectDeckToStudy = (deckId: string | null, direction?: CardDirection) => {
+    if (direction) {
+      handleSetDeckDirection(deckId, direction);
+    }
     setSelectedStudyDeckId(deckId);
     setStudySyncVersion((v) => v + 1);
     setActiveTab('study');
@@ -521,6 +584,8 @@ export default function HomePage() {
             decks={decks}
             selectedDeckId={selectedStudyDeckId}
             onSelectDeck={setSelectedStudyDeckId}
+            cardDirection={getDeckDirection(selectedStudyDeckId)}
+            onChangeCardDirection={(dir) => handleSetDeckDirection(selectedStudyDeckId, dir)}
             onCardReviewed={handleCardReviewed}
             onNavigateToImport={() => setActiveTab('import')}
             currentStreak={effectiveStreak}
@@ -533,7 +598,9 @@ export default function HomePage() {
           <DecksView
             decks={decks}
             cards={cards}
-            onSelectDeckToStudy={(deckId) => handleSelectDeckToStudy(deckId)}
+            deckDirections={deckDirections}
+            onChangeDeckDirection={handleSetDeckDirection}
+            onSelectDeckToStudy={(deckId, dir) => handleSelectDeckToStudy(deckId, dir)}
             onNavigateToImport={() => setActiveTab('import')}
             onDeleteDeck={handleDeleteDeck}
             onInspectDeck={setInspectingDeck}
@@ -545,10 +612,8 @@ export default function HomePage() {
         {activeTab === 'import' && (
           <TableImporter
             onDeckCreated={handleDeckCreated}
-            onNavigateToStudy={(deckId) => {
-              setSelectedStudyDeckId(deckId);
-              setStudySyncVersion((v) => v + 1);
-              setActiveTab('study');
+            onNavigateToStudy={(deckId, dir) => {
+              handleSelectDeckToStudy(deckId, dir);
             }}
           />
         )}
@@ -576,10 +641,12 @@ export default function HomePage() {
             cards.filter((c) => c.deckId === inspectingDeck.id),
             [inspectingDeck]
           )}
+          cardDirection={getDeckDirection(inspectingDeck.id)}
+          onChangeCardDirection={(dir) => handleSetDeckDirection(inspectingDeck.id, dir)}
           onClose={() => setInspectingDeck(null)}
-          onStudyDeck={(deckId) => {
+          onStudyDeck={(deckId, dir) => {
             setInspectingDeck(null);
-            handleSelectDeckToStudy(deckId);
+            handleSelectDeckToStudy(deckId, dir);
           }}
           onAddCardToDeck={handleAddCardToDeck}
           onDeleteCard={handleDeleteCard}

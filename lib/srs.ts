@@ -163,22 +163,32 @@ export function sortCardsSequentially(
     decks.forEach((d, idx) => deckOrderMap.set(d.id, idx));
   }
 
-  return [...cards].sort((a, b) => {
-    if (a.deckId !== b.deckId) {
-      const deckIdxA = deckOrderMap.get(a.deckId) ?? Number.MAX_SAFE_INTEGER;
-      const deckIdxB = deckOrderMap.get(b.deckId) ?? Number.MAX_SAFE_INTEGER;
-      if (deckIdxA !== deckIdxB) return deckIdxA - deckIdxB;
-      return a.deckId.localeCompare(b.deckId);
-    }
+  return cards
+    .map((card, originalIndex) => ({ card, originalIndex }))
+    .sort((itemA, itemB) => {
+      const a = itemA.card;
+      const b = itemB.card;
 
-    const seqA = getCardSequenceNumber(a);
-    const seqB = getCardSequenceNumber(b);
-    if (seqA !== seqB) {
-      return seqA - seqB;
-    }
+      if (a.deckId !== b.deckId) {
+        const deckIdxA = deckOrderMap.get(a.deckId) ?? Number.MAX_SAFE_INTEGER;
+        const deckIdxB = deckOrderMap.get(b.deckId) ?? Number.MAX_SAFE_INTEGER;
+        if (deckIdxA !== deckIdxB) return deckIdxA - deckIdxB;
+        return a.deckId.localeCompare(b.deckId);
+      }
 
-    return a.id.localeCompare(b.id, undefined, { numeric: true });
-  });
+      const seqA = getCardSequenceNumber(a);
+      const seqB = getCardSequenceNumber(b);
+      if (seqA !== seqB) {
+        return seqA - seqB;
+      }
+
+      if (itemA.originalIndex !== itemB.originalIndex) {
+        return itemA.originalIndex - itemB.originalIndex;
+      }
+
+      return a.id.localeCompare(b.id, undefined, { numeric: true });
+    })
+    .map((entry) => entry.card);
 }
 
 /**

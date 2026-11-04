@@ -1,8 +1,5 @@
 export const defaultFirebaseConfig = {
-  apiKey:
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
-    process.env.FIREBASE_API_KEY ||
-    'AIzaSyCvu-Qd3kZjif7hWybPLN2kS47BntM8D5k',
+  apiKey: 'AIzaSyCvu-Qd3kZjif7hWybPLN2kS47BntM8D5k',
   authDomain: 'learned-transport-xmn89.firebaseapp.com',
   projectId: 'learned-transport-xmn89',
   storageBucket: 'learned-transport-xmn89.firebasestorage.app',

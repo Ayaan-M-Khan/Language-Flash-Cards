@@ -2,6 +2,8 @@ export type CardState = 'new' | 'learning' | 'review' | 'mastered';
 
 export type SM2Rating = 'again' | 'hard' | 'good' | 'easy';
 
+export type CardDirection = 'target-first' | 'definition-first';
+
 export interface ReviewLog {
   id: string;
   cardId: string;

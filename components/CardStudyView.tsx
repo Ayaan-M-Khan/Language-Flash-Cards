@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import confetti from 'canvas-confetti';
 import {
   Sparkles,
@@ -13,8 +13,9 @@ import {
   BookOpen,
   ListOrdered,
   Shuffle,
+  ArrowLeftRight,
 } from 'lucide-react';
-import { Flashcard as FlashcardType, Deck, SM2Rating } from '@/lib/types';
+import { CardDirection, Flashcard as FlashcardType, Deck, SM2Rating } from '@/lib/types';
 import { getPreviewIntervals, isCardDue, sortCardsSequentially } from '@/lib/srs';
 import { speakWord, playHapticFeedback } from '@/lib/audio';
 import { WeeklyReviewTracker } from './WeeklyReviewTracker';
@@ -28,6 +29,8 @@ interface CardStudyViewProps {
   decks: Deck[];
   selectedDeckId: string | null;
   onSelectDeck: (deckId: string | null) => void;
+  cardDirection?: CardDirection;
+  onChangeCardDirection?: (direction: CardDirection) => void;
   onCardReviewed: (updatedCard: FlashcardType, rating: SM2Rating) => void;
   onNavigateToImport: () => void;
   currentStreak?: number;
@@ -40,6 +43,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   decks,
   selectedDeckId,
   onSelectDeck,
+  cardDirection,
+  onChangeCardDirection,
   onCardReviewed,
   onNavigateToImport,
   currentStreak = 0,
@@ -48,8 +53,12 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 }) => {
   const [reviewRefreshTrigger, setReviewRefreshTrigger] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [studyMode, setStudyMode] = useState<'due' | 'sequential'>('due');
+  // Default to 'sequential' so ALL cards in the deck always show 1-by-1 without skipping previously reviewed cards
+  const [studyMode, setStudyMode] = useState<'sequential' | 'due'>('sequential');
   const [justShuffled, setJustShuffled] = useState(false);
+  const [localDirection, setLocalDirection] = useState<CardDirection>('target-first');
+
+  const activeDirection: CardDirection = cardDirection ?? localDirection;
 
   // Strictly sort matching deck cards 1-by-1 in sequential order
   const orderedMatchingCards = useMemo(() => {
@@ -63,20 +72,25 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
   // Compute deterministic session cards based on active deck filter and mode
   const initialSessionCards = useMemo(() => {
-    if (studyMode === 'sequential') {
-      return orderedMatchingCards;
+    if (studyMode === 'due') {
+      return orderedDueCards;
     }
-    return orderedDueCards.length > 0 ? orderedDueCards : orderedMatchingCards;
+    return orderedMatchingCards;
   }, [studyMode, orderedDueCards, orderedMatchingCards]);
+
+  // Re-initialize session queue ONLY when selected deck, study mode, or account hydration changes
+  const sessionKey = `${userId ?? 'guest'}::${selectedDeckId ?? 'all'}::${studyMode}::${syncVersion}`;
 
   // Deterministic queue-based study manager (active card is ALWAYS queue[0], advances 1-by-1)
   const {
     currentCard,
+    currentStepId,
     cardsRemaining,
     totalSessionCards,
     completedCount,
     progressPercent,
     isFlipped,
+    setIsFlipped,
     flipCard,
     rateCard,
     skipCard,
@@ -86,6 +100,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     stats,
     restartSession,
   } = useStudySession(initialSessionCards, {
+    sessionKey,
     onCardReviewed: (updatedCard, rating) => {
       onCardReviewed(updatedCard, rating);
 
@@ -119,21 +134,6 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     },
   });
 
-  // Re-initialize session queue ONLY when selected deck, study mode, or account hydration changes
-  // (Never re-initializes mid-session when rating a card updates `cards` state)
-  const sessionKey = `${userId ?? 'guest'}::${selectedDeckId ?? 'all'}::${studyMode}::${syncVersion}`;
-  const [prevSessionKey, setPrevSessionKey] = useState(sessionKey);
-  if (sessionKey !== prevSessionKey) {
-    setPrevSessionKey(sessionKey);
-    const matching = sortCardsSequentially(
-      cards.filter((card) => !selectedDeckId || card.deckId === selectedDeckId),
-      decks
-    );
-    const due = matching.filter((card) => isCardDue(card));
-    const nextCards = studyMode === 'sequential' ? matching : due.length > 0 ? due : matching;
-    restartSession(nextCards);
-  }
-
   // Associated deck for active card
   const currentDeck = useMemo(() => {
     if (!currentCard) return undefined;
@@ -148,6 +148,22 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
       }
     }
   };
+
+  // Switch card face order (Word -> Def vs Def -> Transliteration) cleanly on the front face
+  const handleSelectDirection = useCallback(
+    (nextDirection: CardDirection) => {
+      if (nextDirection === activeDirection) return;
+      blurActiveElement();
+      playHapticFeedback('tap');
+      setIsFlipped(false);
+      if (onChangeCardDirection) {
+        onChangeCardDirection(nextDirection);
+      } else {
+        setLocalDirection(nextDirection);
+      }
+    },
+    [activeDirection, onChangeCardDirection, setIsFlipped]
+  );
 
   // Handle Audio Speech
   const handleSpeak = useCallback(
@@ -171,11 +187,12 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     flipCard();
   }, [isProcessing, flipCard]);
 
-  // Handle Rating with card-ID lock to prevent any duplicate event from advancing 2 cards
+  // Handle Rating with card-ID + step-ID lock so duplicate events can NEVER skip the next card
   const handleRating = useCallback(
     async (rating: SM2Rating) => {
-      if (!currentCard || isProcessing) return;
+      if (!currentCard || !isFlipped || isProcessing) return;
       const targetCardId = currentCard.id;
+      const targetStepId = currentStepId;
       blurActiveElement();
 
       if (rating === 'again') {
@@ -184,19 +201,20 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         playHapticFeedback('rating');
       }
 
-      await rateCard(rating, targetCardId);
+      await rateCard(rating, targetCardId, targetStepId);
     },
-    [currentCard, isProcessing, rateCard]
+    [currentCard, currentStepId, isFlipped, isProcessing, rateCard]
   );
 
-  // Handle Skip with card-ID lock
+  // Handle Skip with card-ID + step-ID lock
   const handleSkip = useCallback(() => {
     if (!currentCard || isProcessing) return;
     const targetCardId = currentCard.id;
+    const targetStepId = currentStepId;
     blurActiveElement();
     playHapticFeedback('tap');
-    skipCard(targetCardId);
-  }, [currentCard, isProcessing, skipCard]);
+    skipCard(targetCardId, targetStepId);
+  }, [currentCard, currentStepId, isProcessing, skipCard]);
 
   // Handle Shuffle of current in-memory session queue (leaves SRS due dates & intervals untouched)
   const handleShuffle = useCallback(() => {
@@ -226,6 +244,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           handleRating('good');
         }
       } else if (e.key.toLowerCase() === 's') {
+        // Avoid spoiling foreign target word audio before flipping when in definition-first mode
+        if (activeDirection === 'definition-first' && !isFlipped) return;
         e.preventDefault();
         e.stopPropagation();
         handleSpeak();
@@ -252,13 +272,64 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, [handleFlip, handleSpeak, handleRating, isFlipped, currentCard, isProcessing]);
+  }, [
+    handleFlip,
+    handleSpeak,
+    handleRating,
+    isFlipped,
+    currentCard,
+    isProcessing,
+    activeDirection,
+  ]);
 
   // Preview intervals for current card ratings
   const previewIntervals = useMemo(() => {
     if (!currentCard) return { again: '10m', hard: '1d', good: '3d', easy: '7d' };
     return getPreviewIntervals(currentCard);
   }, [currentCard]);
+
+  // Reusable Segmented Card Order Control
+  const renderCardOrderSelector = (idPrefix: string) => (
+    <div
+      role="group"
+      aria-label="Card definition order"
+      className="inline-flex items-center p-0.5 bg-neutral-200/70 rounded-xl border border-black/5 text-xs font-medium shrink-0"
+    >
+      <button
+        id={`${idPrefix}-word-first-btn`}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleSelectDirection('target-first');
+        }}
+        title="Show foreign word & transliteration first, then English definition"
+        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+          activeDirection === 'target-first'
+            ? 'bg-white text-neutral-900 shadow-2xs font-semibold'
+            : 'text-neutral-600 hover:text-neutral-900'
+        }`}
+      >
+        <span>Word → Def</span>
+      </button>
+      <button
+        id={`${idPrefix}-def-first-btn`}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleSelectDirection('definition-first');
+        }}
+        title="Show English definition first, then transliteration & foreign word"
+        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+          activeDirection === 'definition-first'
+            ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
+            : 'text-neutral-600 hover:text-neutral-900'
+        }`}
+      >
+        <ArrowLeftRight className="w-3 h-3 shrink-0" />
+        <span>Def → Translit</span>
+      </button>
+    </div>
+  );
 
   // ===================== ZERO DUE CARDS EMPTY STATE =====================
   if (totalSessionCards === 0) {
@@ -274,15 +345,15 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         </h2>
         <p className="text-sm text-neutral-600 max-w-md mx-auto mb-6 leading-relaxed">
           {totalDeckCards > 0
-            ? 'You have reviewed all cards due for optimal retention today. The spaced repetition engine will schedule your next batch automatically.'
+            ? 'You have reviewed all cards due for optimal retention today. Pick a deck and card order below to practice anytime.'
             : 'You don’t have any flashcards in this deck yet. Import a table of vocabulary words to generate smart decks instantly.'}
         </p>
 
-        {/* Deck filter chips */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
+        {/* Deck filter buttons */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
           <button
             onClick={() => onSelectDeck(null)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
               selectedDeckId === null
                 ? 'bg-neutral-900 text-white shadow-xs'
                 : 'bg-white text-neutral-700 hover:bg-neutral-100 border border-black/5'
@@ -297,20 +368,26 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               <button
                 key={deck.id}
                 onClick={() => onSelectDeck(deck.id)}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
                   selectedDeckId === deck.id
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'bg-white text-neutral-700 hover:bg-neutral-100 border border-black/5'
                 }`}
               >
                 <span>{deck.title}</span>
-                <span className="text-[10px] opacity-75">({count})</span>
-                {due > 0 && (
-                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                )}
+                <span className="text-[10px] opacity-75">
+                  ({count}
+                  {due > 0 ? ` · ${due} due` : ''})
+                </span>
               </button>
             );
           })}
+        </div>
+
+        {/* Card Order Picker when choosing deck */}
+        <div className="flex items-center justify-center gap-2 mb-8">
+          <span className="text-xs font-medium text-neutral-500">Card Order:</span>
+          {renderCardOrderSelector('empty-order')}
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -380,7 +457,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           </p>
 
           {/* Retention Stats Circle & Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 tabular-nums">
             <div className="p-3 bg-neutral-50 rounded-2xl border border-black/5">
               <span className="text-xs text-neutral-500 block mb-1">Reviewed</span>
               <span className="text-xl font-bold text-neutral-900">{total}</span>
@@ -400,8 +477,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           </div>
 
           {/* Rating distribution bar */}
-          <div className="mb-6 text-left">
-            <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider block mb-2">
+          <div className="mb-6 text-left tabular-nums">
+            <span className="text-xs font-semibold text-neutral-500 block mb-2">
               Performance Breakdown
             </span>
             <div className="h-3 w-full rounded-full bg-neutral-100 flex overflow-hidden">
@@ -440,6 +517,12 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               <span>Good ({goodCount})</span>
               <span>Easy ({easyCount})</span>
             </div>
+          </div>
+
+          {/* Card Order Selector before restarting */}
+          <div className="flex items-center justify-center gap-2 mb-5">
+            <span className="text-xs font-medium text-neutral-500">Next Pass Order:</span>
+            {renderCardOrderSelector('complete-order')}
           </div>
 
           {/* Action buttons */}
@@ -483,8 +566,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   // ===================== ACTIVE STUDY CARD =====================
   return (
     <div className="max-w-2xl mx-auto px-4 py-4 sm:py-8">
-      {/* Top Header: Deck selection, Order Mode & Queue Counter */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+      {/* Top Header: Deck selection, Card Face Direction, Order Mode & Queue Counter */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-4">
         <div className="flex flex-wrap items-center gap-2">
           <select
             id="study-deck-select"
@@ -493,7 +576,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               const val = e.target.value === 'all' ? null : e.target.value;
               onSelectDeck(val);
             }}
-            className="px-3 py-1.5 text-xs font-semibold bg-white border border-black/10 rounded-xl text-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-2xs cursor-pointer"
+            className="px-3 py-1.5 text-xs font-semibold bg-white border border-black/10 rounded-xl text-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-2xs max-w-[210px] truncate cursor-pointer"
           >
             <option value="all">All Decks ({cards.length} cards)</option>
             {decks.map((d) => (
@@ -502,6 +585,9 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               </option>
             ))}
           </select>
+
+          {/* Card Definition Order Toggle right beside Deck Picker */}
+          {renderCardOrderSelector('study-order')}
 
           <button
             id="shuffle-queue-btn"
@@ -513,28 +599,30 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               handleShuffle();
             }}
             title="Randomize current session queue without changing long-term SRS schedules"
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border shadow-2xs transition-all select-none touch-manipulation cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed active:scale-98 ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border shadow-2xs transition-all select-none touch-manipulation whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed active:scale-98 ${
               justShuffled
                 ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                 : 'bg-white text-neutral-700 border-black/10 hover:bg-neutral-100'
             }`}
           >
-            <Shuffle className={`w-3.5 h-3.5 ${justShuffled ? 'text-indigo-600' : 'text-neutral-500'}`} />
+            <Shuffle
+              className={`w-3.5 h-3.5 ${justShuffled ? 'text-indigo-600' : 'text-neutral-500'}`}
+            />
             <span>{justShuffled ? 'Shuffled' : 'Shuffle'}</span>
           </button>
 
-          {orderedDueCards.length > 0 && orderedDueCards.length < orderedMatchingCards.length && (
+          {orderedMatchingCards.length > 0 && orderedDueCards.length < orderedMatchingCards.length && (
             <button
               type="button"
               onClick={() =>
-                setStudyMode((prev) => (prev === 'due' ? 'sequential' : 'due'))
+                setStudyMode((prev) => (prev === 'sequential' ? 'due' : 'sequential'))
               }
               title={
                 studyMode === 'sequential'
                   ? 'Showing all deck cards 1-by-1 in order. Click to show only due cards.'
-                  : 'Showing due cards. Click to study all cards 1-by-1 from the beginning.'
+                  : 'Showing only due cards. Click to study all cards 1-by-1 from the beginning.'
               }
-              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 studyMode === 'sequential'
                   ? 'bg-neutral-900 text-white border-neutral-900'
                   : 'bg-white text-neutral-700 border-black/10 hover:bg-neutral-100'
@@ -544,38 +632,45 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               <span>
                 {studyMode === 'sequential'
                   ? `All 1-by-1 (${orderedMatchingCards.length})`
-                  : `Study All (${orderedMatchingCards.length})`}
+                  : `Due Only (${orderedDueCards.length}/${orderedMatchingCards.length})`}
               </span>
             </button>
           )}
-
-          {currentCard.category && (
-            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-neutral-100 text-neutral-600">
-              {currentCard.category}
-            </span>
-          )}
         </div>
 
-        {/* Deterministic Queue Counter Badge */}
-        <div className="flex items-center gap-2 text-xs text-neutral-500 font-medium">
+        {/* Deterministic Queue Counter */}
+        <div className="flex items-center gap-2 text-xs text-neutral-500 font-medium tabular-nums">
           <Clock className="w-3.5 h-3.5 text-neutral-400" />
           <span>
             {Math.min(completedCount + 1, totalSessionCards)} of {totalSessionCards} ({cardsRemaining}{' '}
-            remaining)
+            left)
+          </span>
+          <span className="text-neutral-300" aria-hidden="true">
+            ·
           </span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+            className={`font-semibold capitalize ${
               currentCard.state === 'new'
-                ? 'bg-blue-100 text-blue-700'
+                ? 'text-blue-600'
                 : currentCard.state === 'learning'
-                ? 'bg-orange-100 text-orange-700'
+                ? 'text-orange-600'
                 : currentCard.state === 'mastered'
-                ? 'bg-emerald-100 text-emerald-700'
-                : 'bg-purple-100 text-purple-700'
+                ? 'text-emerald-600'
+                : 'text-indigo-600'
             }`}
           >
             {currentCard.state}
           </span>
+          {currentCard.category && (
+            <>
+              <span className="hidden sm:inline text-neutral-300" aria-hidden="true">
+                ·
+              </span>
+              <span className="hidden sm:inline text-neutral-500 truncate max-w-[140px]">
+                {currentCard.category}
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -589,170 +684,152 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         />
       </div>
 
-      {/* 3D Flip Card Container */}
+      {/* 3D Flip Card Container — keyed by monotonic currentStepId with NO opacity wrapper around preserve-3d */}
       <div className="w-full mb-6 min-h-[380px] sm:min-h-[420px]">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={currentCard.id}
-            initial={{ opacity: 0, x: 18 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -18 }}
-            transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full"
-          >
-            <Flashcard
-              card={currentCard}
-              language={currentDeck?.language || currentCard.language}
-              isFlipped={isFlipped}
-              onFlip={handleFlip}
-              onSpeak={handleSpeak}
-              isSpeaking={isSpeaking}
-            />
-          </motion.div>
-        </AnimatePresence>
+        <Flashcard
+          key={currentStepId}
+          card={currentCard}
+          stepId={currentStepId}
+          language={currentDeck?.language || currentCard.language}
+          cardDirection={activeDirection}
+          isFlipped={isFlipped}
+          onFlip={handleFlip}
+          onSpeak={handleSpeak}
+          isSpeaking={isSpeaking}
+        />
       </div>
 
       {/* Action Tray: 4-Level SuperMemo SM-2 Interval Buttons & Navigation */}
-      <AnimatePresence mode="wait">
-        {isFlipped ? (
-          <motion.div
-            key="rating-tray"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.12 }}
-            className={`grid grid-cols-2 sm:grid-cols-4 gap-2.5 ${
-              isProcessing ? 'pointer-events-none opacity-60' : ''
-            }`}
+      {isFlipped ? (
+        <div
+          className={`grid grid-cols-2 sm:grid-cols-4 gap-2.5 tabular-nums ${
+            isProcessing ? 'pointer-events-none opacity-60' : ''
+          }`}
+        >
+          {/* AGAIN BUTTON */}
+          <button
+            id="rating-again-btn"
+            type="button"
+            disabled={isProcessing}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleRating('again');
+            }}
+            className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 text-rose-700 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
           >
-            {/* AGAIN BUTTON */}
-            <button
-              id="rating-again-btn"
-              type="button"
-              disabled={isProcessing}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleRating('again');
-              }}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 text-rose-700 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
-            >
-              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 mb-0.5">
-                Again [1]
-              </span>
-              <span className="text-xs text-rose-800 font-medium">
-                {previewIntervals.again}
-              </span>
-            </button>
+            <span className="text-[11px] font-bold text-rose-600 mb-0.5">
+              Again [1]
+            </span>
+            <span className="text-xs text-rose-800 font-medium">
+              {previewIntervals.again}
+            </span>
+          </button>
 
-            {/* HARD BUTTON */}
-            <button
-              id="rating-hard-btn"
-              type="button"
-              disabled={isProcessing}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleRating('hard');
-              }}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100/90 border border-amber-200/80 text-amber-800 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
-            >
-              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 mb-0.5">
-                Hard [2]
-              </span>
-              <span className="text-xs text-amber-900 font-medium">
-                {previewIntervals.hard}
-              </span>
-            </button>
-
-            {/* GOOD / MEDIUM BUTTON */}
-            <button
-              id="rating-good-btn"
-              type="button"
-              disabled={isProcessing}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleRating('good');
-              }}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white transition-all active:scale-98 shadow-sm shadow-blue-500/25 group relative disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
-            >
-              <div className="flex items-center gap-1 mb-0.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-100">
-                  Good [3]
-                </span>
-                <ChevronRight className="w-3.5 h-3.5 text-blue-200" />
-              </div>
-              <span className="text-xs text-white font-medium">
-                {previewIntervals.good}
-              </span>
-            </button>
-
-            {/* EASY BUTTON */}
-            <button
-              id="rating-easy-btn"
-              type="button"
-              disabled={isProcessing}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleRating('easy');
-              }}
-              className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/90 border border-emerald-200/80 text-emerald-700 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
-            >
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 mb-0.5">
-                Easy [4]
-              </span>
-              <span className="text-xs text-emerald-900 font-medium">
-                {previewIntervals.easy}
-              </span>
-            </button>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="front-tray"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.12 }}
-            className={`flex items-center justify-center gap-3 ${
-              isProcessing ? 'pointer-events-none opacity-60' : ''
-            }`}
+          {/* HARD BUTTON */}
+          <button
+            id="rating-hard-btn"
+            type="button"
+            disabled={isProcessing}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleRating('hard');
+            }}
+            className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100/90 border border-amber-200/80 text-amber-800 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
           >
-            <button
-              id="show-answer-btn"
-              type="button"
-              disabled={isProcessing}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleFlip();
-              }}
-              className="flex-1 sm:flex-initial sm:w-64 py-3.5 px-6 rounded-2xl bg-neutral-900 hover:bg-black text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
-            >
-              <span>Show Answer</span>
-              <span className="text-[11px] text-neutral-400 font-normal px-2 py-0.5 rounded-md bg-neutral-800">
-                Space
+            <span className="text-[11px] font-bold text-amber-700 mb-0.5">
+              Hard [2]
+            </span>
+            <span className="text-xs text-amber-900 font-medium">
+              {previewIntervals.hard}
+            </span>
+          </button>
+
+          {/* GOOD / MEDIUM BUTTON */}
+          <button
+            id="rating-good-btn"
+            type="button"
+            disabled={isProcessing}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleRating('good');
+            }}
+            className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white transition-all active:scale-98 shadow-sm shadow-blue-500/25 group relative disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+          >
+            <div className="flex items-center gap-1 mb-0.5">
+              <span className="text-[11px] font-bold text-blue-100">
+                Good [3]
               </span>
-            </button>
-            <button
-              id="skip-card-front-btn"
-              type="button"
-              disabled={isProcessing}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleSkip();
-              }}
-              title="Move this card to end of session queue"
-              className="py-3.5 px-4 rounded-2xl bg-white hover:bg-neutral-100 border border-black/10 text-neutral-600 font-medium text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
-            >
-              <span>Skip</span>
-              <ChevronRight className="w-3.5 h-3.5 text-neutral-400" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <ChevronRight className="w-3.5 h-3.5 text-blue-200" />
+            </div>
+            <span className="text-xs text-white font-medium">
+              {previewIntervals.good}
+            </span>
+          </button>
+
+          {/* EASY BUTTON */}
+          <button
+            id="rating-easy-btn"
+            type="button"
+            disabled={isProcessing}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleRating('easy');
+            }}
+            className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/90 border border-emerald-200/80 text-emerald-700 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+          >
+            <span className="text-[11px] font-bold text-emerald-600 mb-0.5">
+              Easy [4]
+            </span>
+            <span className="text-xs text-emerald-900 font-medium">
+              {previewIntervals.easy}
+            </span>
+          </button>
+        </div>
+      ) : (
+        <div
+          className={`flex items-center justify-center gap-3 ${
+            isProcessing ? 'pointer-events-none opacity-60' : ''
+          }`}
+        >
+          <button
+            id="show-answer-btn"
+            type="button"
+            disabled={isProcessing}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleFlip();
+            }}
+            className="flex-1 sm:flex-initial sm:w-64 py-3.5 px-6 rounded-2xl bg-neutral-900 hover:bg-black text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+          >
+            <span>
+              {activeDirection === 'definition-first' ? 'Show Transliteration' : 'Show Answer'}
+            </span>
+            <span className="text-[11px] text-neutral-400 font-normal px-2 py-0.5 rounded-md bg-neutral-800">
+              Space
+            </span>
+          </button>
+          <button
+            id="skip-card-front-btn"
+            type="button"
+            disabled={isProcessing}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSkip();
+            }}
+            title="Move this card to end of session queue"
+            className="py-3.5 px-4 rounded-2xl bg-white hover:bg-neutral-100 border border-black/10 text-neutral-600 font-medium text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+          >
+            <span>Skip</span>
+            <ChevronRight className="w-3.5 h-3.5 text-neutral-400" />
+          </button>
+        </div>
+      )}
 
       {/* Visual Progress Tracking Section */}
       <WeeklyReviewTracker

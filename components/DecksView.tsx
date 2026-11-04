@@ -21,8 +21,9 @@ import {
   Globe2,
   RotateCcw,
   BarChart3,
+  ArrowLeftRight,
 } from 'lucide-react';
-import { Deck, Flashcard } from '@/lib/types';
+import { CardDirection, Deck, Flashcard } from '@/lib/types';
 import { isCardDue } from '@/lib/srs';
 import { exportDeckCardsToCsv } from '@/lib/csv';
 import { playHapticFeedback } from '@/lib/audio';
@@ -32,7 +33,9 @@ import { DeckMasteryChart } from './DeckMasteryChart';
 interface DecksViewProps {
   decks: Deck[];
   cards: Flashcard[];
-  onSelectDeckToStudy: (deckId: string | null) => void;
+  deckDirections?: Record<string, CardDirection>;
+  onChangeDeckDirection?: (deckId: string | null, direction: CardDirection) => void;
+  onSelectDeckToStudy: (deckId: string | null, direction?: CardDirection) => void;
   onNavigateToImport: () => void;
   onDeleteDeck: (deckId: string) => void;
   onInspectDeck: (deck: Deck) => void;
@@ -43,6 +46,8 @@ interface DecksViewProps {
 export const DecksView: React.FC<DecksViewProps> = ({
   decks,
   cards,
+  deckDirections = {},
+  onChangeDeckDirection,
   onSelectDeckToStudy,
   onNavigateToImport,
   onDeleteDeck,
@@ -298,7 +303,9 @@ export const DecksView: React.FC<DecksViewProps> = ({
         selectedDeck={selectedDeck}
         onSelectDeck={(deckId) => setSelectedDeckId(deckId)}
         cards={cards}
-        onStudyDeck={(deckId) => onSelectDeckToStudy(deckId)}
+        cardDirection={selectedDeck ? deckDirections[selectedDeck.id] ?? 'target-first' : 'target-first'}
+        onChangeCardDirection={(deckId, dir) => onChangeDeckDirection?.(deckId, dir)}
+        onStudyDeck={(deckId, dir) => onSelectDeckToStudy(deckId, dir)}
         onInspectDeck={onInspectDeck}
         onNavigateToImport={onNavigateToImport}
         onExportDeckCsv={handleExportDeckCsv}
@@ -392,6 +399,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
           const masteredPercent =
             deckCards.length > 0 ? Math.round((masteredCount / deckCards.length) * 100) : 0;
           const isSelectedForChart = selectedDeck?.id === deck.id;
+          const deckDirection: CardDirection = deckDirections[deck.id] ?? 'target-first';
 
           return (
             <div
@@ -589,6 +597,55 @@ export const DecksView: React.FC<DecksViewProps> = ({
                   )}
                 </div>
 
+                {/* Per-Deck Card Definition Order Selector */}
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center justify-between gap-2 mb-3"
+                >
+                  <span className="text-[11px] font-medium text-neutral-500">Order</span>
+                  <div
+                    role="group"
+                    aria-label={`Card order for ${deck.title}`}
+                    className="inline-flex items-center p-0.5 bg-neutral-100 rounded-xl border border-neutral-200/70 text-[11px] font-medium"
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        playHapticFeedback('tap');
+                        setSelectedDeckId(deck.id);
+                        onChangeDeckDirection?.(deck.id, 'target-first');
+                      }}
+                      title="Show foreign word & transliteration first, then definition"
+                      className={`px-2 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                        deckDirection === 'target-first'
+                          ? 'bg-white text-neutral-900 shadow-2xs font-semibold'
+                          : 'text-neutral-500 hover:text-neutral-800'
+                      }`}
+                    >
+                      Word → Def
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        playHapticFeedback('tap');
+                        setSelectedDeckId(deck.id);
+                        onChangeDeckDirection?.(deck.id, 'definition-first');
+                      }}
+                      title="Show definition first, then transliteration & foreign word"
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                        deckDirection === 'definition-first'
+                          ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
+                          : 'text-neutral-500 hover:text-neutral-800'
+                      }`}
+                    >
+                      <ArrowLeftRight className="w-3 h-3 shrink-0" />
+                      <span>Def → Translit</span>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Action Buttons */}
                 <div className="flex items-center gap-2">
                   <button
@@ -596,7 +653,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       playHapticFeedback('tap');
-                      onSelectDeckToStudy(deck.id);
+                      onSelectDeckToStudy(deck.id, deckDirection);
                     }}
                     className={`flex-1 py-2.5 px-3 rounded-2xl font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer tabular-nums ${
                       dueCards.length > 0
