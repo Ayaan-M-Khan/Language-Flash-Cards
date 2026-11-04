@@ -148,7 +148,7 @@ async function processBatchWithModel(
     icon?: string;
   };
 }> {
-  const CANDIDATE_MODELS = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash'];
+  const CANDIDATE_MODELS = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
   const expectedCount = chunk.length;
 
   const prompt = `You are an expert language teacher, polyglot lexicographer, and cognitive scientist.

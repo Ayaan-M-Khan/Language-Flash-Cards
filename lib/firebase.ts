@@ -1,19 +1,17 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import firebaseAppletConfig from '../firebase-applet-config.json';
 import { defaultFirebaseConfig } from './defaultFirebaseConfig';
 
 const effectiveConfig = {
   ...defaultFirebaseConfig,
-  apiKey:
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
-    process.env.FIREBASE_API_KEY ||
-    defaultFirebaseConfig.apiKey,
+  ...firebaseAppletConfig,
 };
 
 const app = !getApps().length ? initializeApp(effectiveConfig) : getApp();
 
-// CRITICAL: Must use databaseId as specified in firebaseConfig
+// CRITICAL: Must use databaseId as specified in firebase-applet-config.json
 export const db = getFirestore(app, effectiveConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
