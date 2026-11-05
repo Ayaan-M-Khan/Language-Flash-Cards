@@ -66,7 +66,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
       >
         {/* ================= CARD FRONT ================= */}
         <div
-          className="absolute inset-0 w-full h-full rounded-3xl bg-white p-6 sm:p-8 flex flex-col justify-between shadow-sm border border-black/5 hover:border-black/10 transition-colors"
+          className="absolute inset-0 w-full h-full rounded-3xl bg-white dark:bg-neutral-900 p-6 sm:p-8 flex flex-col justify-between shadow-sm dark:shadow-2xl border border-black/5 dark:border-white/10 hover:border-black/10 dark:hover:border-white/20 transition-colors"
           style={{
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
@@ -79,34 +79,34 @@ export const Flashcard: React.FC<FlashcardProps> = ({
             <>
               {/* Front Header (Definition First — no foreign audio spoiler on front) */}
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs text-neutral-500">
-                  <span className="font-semibold text-indigo-600">Definition</span>
+                <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                  <span className="font-semibold text-indigo-600 dark:text-indigo-400">Definition</span>
                   <span aria-hidden="true">·</span>
                   <span>{displayLanguage}</span>
                   {card.partOfSpeech && (
                     <>
                       <span aria-hidden="true">·</span>
-                      <span className="italic text-neutral-400">{card.partOfSpeech}</span>
+                      <span className="italic text-neutral-400 dark:text-neutral-500">{card.partOfSpeech}</span>
                     </>
                   )}
                 </div>
-                <span className="text-[11px] font-medium text-neutral-400">
+                <span className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
                   Def → Transliteration
                 </span>
               </div>
 
               {/* Front Center: English Definition */}
               <div className="my-auto text-center py-4">
-                <span className="text-xs font-medium text-neutral-400 block mb-2">
+                <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 block mb-2">
                   English Definition
                 </span>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-neutral-900 break-words">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 break-words">
                   {card.english}
                 </h1>
               </div>
 
               {/* Front Bottom Prompt */}
-              <div className="text-center pt-4 border-t border-neutral-100 flex items-center justify-center gap-2 text-xs text-neutral-400">
+              <div className="text-center pt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-center gap-2 text-xs text-neutral-400 dark:text-neutral-500">
                 <RotateCw className="w-3.5 h-3.5" />
                 <span>Tap card or press [Space] to reveal transliteration &amp; word</span>
               </div>
@@ -115,12 +115,12 @@ export const Flashcard: React.FC<FlashcardProps> = ({
             <>
               {/* Front Header (Target Word First) */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-neutral-500">
-                  <span className="font-semibold text-blue-600">{displayLanguage}</span>
+                <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">{displayLanguage}</span>
                   {card.partOfSpeech && (
                     <>
                       <span aria-hidden="true">·</span>
-                      <span className="italic text-neutral-400">{card.partOfSpeech}</span>
+                      <span className="italic text-neutral-400 dark:text-neutral-500">{card.partOfSpeech}</span>
                     </>
                   )}
                 </div>
@@ -133,7 +133,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                   className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
                     isSpeaking
                       ? 'bg-blue-600 text-white scale-110'
-                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700'
                   }`}
                 >
                   <Volume2 className="w-5 h-5" />
@@ -144,20 +144,20 @@ export const Flashcard: React.FC<FlashcardProps> = ({
               <div className="my-auto text-center py-4">
                 <h1
                   dir={targetIsRtl ? 'rtl' : 'ltr'}
-                  className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-neutral-900 mb-3 break-words"
+                  className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 mb-3 break-words"
                 >
                   {card.targetWord}
                 </h1>
 
                 {card.phonetic && (
-                  <p className="text-sm sm:text-base font-medium text-indigo-600/90 tracking-wide">
+                  <p className="text-sm sm:text-base font-medium text-indigo-600/90 dark:text-indigo-400 tracking-wide">
                     [{card.phonetic}]
                   </p>
                 )}
               </div>
 
               {/* Front Bottom Prompt */}
-              <div className="text-center pt-4 border-t border-neutral-100 flex items-center justify-center gap-2 text-xs text-neutral-400">
+              <div className="text-center pt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-center gap-2 text-xs text-neutral-400 dark:text-neutral-500">
                 <RotateCw className="w-3.5 h-3.5" />
                 <span>Tap card or press [Space] to reveal definition</span>
               </div>
@@ -169,7 +169,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
         {/* Never mount the answer side into the DOM until the user flips this specific card step */}
         {hasFlippedThisStep ? (
           <div
-            className="absolute inset-0 w-full h-full rounded-3xl bg-white p-6 sm:p-8 flex flex-col justify-between shadow-sm border border-blue-500/20"
+            className="absolute inset-0 w-full h-full rounded-3xl bg-white dark:bg-neutral-900 p-6 sm:p-8 flex flex-col justify-between shadow-sm dark:shadow-2xl border border-blue-500/20 dark:border-blue-400/30"
             style={{
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
@@ -181,12 +181,12 @@ export const Flashcard: React.FC<FlashcardProps> = ({
             {isDefFirst ? (
               <>
                 {/* Back Header: Definition Echo & Audio Pronunciation Button */}
-                <div className="flex items-center justify-between gap-3 border-b border-neutral-100 pb-3">
+                <div className="flex items-center justify-between gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-3">
                   <div className="text-left min-w-0">
-                    <span className="text-xs font-semibold text-indigo-600 block">
+                    <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 block">
                       Definition
                     </span>
-                    <span className="text-sm font-semibold text-neutral-800 block truncate">
+                    <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 block truncate">
                       {card.english}
                     </span>
                   </div>
@@ -197,7 +197,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                     className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-all shrink-0 cursor-pointer ${
                       isSpeaking
                         ? 'bg-blue-600 text-white scale-110'
-                        : 'bg-neutral-100 text-neutral-700 hover:bg-blue-50 hover:text-blue-600'
+                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-neutral-700'
                     }`}
                     title="Pronounce (S)"
                   >
@@ -209,30 +209,30 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                 <div className="my-auto py-3 text-center sm:text-left">
                   {card.phonetic ? (
                     <div className="mb-4">
-                      <span className="text-xs text-neutral-400 font-semibold block mb-1">
+                      <span className="text-xs text-neutral-400 dark:text-neutral-500 font-semibold block mb-1">
                         Transliteration
                       </span>
-                      <h2 className="text-2xl sm:text-3xl font-bold text-indigo-600 tracking-tight mb-2.5 break-words">
+                      <h2 className="text-2xl sm:text-3xl font-bold text-indigo-600 dark:text-indigo-400 tracking-tight mb-2.5 break-words">
                         {card.phonetic}
                       </h2>
-                      <span className="text-xs text-neutral-400 font-semibold block mb-0.5">
+                      <span className="text-xs text-neutral-400 dark:text-neutral-500 font-semibold block mb-0.5">
                         {displayLanguage}
                       </span>
                       <p
                         dir={targetIsRtl ? 'rtl' : 'ltr'}
-                        className="text-2xl sm:text-3xl font-semibold text-neutral-900 tracking-tight break-words"
+                        className="text-2xl sm:text-3xl font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight break-words"
                       >
                         {card.targetWord}
                       </p>
                     </div>
                   ) : (
                     <div className="mb-4">
-                      <span className="text-xs text-neutral-400 font-semibold block mb-1">
+                      <span className="text-xs text-neutral-400 dark:text-neutral-500 font-semibold block mb-1">
                         {displayLanguage} / Transliteration
                       </span>
                       <h2
                         dir={targetIsRtl ? 'rtl' : 'ltr'}
-                        className="text-2xl sm:text-4xl font-bold text-neutral-900 tracking-tight break-words"
+                        className="text-2xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight break-words"
                       >
                         {card.targetWord}
                       </h2>
@@ -241,14 +241,14 @@ export const Flashcard: React.FC<FlashcardProps> = ({
 
                   {/* Example sentence if provided */}
                   {card.exampleSentence?.target && (
-                    <div className="p-3.5 rounded-2xl bg-neutral-50/80 border border-black/5 text-left mb-3">
+                    <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-800/70 border border-black/5 dark:border-white/10 text-left mb-3">
                       <p
                         dir={isRtlScript(card.exampleSentence.target) ? 'rtl' : 'ltr'}
-                        className="text-sm font-medium text-neutral-900 mb-1"
+                        className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-1"
                       >
                         “{card.exampleSentence.target}”
                       </p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         {card.exampleSentence.english}
                       </p>
                     </div>
@@ -257,10 +257,10 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                   {/* Memory / Mnemonic notes */}
                   {card.notes && (
                     <div className="text-left px-1">
-                      <span className="text-[11px] font-semibold text-neutral-400 block mb-0.5">
+                      <span className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 block mb-0.5">
                         Usage &amp; Memory Note
                       </span>
-                      <p className="text-xs text-neutral-600 leading-relaxed">
+                      <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
                         {card.notes}
                       </p>
                     </div>
@@ -268,27 +268,27 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                 </div>
 
                 {/* Hint at bottom of back */}
-                <div className="text-center pt-2 text-xs text-neutral-400">
+                <div className="text-center pt-2 text-xs text-neutral-400 dark:text-neutral-500">
                   Rate your recall below to schedule next review
                 </div>
               </>
             ) : (
               <>
                 {/* Back Header: Target echo & audio button */}
-                <div className="flex items-center justify-between gap-3 border-b border-neutral-100 pb-3">
+                <div className="flex items-center justify-between gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-3">
                   <div className="text-left min-w-0">
-                    <span className="text-xs font-semibold text-blue-600 block">
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 block">
                       {displayLanguage}
                     </span>
                     <div className="flex flex-wrap items-baseline gap-2">
                       <span
                         dir={targetIsRtl ? 'rtl' : 'ltr'}
-                        className="text-sm font-semibold text-neutral-800"
+                        className="text-sm font-semibold text-neutral-800 dark:text-neutral-100"
                       >
                         {card.targetWord}
                       </span>
                       {card.phonetic && (
-                        <span className="text-xs font-medium text-indigo-600/85">
+                        <span className="text-xs font-medium text-indigo-600/85 dark:text-indigo-400/85">
                           [{card.phonetic}]
                         </span>
                       )}
@@ -301,7 +301,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                     className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-all shrink-0 cursor-pointer ${
                       isSpeaking
                         ? 'bg-blue-600 text-white scale-110'
-                        : 'bg-neutral-100 text-neutral-700 hover:bg-blue-50 hover:text-blue-600'
+                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-neutral-700'
                     }`}
                     title="Pronounce again (S)"
                   >
@@ -311,23 +311,23 @@ export const Flashcard: React.FC<FlashcardProps> = ({
 
                 {/* Center Meaning & Context */}
                 <div className="my-auto py-3">
-                  <span className="text-xs text-neutral-400 font-semibold block mb-1">
+                  <span className="text-xs text-neutral-400 dark:text-neutral-500 font-semibold block mb-1">
                     English Definition
                   </span>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight mb-4">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight mb-4">
                     {card.english}
                   </h2>
 
                   {/* Example sentence if provided */}
                   {card.exampleSentence?.target && (
-                    <div className="p-3.5 rounded-2xl bg-neutral-50/80 border border-black/5 text-left mb-3">
+                    <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-800/70 border border-black/5 dark:border-white/10 text-left mb-3">
                       <p
                         dir={isRtlScript(card.exampleSentence.target) ? 'rtl' : 'ltr'}
-                        className="text-sm font-medium text-neutral-900 mb-1"
+                        className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-1"
                       >
                         “{card.exampleSentence.target}”
                       </p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         {card.exampleSentence.english}
                       </p>
                     </div>
@@ -336,10 +336,10 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                   {/* Memory / Mnemonic notes */}
                   {card.notes && (
                     <div className="text-left px-1">
-                      <span className="text-[11px] font-semibold text-neutral-400 block mb-0.5">
+                      <span className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 block mb-0.5">
                         Usage &amp; Memory Note
                       </span>
-                      <p className="text-xs text-neutral-600 leading-relaxed">
+                      <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
                         {card.notes}
                       </p>
                     </div>
@@ -347,7 +347,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                 </div>
 
                 {/* Hint at bottom of back */}
-                <div className="text-center pt-2 text-xs text-neutral-400">
+                <div className="text-center pt-2 text-xs text-neutral-400 dark:text-neutral-500">
                   Rate your recall below to schedule next review
                 </div>
               </>

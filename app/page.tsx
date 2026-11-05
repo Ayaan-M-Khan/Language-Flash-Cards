@@ -524,7 +524,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f2f2f7] text-[#1c1c1e] flex flex-col antialiased selection:bg-blue-500 selection:text-white">
+    <div className="min-h-screen bg-[#f2f2f7] dark:bg-[#0f141c] text-[#1c1c1e] dark:text-[#f3f4f6] flex flex-col antialiased selection:bg-blue-500 selection:text-white transition-colors">
       {/* Apple-styled Navigation Header */}
       <Navbar
         activeTab={activeTab}

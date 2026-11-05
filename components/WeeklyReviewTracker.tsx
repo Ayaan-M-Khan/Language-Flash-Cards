@@ -34,6 +34,8 @@ import {
   subscribeToUserDailyReviews,
 } from '@/lib/firestore-sync';
 
+import { useTheme } from '@/lib/ThemeContext';
+
 interface WeeklyReviewTrackerProps {
   currentStreak?: number;
   refreshTrigger?: number; // changes whenever a card is reviewed
@@ -62,22 +64,22 @@ const CustomChartTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) =
     const isTargetMet = data.reviews >= data.target;
 
     return (
-      <div className="bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-lg border border-black/10 text-xs">
-        <p className="font-semibold text-neutral-900 mb-1">{data.fullDayLabel}</p>
+      <div className="bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-lg border border-black/10 dark:border-white/10 text-xs">
+        <p className="font-semibold text-neutral-900 dark:text-neutral-100 mb-1">{data.fullDayLabel}</p>
         <div className="flex items-center gap-2 mb-1.5">
           <span className="w-2 h-2 rounded-full bg-blue-500" />
-          <span className="text-neutral-600">Reviewed:</span>
-          <span className="font-bold text-neutral-900 text-sm">{data.reviews} cards</span>
+          <span className="text-neutral-600 dark:text-neutral-400">Reviewed:</span>
+          <span className="font-bold text-neutral-900 dark:text-neutral-100 text-sm">{data.reviews} cards</span>
         </div>
-        <div className="flex items-center justify-between gap-3 pt-1 border-t border-neutral-100 text-[11px]">
-          <span className="text-neutral-500">Goal: {data.target}/day</span>
+        <div className="flex items-center justify-between gap-3 pt-1 border-t border-neutral-100 dark:border-neutral-800 text-[11px]">
+          <span className="text-neutral-500 dark:text-neutral-400">Goal: {data.target}/day</span>
           <span
             className={`font-semibold px-1.5 py-0.5 rounded-md ${
               isTargetMet
-                ? 'bg-emerald-100 text-emerald-700'
+                ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
                 : data.reviews > 0
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-neutral-100 text-neutral-500'
+                ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
+                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
             }`}
           >
             {isTargetMet ? 'Goal Achieved' : data.reviews > 0 ? 'Active' : 'No Reviews'}
@@ -96,6 +98,8 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
 }) => {
   const isClient = useIsClient();
   const { user, profile, signInWithGoogle, isSyncing } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const effectiveUserId = userId || user?.uid || null;
 
   const [showGoalLine, setShowGoalLine] = useState(true);
@@ -170,7 +174,7 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
 
   if (!isClient) {
     return (
-      <div className="w-full bg-white rounded-3xl p-6 shadow-xs border border-black/5 animate-pulse min-h-[300px]" />
+      <div className="w-full bg-white dark:bg-neutral-900 rounded-3xl p-6 shadow-xs border border-black/5 dark:border-white/10 animate-pulse min-h-[300px]" />
     );
   }
 
@@ -180,19 +184,19 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
     return (
       <section
         id="weekly-review-tracker-auth-gate"
-        className="w-full bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-black/5 transition-all mt-8"
+        className="w-full bg-white dark:bg-neutral-900 rounded-3xl p-6 sm:p-8 shadow-xs border border-black/5 dark:border-white/10 transition-all mt-8"
         aria-label="Study Progress Authentication Gate"
       >
         <div className="max-w-md mx-auto py-4 sm:py-6 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 shadow-xs">
+          <div className="w-14 h-14 rounded-3xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-4 shadow-xs">
             <TrendingUp className="w-7 h-7" />
           </div>
 
-          <h3 className="text-lg sm:text-xl font-bold tracking-tight text-neutral-900 mb-2">
+          <h3 className="text-lg sm:text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-2">
             Weekly Study Progress
           </h3>
 
-          <p className="text-xs sm:text-sm text-neutral-500 mb-6 leading-relaxed">
+          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-6 leading-relaxed">
             Sign in with Google to view and track your study progress, spaced repetition retention rates, and daily review consistency across devices.
           </p>
 
@@ -200,7 +204,7 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
             id="auth-gate-signin-btn"
             onClick={() => signInWithGoogle()}
             disabled={isSyncing}
-            className="inline-flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-neutral-900 hover:bg-black text-white font-semibold text-xs sm:text-sm shadow-sm transition-all active:scale-98 disabled:opacity-50 group cursor-pointer"
+            className="inline-flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-neutral-900 dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900 font-semibold text-xs sm:text-sm shadow-sm transition-all active:scale-98 disabled:opacity-50 group cursor-pointer"
           >
             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
               <path
@@ -233,29 +237,29 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
   return (
     <section
       id="weekly-review-tracker-section"
-      className="w-full bg-white rounded-3xl p-5 sm:p-6 shadow-xs border border-black/5 transition-all mt-8"
+      className="w-full bg-white dark:bg-neutral-900 rounded-3xl p-5 sm:p-6 shadow-xs border border-black/5 dark:border-white/10 transition-all mt-8"
       aria-label="Weekly Review Consistency Progress"
     >
       {/* Top Header: Title, Consistency Badge & Goal Toggle */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-neutral-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-neutral-100 dark:border-neutral-800">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
+          <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
             <TrendingUp className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base sm:text-lg font-bold tracking-tight text-neutral-900">
+              <h3 className="text-base sm:text-lg font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
                 Weekly Review Consistency
               </h3>
-              <span className="hidden xs:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/50">
+              <span className="hidden xs:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50">
                 <CheckCircle2 className="w-3 h-3" />
                 {stats.consistencyRate}% Consistent
               </span>
-              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200/50">
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50">
                 Synced to Account
               </span>
             </div>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
               Spaced repetition daily retention & 7-day review activity for {profile?.displayName || user.displayName || user.email}
             </p>
           </div>
@@ -268,8 +272,8 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
             onClick={() => setShowGoalLine((prev) => !prev)}
             className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition-colors flex items-center gap-1.5 cursor-pointer ${
               showGoalLine
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
-                : 'bg-neutral-50 text-neutral-600 border-neutral-200/60 hover:bg-neutral-100'
+                ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/50'
+                : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200/60 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700'
             }`}
             title="Toggle daily target benchmark line"
           >
@@ -278,7 +282,7 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
           </button>
 
           <div
-            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-orange-50 text-orange-700 border border-orange-200/60 text-xs font-semibold"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 border border-orange-200/60 dark:border-orange-800/50 text-xs font-semibold"
             title="Active consecutive days studied"
           >
             <Flame className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
@@ -290,73 +294,73 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
       {/* 4 Summary Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-6">
         {/* Total This Week */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-neutral-50 border border-black/5 flex flex-col justify-between">
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/70 border border-black/5 dark:border-white/10 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+            <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
               7-Day Total
             </span>
             <Sparkles className="w-3.5 h-3.5 text-blue-500" />
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-xl sm:text-2xl font-bold text-neutral-900">
+            <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">
               {stats.totalWeeklyReviews}
             </span>
-            <span className="text-xs text-neutral-500 font-medium">cards</span>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">cards</span>
           </div>
         </div>
 
         {/* Daily Average */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-neutral-50 border border-black/5 flex flex-col justify-between">
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/70 border border-black/5 dark:border-white/10 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+            <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
               Daily Avg
             </span>
             <Zap className="w-3.5 h-3.5 text-amber-500" />
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-xl sm:text-2xl font-bold text-neutral-900">
+            <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">
               {stats.dailyAverage}
             </span>
-            <span className="text-xs text-neutral-500 font-medium">/ day</span>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">/ day</span>
           </div>
         </div>
 
         {/* Target Met */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-neutral-50 border border-black/5 flex flex-col justify-between">
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/70 border border-black/5 dark:border-white/10 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+            <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
               Goal Met
             </span>
             <Target className="w-3.5 h-3.5 text-emerald-600" />
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-xl sm:text-2xl font-bold text-emerald-700">
+            <span className="text-xl sm:text-2xl font-bold text-emerald-700 dark:text-emerald-400">
               {stats.daysAchievedTarget}
             </span>
-            <span className="text-xs text-neutral-500 font-medium">of 7 days</span>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">of 7 days</span>
           </div>
         </div>
 
         {/* Active Days */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-neutral-50 border border-black/5 flex flex-col justify-between">
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/70 border border-black/5 dark:border-white/10 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+            <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
               Study Days
             </span>
             <Calendar className="w-3.5 h-3.5 text-indigo-500" />
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-xl sm:text-2xl font-bold text-neutral-900">
+            <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">
               {stats.activeDaysCount}
             </span>
-            <span className="text-xs text-neutral-500 font-medium">of 7 active</span>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">of 7 active</span>
           </div>
         </div>
       </div>
 
       {/* Zero review state indicator if new user */}
       {stats.totalWeeklyReviews === 0 && !isLoadingHistory && (
-        <div className="mb-3 px-4 py-2.5 rounded-2xl bg-blue-50/70 border border-blue-100 flex items-center gap-2.5 text-xs text-blue-700">
+        <div className="mb-3 px-4 py-2.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40 flex items-center gap-2.5 text-xs text-blue-700 dark:text-blue-300">
           <Sparkles className="w-4 h-4 shrink-0" />
           <span>No reviews recorded yet for this 7-day period. Rate flashcards above to see your progress curve grow!</span>
         </div>
@@ -372,19 +376,19 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
-              stroke="#f0f0f4"
+              stroke={isDark ? '#262626' : '#f0f0f4'}
             />
             <XAxis
               dataKey="dayLabel"
-              stroke="#8E8E93"
+              stroke={isDark ? '#a3a3a3' : '#8E8E93'}
               fontSize={11}
               fontWeight={500}
               tickLine={false}
-              axisLine={{ stroke: '#E5E5EA' }}
+              axisLine={{ stroke: isDark ? '#333333' : '#E5E5EA' }}
               dy={6}
             />
             <YAxis
-              stroke="#8E8E93"
+              stroke={isDark ? '#a3a3a3' : '#8E8E93'}
               fontSize={11}
               tickLine={false}
               axisLine={false}
@@ -403,7 +407,7 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
                 label={{
                   value: `Goal: ${DEFAULT_DAILY_TARGET}`,
                   position: 'insideTopRight',
-                  fill: '#059669',
+                  fill: isDark ? '#34D399' : '#059669',
                   fontSize: 10,
                   fontWeight: 600,
                   offset: 4,
@@ -421,13 +425,13 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
               activeDot={{
                 r: 6,
                 fill: '#007AFF',
-                stroke: '#FFFFFF',
+                stroke: isDark ? '#171717' : '#FFFFFF',
                 strokeWidth: 2.5,
               }}
               dot={{
                 r: 4,
                 fill: '#007AFF',
-                stroke: '#FFFFFF',
+                stroke: isDark ? '#171717' : '#FFFFFF',
                 strokeWidth: 2,
               }}
               animationDuration={500}
@@ -437,18 +441,18 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
       </div>
 
       {/* Weekday Status Day-Pills */}
-      <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mt-4 pt-4 border-t border-neutral-100">
+      <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
         {stats.dailyBreakdown.map((item) => (
           <div
             key={item.dateStr}
             className={`flex flex-col items-center justify-center p-2 rounded-xl text-center transition-all ${
               item.isToday
-                ? 'bg-blue-50/80 border border-blue-200/80 text-blue-900 shadow-2xs font-bold'
+                ? 'bg-blue-50/80 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800 text-blue-900 dark:text-blue-100 shadow-2xs font-bold'
                 : item.achievedTarget
-                ? 'bg-emerald-50/60 border border-emerald-200/50 text-emerald-900'
+                ? 'bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-100'
                 : item.reviews > 0
-                ? 'bg-neutral-50 border border-black/5 text-neutral-800'
-                : 'bg-neutral-50/40 border border-transparent text-neutral-400'
+                ? 'bg-neutral-50 dark:bg-neutral-800 border border-black/5 dark:border-white/10 text-neutral-800 dark:text-neutral-200'
+                : 'bg-neutral-50/40 dark:bg-neutral-800/30 border border-transparent text-neutral-400 dark:text-neutral-500'
             }`}
           >
             <span className="text-[10px] sm:text-[11px] uppercase tracking-wider font-semibold opacity-75">
@@ -459,15 +463,15 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
             </span>
             <div className="h-3 flex items-center justify-center">
               {item.achievedTarget ? (
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               ) : item.reviews > 0 ? (
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
               ) : (
-                <span className="w-1 h-1 rounded-full bg-neutral-300" />
+                <span className="w-1 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600" />
               )}
             </div>
             {item.isToday && (
-              <span className="text-[9px] text-blue-600 font-bold uppercase tracking-tight mt-0.5">
+              <span className="text-[9px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tight mt-0.5">
                 Today
               </span>
             )}

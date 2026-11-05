@@ -4,6 +4,7 @@ import React from 'react';
 import { Sparkles, Layers, FileSpreadsheet, Calendar, Volume2, VolumeX, Flame } from 'lucide-react';
 import { isSoundEnabled, setSoundEnabled, playHapticFeedback } from '@/lib/audio';
 import { UserAccountMenu } from './UserAccountMenu';
+import { ThemeToggle } from './ThemeToggle';
 
 export type ActiveTab = 'study' | 'decks' | 'import' | 'schedule';
 
@@ -41,7 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/80 border-b border-black/5 shadow-xs">
+    <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/80 dark:bg-neutral-900/80 border-b border-black/5 dark:border-white/10 shadow-xs transition-colors">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
         {/* Apple-style Brand / App Identity */}
         <div
@@ -53,15 +54,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-base tracking-tight text-neutral-900">
+              <span className="font-semibold text-base tracking-tight text-neutral-900 dark:text-neutral-100">
                 Language Flashcards
               </span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200/60">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60">
                 SRS
               </span>
             </div>
-            <p className="text-xs text-neutral-500 hidden sm:block">
-              Spaced Repetition & Smart Decks
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 hidden sm:block">
+              Spaced Repetition &amp; Smart Decks
             </p>
           </div>
         </div>
@@ -69,15 +70,15 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Apple Segmented Control */}
         <nav
           aria-label="Navigation tabs"
-          className="flex items-center p-1 bg-neutral-200/70 backdrop-blur-md rounded-2xl border border-black/5"
+          className="flex items-center p-1 bg-neutral-200/70 dark:bg-neutral-800/80 backdrop-blur-md rounded-2xl border border-black/5 dark:border-white/10 transition-colors"
         >
           <button
             id="tab-study-btn"
             onClick={() => handleTabClick('study')}
-            className={`relative flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 ${
+            className={`relative flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer ${
               activeTab === 'study'
-                ? 'bg-white text-neutral-900 shadow-xs font-semibold'
-                : 'text-neutral-600 hover:text-neutral-900'
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -99,10 +100,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="tab-decks-btn"
             onClick={() => handleTabClick('decks')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer ${
               activeTab === 'decks'
-                ? 'bg-white text-neutral-900 shadow-xs font-semibold'
-                : 'text-neutral-600 hover:text-neutral-900'
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
@@ -112,10 +113,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="tab-import-btn"
             onClick={() => handleTabClick('import')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer ${
               activeTab === 'import'
-                ? 'bg-white text-neutral-900 shadow-xs font-semibold'
-                : 'text-neutral-600 hover:text-neutral-900'
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
             }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -125,10 +126,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="tab-schedule-btn"
             onClick={() => handleTabClick('schedule')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer ${
               activeTab === 'schedule'
-                ? 'bg-white text-neutral-900 shadow-xs font-semibold'
-                : 'text-neutral-600 hover:text-neutral-900'
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
@@ -136,11 +137,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </nav>
 
-        {/* Right Utility: Streak, Sound, and Account */}
-        <div className="flex items-center gap-2">
+        {/* Right Utility: Streak, Sound, Global Theme Toggle, and Account */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <div
             title={`${streakDays} Day Learning Streak`}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 border border-orange-200/60 text-orange-600 text-xs font-semibold select-none"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 dark:bg-orange-950/40 border border-orange-200/60 dark:border-orange-800/40 text-orange-600 dark:text-orange-400 text-xs font-semibold select-none"
           >
             <Flame className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
             <span>{streakDays}d</span>
@@ -150,7 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             id="sound-toggle-btn"
             onClick={toggleSound}
             aria-label={soundState ? 'Mute sound' : 'Unmute sound'}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
             title={soundState ? 'Sound on' : 'Sound muted'}
           >
             {soundState ? (
@@ -159,6 +160,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               <VolumeX className="w-4 h-4 text-neutral-400" />
             )}
           </button>
+
+          {/* Global Theme Toggle Button (Light / Dark) */}
+          <ThemeToggle />
 
           {/* Account Profile & Cloud Sync */}
           <UserAccountMenu totalDecks={totalDecks} totalCards={totalCards} />

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer utilities {
   .perspective-1000 {
@@ -28,6 +29,12 @@ body {
   background-color: #f2f2f7;
   color: #1c1c1e;
   user-select: none;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.dark body {
+  background-color: #0f141c;
+  color: #f3f4f6;
 }
 
 /* Custom subtle scrollbar */
@@ -44,4 +51,11 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.25);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }

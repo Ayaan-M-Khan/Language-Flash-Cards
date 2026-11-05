@@ -62,7 +62,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
         onClick={handleSignIn}
         disabled={isSyncing}
         title="Sign in with your Google Account to save progress, streaks, and language decks"
-        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-neutral-300 text-neutral-800 text-xs font-semibold shadow-2xs hover:bg-neutral-50 active:scale-98 transition-all duration-200 disabled:opacity-60"
+        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-semibold shadow-2xs hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-98 transition-all duration-200 disabled:opacity-60 cursor-pointer"
       >
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
           <path
@@ -99,7 +99,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
           playHapticFeedback('tap');
           setIsOpen(!isOpen);
         }}
-        className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full bg-white/90 border border-black/5 hover:border-black/10 shadow-2xs hover:shadow-xs active:scale-98 transition-all"
+        className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full bg-white/90 dark:bg-neutral-800/90 border border-black/5 dark:border-white/10 hover:border-black/10 dark:hover:border-white/20 shadow-2xs hover:shadow-xs active:scale-98 transition-all cursor-pointer"
         title={`Account: ${user.email} (Cloud Synced)`}
       >
         {user.photoURL ? (
@@ -109,7 +109,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
             width={28}
             height={28}
             referrerPolicy="no-referrer"
-            className="w-7 h-7 rounded-full object-cover border border-neutral-200"
+            className="w-7 h-7 rounded-full object-cover border border-neutral-200 dark:border-neutral-700"
           />
         ) : (
           <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">
@@ -123,7 +123,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
           ) : (
             <CloudCheck className="w-3.5 h-3.5 text-emerald-500" />
           )}
-          <span className="text-xs font-medium text-neutral-700 max-w-[80px] sm:max-w-[120px] truncate">
+          <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300 max-w-[80px] sm:max-w-[120px] truncate">
             {user.displayName?.split(' ')[0] || user.email?.split('@')[0]}
           </span>
         </div>
@@ -131,9 +131,9 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
 
       {/* Apple Card Popover Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 rounded-3xl bg-white/95 backdrop-blur-2xl border border-neutral-200/80 shadow-xl p-4 text-neutral-900 z-50 animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-2 w-72 rounded-3xl bg-white/95 dark:bg-neutral-900/95 backdrop-blur-2xl border border-neutral-200/80 dark:border-neutral-800 shadow-xl p-4 text-neutral-900 dark:text-neutral-100 z-50 animate-in fade-in zoom-in-95 duration-150">
           {/* User Header */}
-          <div className="flex items-center gap-3 pb-3 border-b border-neutral-100">
+          <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
             {user.photoURL ? (
               <Image
                 src={user.photoURL}
@@ -141,7 +141,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
                 width={44}
                 height={44}
                 referrerPolicy="no-referrer"
-                className="w-11 h-11 rounded-2xl object-cover border border-neutral-200 shrink-0"
+                className="w-11 h-11 rounded-2xl object-cover border border-neutral-200 dark:border-neutral-700 shrink-0"
               />
             ) : (
               <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0">
@@ -149,13 +149,13 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
               </div>
             )}
             <div className="overflow-hidden">
-              <h4 className="text-sm font-bold text-neutral-900 truncate">
+              <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 truncate">
                 {user.displayName || 'Language Learner'}
               </h4>
-              <p className="text-xs text-neutral-500 truncate">{user.email}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{user.email}</p>
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wider">
+                <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold uppercase tracking-wider">
                   Cloud Synced
                 </span>
               </div>
@@ -164,61 +164,61 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
 
           {/* Progress & Mastery Overview */}
           <div className="py-3 grid grid-cols-3 gap-2 text-center">
-            <div className="p-2 rounded-2xl bg-orange-50/80 border border-orange-100">
-              <div className="flex items-center justify-center text-orange-600 mb-0.5">
+            <div className="p-2 rounded-2xl bg-orange-50/80 dark:bg-orange-950/40 border border-orange-100 dark:border-orange-900/40">
+              <div className="flex items-center justify-center text-orange-600 dark:text-orange-400 mb-0.5">
                 <Flame className="w-4 h-4 fill-orange-500" />
               </div>
-              <div className="text-sm font-bold text-orange-700">
+              <div className="text-sm font-bold text-orange-700 dark:text-orange-300">
                 {profile?.streak ?? 0}d
               </div>
-              <div className="text-[10px] text-orange-600/80 font-medium">Streak</div>
+              <div className="text-[10px] text-orange-600/80 dark:text-orange-400/80 font-medium">Streak</div>
             </div>
 
-            <div className="p-2 rounded-2xl bg-indigo-50/80 border border-indigo-100">
-              <div className="flex items-center justify-center text-indigo-600 mb-0.5">
+            <div className="p-2 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40">
+              <div className="flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-0.5">
                 <Award className="w-4 h-4" />
               </div>
-              <div className="text-sm font-bold text-indigo-700">
+              <div className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
                 {profile?.cardsMastered ?? 0}
               </div>
-              <div className="text-[10px] text-indigo-600/80 font-medium">Mastered</div>
+              <div className="text-[10px] text-indigo-600/80 dark:text-indigo-400/80 font-medium">Mastered</div>
             </div>
 
-            <div className="p-2 rounded-2xl bg-blue-50/80 border border-blue-100">
-              <div className="flex items-center justify-center text-blue-600 mb-0.5">
+            <div className="p-2 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40">
+              <div className="flex items-center justify-center text-blue-600 dark:text-blue-400 mb-0.5">
                 <Sparkles className="w-4 h-4" />
               </div>
-              <div className="text-sm font-bold text-blue-700">
+              <div className="text-sm font-bold text-blue-700 dark:text-blue-300">
                 {profile?.totalReviews ?? 0}
               </div>
-              <div className="text-[10px] text-blue-600/80 font-medium">Reviews</div>
+              <div className="text-[10px] text-blue-600/80 dark:text-blue-400/80 font-medium">Reviews</div>
             </div>
           </div>
 
           {/* Cloud Storage Status Details */}
-          <div className="mb-2 px-3 py-2 rounded-2xl bg-neutral-50 border border-neutral-200/60 text-xs text-neutral-600 flex items-center justify-between">
+          <div className="mb-2 px-3 py-2 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/60 dark:border-neutral-700/60 text-xs text-neutral-600 dark:text-neutral-400 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Cloud className="w-3.5 h-3.5 text-neutral-500" />
+              <Cloud className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
               <span>Saved Decks</span>
             </div>
-            <span className="font-semibold text-neutral-900">
+            <span className="font-semibold text-neutral-900 dark:text-neutral-100">
               {totalDecks} decks ({totalCards} cards)
             </span>
           </div>
 
-          <div className="mb-3 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-100/80 text-[11px] text-emerald-800 flex items-center justify-between">
+          <div className="mb-3 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100/80 dark:border-emerald-800/40 text-[11px] text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Multi-Device Live Sync
             </span>
-            <span className="font-semibold text-emerald-700">Active</span>
+            <span className="font-semibold text-emerald-700 dark:text-emerald-400">Active</span>
           </div>
 
           {/* Sign Out Button */}
           <button
             id="signout-btn"
             onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-100 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-100 dark:border-rose-900/30 transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>

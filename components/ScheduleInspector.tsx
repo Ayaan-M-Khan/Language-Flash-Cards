@@ -100,14 +100,14 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold mb-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50 text-xs font-semibold mb-2">
             <Calendar className="w-3.5 h-3.5" />
             <span>SuperMemo SM-2 Analytics</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 mb-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-1">
             Spaced Repetition Schedule
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500">
+          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
             Scientifically calculated memory intervals based on your recall accuracy
           </p>
         </div>
@@ -128,94 +128,94 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
 
       {/* Analytics KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div className="bg-white rounded-3xl p-4 shadow-xs border border-black/5">
-          <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider block mb-1">
+        <div className="bg-white dark:bg-neutral-900 rounded-3xl p-4 shadow-xs border border-black/5 dark:border-white/10">
+          <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1">
             Active Vocabulary
           </span>
-          <span className="text-2xl font-bold text-neutral-900">{cards.length}</span>
-          <span className="text-[11px] text-neutral-400 block mt-0.5">Total words</span>
+          <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{cards.length}</span>
+          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 block mt-0.5">Total words</span>
         </div>
 
-        <div className="bg-white rounded-3xl p-4 shadow-xs border border-black/5">
-          <span className="text-xs font-semibold text-emerald-600 uppercase tracking-wider block mb-1">
+        <div className="bg-white dark:bg-neutral-900 rounded-3xl p-4 shadow-xs border border-black/5 dark:border-white/10">
+          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block mb-1">
             Mastered
           </span>
-          <span className="text-2xl font-bold text-emerald-700">{masteredCount}</span>
-          <span className="text-[11px] text-neutral-400 block mt-0.5">
+          <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">{masteredCount}</span>
+          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 block mt-0.5">
             {cards.length > 0 ? Math.round((masteredCount / cards.length) * 100) : 0}% of total
           </span>
         </div>
 
-        <div className="bg-white rounded-3xl p-4 shadow-xs border border-black/5">
-          <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider block mb-1">
+        <div className="bg-white dark:bg-neutral-900 rounded-3xl p-4 shadow-xs border border-black/5 dark:border-white/10">
+          <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider block mb-1">
             In Review
           </span>
-          <span className="text-2xl font-bold text-blue-700">{inReviewCount}</span>
-          <span className="text-[11px] text-neutral-400 block mt-0.5">Active recall loop</span>
+          <span className="text-2xl font-bold text-blue-700 dark:text-blue-400">{inReviewCount}</span>
+          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 block mt-0.5">Active recall loop</span>
         </div>
 
-        <div className="bg-white rounded-3xl p-4 shadow-xs border border-black/5">
-          <span className="text-xs font-semibold text-purple-600 uppercase tracking-wider block mb-1">
+        <div className="bg-white dark:bg-neutral-900 rounded-3xl p-4 shadow-xs border border-black/5 dark:border-white/10">
+          <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider block mb-1">
             Avg Ease Factor
           </span>
-          <span className="text-2xl font-bold text-purple-700">{avgEase}</span>
-          <span className="text-[11px] text-neutral-400 block mt-0.5">Standard: 2.50</span>
+          <span className="text-2xl font-bold text-purple-700 dark:text-purple-400">{avgEase}</span>
+          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 block mt-0.5">Standard: 2.50</span>
         </div>
       </div>
 
       {/* Spaced Horizon Cards */}
-      <div className="bg-white rounded-3xl p-5 shadow-xs border border-black/5 mb-8">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4">
+      <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 shadow-xs border border-black/5 dark:border-white/10 mb-8">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-4">
           Upcoming Review Horizon
         </h3>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
-          <div className="p-3.5 rounded-2xl bg-rose-50/70 border border-rose-200/60">
-            <span className="text-[11px] font-bold uppercase text-rose-700 block mb-1">
+          <div className="p-3.5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/60">
+            <span className="text-[11px] font-bold uppercase text-rose-700 dark:text-rose-300 block mb-1">
               Due Today
             </span>
-            <span className="text-2xl font-bold text-rose-800">{timeline.today.length}</span>
-            <span className="text-[10px] text-rose-600 block mt-1">Immediate focus</span>
+            <span className="text-2xl font-bold text-rose-800 dark:text-rose-200">{timeline.today.length}</span>
+            <span className="text-[10px] text-rose-600 dark:text-rose-400 block mt-1">Immediate focus</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/60">
-            <span className="text-[11px] font-bold uppercase text-amber-700 block mb-1">
+          <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60">
+            <span className="text-[11px] font-bold uppercase text-amber-700 dark:text-amber-300 block mb-1">
               Tomorrow
             </span>
-            <span className="text-2xl font-bold text-amber-800">{timeline.tomorrow.length}</span>
-            <span className="text-[10px] text-amber-600 block mt-1">24 hr retention</span>
+            <span className="text-2xl font-bold text-amber-800 dark:text-amber-200">{timeline.tomorrow.length}</span>
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 block mt-1">24 hr retention</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200/60">
-            <span className="text-[11px] font-bold uppercase text-blue-700 block mb-1">
+          <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/60">
+            <span className="text-[11px] font-bold uppercase text-blue-700 dark:text-blue-300 block mb-1">
               2 – 4 Days
             </span>
-            <span className="text-2xl font-bold text-blue-800">{timeline.upcoming2to4.length}</span>
-            <span className="text-[10px] text-blue-600 block mt-1">Strengthening</span>
+            <span className="text-2xl font-bold text-blue-800 dark:text-blue-200">{timeline.upcoming2to4.length}</span>
+            <span className="text-[10px] text-blue-600 dark:text-blue-400 block mt-1">Strengthening</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/60">
-            <span className="text-[11px] font-bold uppercase text-indigo-700 block mb-1">
+          <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60">
+            <span className="text-[11px] font-bold uppercase text-indigo-700 dark:text-indigo-300 block mb-1">
               Next Week
             </span>
-            <span className="text-2xl font-bold text-indigo-800">{timeline.nextWeek.length}</span>
-            <span className="text-[10px] text-indigo-600 block mt-1">5-14 day interval</span>
+            <span className="text-2xl font-bold text-indigo-800 dark:text-indigo-200">{timeline.nextWeek.length}</span>
+            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 block mt-1">5-14 day interval</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/60">
-            <span className="text-[11px] font-bold uppercase text-emerald-700 block mb-1">
+          <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
+            <span className="text-[11px] font-bold uppercase text-emerald-700 dark:text-emerald-300 block mb-1">
               Long Term
             </span>
-            <span className="text-2xl font-bold text-emerald-800">{timeline.longTerm.length}</span>
-            <span className="text-[10px] text-emerald-600 block mt-1">&gt; 2 weeks memory</span>
+            <span className="text-2xl font-bold text-emerald-800 dark:text-emerald-200">{timeline.longTerm.length}</span>
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block mt-1">&gt; 2 weeks memory</span>
           </div>
         </div>
       </div>
 
       {/* Master Vocabulary Table with Filters */}
-      <div className="bg-white rounded-3xl p-5 shadow-xs border border-black/5">
+      <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 shadow-xs border border-black/5 dark:border-white/10">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
             Vocabulary Matrix & Schedules ({filteredCards.length})
           </h3>
 
@@ -223,13 +223,13 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             {/* Search */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-2.5" />
+              <Search className="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 absolute left-2.5 top-2.5" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search word..."
-                className="pl-8 pr-3 py-1.5 text-xs rounded-xl bg-neutral-50 border border-black/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-36 sm:w-48"
+                className="pl-8 pr-3 py-1.5 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-black/10 dark:border-white/10 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-36 sm:w-48"
               />
             </div>
 
@@ -237,7 +237,7 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
             <select
               value={selectedDeckFilter}
               onChange={(e) => setSelectedDeckFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs rounded-xl bg-neutral-50 border border-black/10 text-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="px-2.5 py-1.5 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-black/10 dark:border-white/10 text-neutral-700 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
               <option value="all">All Decks</option>
               {decks.map((d) => (
@@ -251,7 +251,7 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
             <select
               value={selectedStateFilter}
               onChange={(e) => setSelectedStateFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs rounded-xl bg-neutral-50 border border-black/10 text-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="px-2.5 py-1.5 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-black/10 dark:border-white/10 text-neutral-700 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
               <option value="all">All States</option>
               <option value="new">New</option>
@@ -263,9 +263,9 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
         </div>
 
         {/* Data Table */}
-        <div className="overflow-x-auto rounded-2xl border border-black/5">
+        <div className="overflow-x-auto rounded-2xl border border-black/5 dark:border-white/10">
           <table className="w-full text-left text-xs">
-            <thead className="bg-neutral-50 border-b border-black/5 text-neutral-500 font-semibold uppercase text-[10px] tracking-wider">
+            <thead className="bg-neutral-50 dark:bg-neutral-800/80 border-b border-black/5 dark:border-white/10 text-neutral-500 dark:text-neutral-400 font-semibold uppercase text-[10px] tracking-wider">
               <tr>
                 <th className="py-2.5 px-3">English Meaning</th>
                 <th className="py-2.5 px-3">Target Foreign Word</th>
@@ -276,55 +276,55 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
                 <th className="py-2.5 px-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-black/5 text-neutral-800">
+            <tbody className="divide-y divide-black/5 dark:divide-white/5 text-neutral-800 dark:text-neutral-200">
               {filteredCards.map((card) => {
                 const deck = decks.find((d) => d.id === card.deckId);
                 const isDue = isCardDue(card);
 
                 return (
-                  <tr key={card.id} className="hover:bg-neutral-50/80 transition-colors">
+                  <tr key={card.id} className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/50 transition-colors">
                     <td className="py-2.5 px-3 font-medium">{card.english}</td>
-                    <td className="py-2.5 px-3 font-semibold text-neutral-900">
+                    <td className="py-2.5 px-3 font-semibold text-neutral-900 dark:text-neutral-100">
                       <div className="flex items-center gap-1.5">
                         <span>{card.targetWord}</span>
                         <button
                           onClick={() => handleSpeak(card)}
-                          className="text-neutral-400 hover:text-blue-600 transition-colors"
+                          className="text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                           title="Listen"
                         >
                           <Volume2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
-                    <td className="py-2.5 px-3 text-neutral-500 text-[11px]">
+                    <td className="py-2.5 px-3 text-neutral-500 dark:text-neutral-400 text-[11px]">
                       {deck?.title || 'Custom'}
                     </td>
                     <td className="py-2.5 px-3">
                       <span
                         className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                           card.state === 'mastered'
-                            ? 'bg-emerald-100 text-emerald-700'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
                             : card.state === 'review'
-                            ? 'bg-blue-100 text-blue-700'
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400'
                             : card.state === 'learning'
-                            ? 'bg-orange-100 text-orange-700'
-                            : 'bg-neutral-200 text-neutral-700'
+                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-400'
+                            : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
                         }`}
                       >
                         {card.state}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 text-neutral-600 font-mono text-[11px]">
+                    <td className="py-2.5 px-3 text-neutral-600 dark:text-neutral-400 font-mono text-[11px]">
                       {formatInterval(card.intervalDays)}
                     </td>
-                    <td className="py-2.5 px-3 text-neutral-600 font-mono text-[11px]">
+                    <td className="py-2.5 px-3 text-neutral-600 dark:text-neutral-400 font-mono text-[11px]">
                       {card.easeFactor.toFixed(2)}
                     </td>
                     <td className="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
                       {!isDue && (
                         <button
                           onClick={() => onMakeCardDueToday(card.id)}
-                          className="px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium transition-colors"
+                          className="px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200 font-medium transition-colors"
                           title="Make card due immediately for extra practice"
                         >
                           Study Now
@@ -332,7 +332,7 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
                       )}
                       <button
                         onClick={() => onResetCardSchedule(card.id)}
-                        className="px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-rose-50 hover:text-rose-600 text-neutral-600 transition-colors"
+                        className="px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-rose-50 hover:text-rose-600 text-neutral-600 dark:bg-neutral-800 dark:hover:bg-rose-950/50 dark:hover:text-rose-400 dark:text-neutral-400 transition-colors"
                         title="Reset progress back to new"
                       >
                         Reset
@@ -344,7 +344,7 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
 
               {filteredCards.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-xs text-neutral-400">
+                  <td colSpan={7} className="p-8 text-center text-xs text-neutral-400 dark:text-neutral-500">
                     No vocabulary items match your search or filter.
                   </td>
                 </tr>

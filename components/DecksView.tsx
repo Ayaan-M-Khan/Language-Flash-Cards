@@ -231,42 +231,42 @@ export const DecksView: React.FC<DecksViewProps> = ({
 
       {/* Apple-styled Stats Overview Bento Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 tabular-nums">
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 border border-black/5 shadow-2xs">
-          <div className="flex items-center justify-between text-neutral-400 mb-2">
-            <span className="text-xs font-medium text-neutral-500">Total Decks</span>
+        <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md rounded-2xl p-4 border border-black/5 dark:border-white/10 shadow-2xs">
+          <div className="flex items-center justify-between text-neutral-400 dark:text-neutral-500 mb-2">
+            <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Total Decks</span>
             <Layers className="w-4 h-4 text-blue-500" />
           </div>
-          <div className="text-2xl font-bold text-neutral-900">{decks.length}</div>
-          <p className="text-[11px] text-neutral-400 mt-0.5">Across {availableLanguages.length} languages</p>
+          <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{decks.length}</div>
+          <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5">Across {availableLanguages.length} languages</p>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 border border-black/5 shadow-2xs">
-          <div className="flex items-center justify-between text-neutral-400 mb-2">
-            <span className="text-xs font-medium text-neutral-500">Total Cards</span>
+        <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md rounded-2xl p-4 border border-black/5 dark:border-white/10 shadow-2xs">
+          <div className="flex items-center justify-between text-neutral-400 dark:text-neutral-500 mb-2">
+            <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Total Cards</span>
             <BookOpen className="w-4 h-4 text-indigo-500" />
           </div>
-          <div className="text-2xl font-bold text-neutral-900">{totalCardsCount}</div>
-          <p className="text-[11px] text-neutral-400 mt-0.5">In active memory loop</p>
+          <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{totalCardsCount}</div>
+          <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5">In active memory loop</p>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 border border-black/5 shadow-2xs">
-          <div className="flex items-center justify-between text-neutral-400 mb-2">
-            <span className="text-xs font-medium text-neutral-500">Due Today</span>
+        <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md rounded-2xl p-4 border border-black/5 dark:border-white/10 shadow-2xs">
+          <div className="flex items-center justify-between text-neutral-400 dark:text-neutral-500 mb-2">
+            <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Due Today</span>
             <Clock className="w-4 h-4 text-rose-500" />
           </div>
-          <div className="text-2xl font-bold text-rose-600">{totalDueToday}</div>
-          <p className="text-[11px] text-neutral-400 mt-0.5">
+          <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">{totalDueToday}</div>
+          <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5">
             {totalDueToday > 0 ? 'Ready for review' : 'All caught up!'}
           </p>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 border border-black/5 shadow-2xs">
-          <div className="flex items-center justify-between text-neutral-400 mb-2">
-            <span className="text-xs font-medium text-neutral-500">Mastered Words</span>
+        <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md rounded-2xl p-4 border border-black/5 dark:border-white/10 shadow-2xs">
+          <div className="flex items-center justify-between text-neutral-400 dark:text-neutral-500 mb-2">
+            <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Mastered Words</span>
             <GraduationCap className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="text-2xl font-bold text-emerald-600">{totalMastered}</div>
-          <p className="text-[11px] text-neutral-400 mt-0.5">
+          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{totalMastered}</div>
+          <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5">
             {totalCardsCount > 0 ? Math.round((totalMastered / totalCardsCount) * 100) : 0}% of library
           </p>
         </div>
@@ -313,21 +313,21 @@ export const DecksView: React.FC<DecksViewProps> = ({
       />
 
       {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white/70 backdrop-blur-md p-2.5 rounded-2xl border border-black/5">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white/70 dark:bg-neutral-900/80 backdrop-blur-md p-2.5 rounded-2xl border border-black/5 dark:border-white/10">
         {/* Search Input */}
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
           <input
             type="text"
             placeholder="Search decks by title, language, or description..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 text-xs bg-neutral-100/80 rounded-xl border border-transparent focus:border-blue-500 focus:bg-white outline-hidden transition-all text-neutral-800 placeholder:text-neutral-400"
+            className="w-full pl-9 pr-4 py-1.5 text-xs bg-neutral-100/80 dark:bg-neutral-800/80 rounded-xl border border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-neutral-800 outline-hidden transition-all text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 hover:text-neutral-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
             >
               ✕
             </button>
@@ -340,7 +340,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
           <select
             value={selectedLanguage}
             onChange={(e) => setSelectedLanguage(e.target.value)}
-            className="px-3 py-1.5 text-xs rounded-xl bg-neutral-100 text-neutral-700 border border-neutral-200/80 outline-hidden font-medium"
+            className="px-3 py-1.5 text-xs rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 border border-neutral-200/80 dark:border-neutral-700 outline-hidden font-medium cursor-pointer"
           >
             <option value="all">All Languages</option>
             {availableLanguages.map((lang) => (
@@ -351,33 +351,33 @@ export const DecksView: React.FC<DecksViewProps> = ({
           </select>
 
           {/* Status Tabs */}
-          <div className="flex items-center p-0.5 bg-neutral-200/60 rounded-xl text-xs font-medium">
+          <div className="flex items-center p-0.5 bg-neutral-200/60 dark:bg-neutral-800 rounded-xl text-xs font-medium">
             <button
               onClick={() => setFilterMode('all')}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                 filterMode === 'all'
-                  ? 'bg-white text-neutral-900 shadow-2xs font-semibold'
-                  : 'text-neutral-600 hover:text-neutral-900'
+                  ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
               }`}
             >
               All
             </button>
             <button
               onClick={() => setFilterMode('due')}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                 filterMode === 'due'
-                  ? 'bg-white text-rose-600 shadow-2xs font-semibold'
-                  : 'text-neutral-600 hover:text-neutral-900'
+                  ? 'bg-white dark:bg-neutral-700 text-rose-600 dark:text-rose-400 shadow-2xs font-semibold'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
               }`}
             >
               Due
             </button>
             <button
               onClick={() => setFilterMode('mastered')}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                 filterMode === 'mastered'
-                  ? 'bg-white text-emerald-600 shadow-2xs font-semibold'
-                  : 'text-neutral-600 hover:text-neutral-900'
+                  ? 'bg-white dark:bg-neutral-700 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
               }`}
             >
               Mastered
@@ -408,27 +408,27 @@ export const DecksView: React.FC<DecksViewProps> = ({
                 playHapticFeedback('tap');
                 setSelectedDeckId(deck.id);
               }}
-              className={`group relative bg-white rounded-3xl p-5 transition-all flex flex-col justify-between cursor-pointer ${
+              className={`group relative bg-white dark:bg-neutral-900 rounded-3xl p-5 transition-all flex flex-col justify-between cursor-pointer ${
                 isSelectedForChart
-                  ? 'ring-2 ring-blue-600/80 border border-blue-200 shadow-sm'
-                  : 'shadow-xs hover:shadow-md border border-black/5 hover:border-black/10'
+                  ? 'ring-2 ring-blue-600/80 border border-blue-200 dark:border-blue-800 shadow-sm'
+                  : 'shadow-xs hover:shadow-md border border-black/5 dark:border-white/10 hover:border-black/10 dark:hover:border-white/20'
               }`}
             >
               {/* Top Row: Language & Menu */}
               <div>
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2 text-xs tabular-nums">
-                    <span className="font-semibold text-blue-600">
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">
                       {deck.language}
                     </span>
-                    <span className="text-neutral-300">·</span>
+                    <span className="text-neutral-300 dark:text-neutral-600">·</span>
                     {dueCards.length > 0 ? (
-                      <span className="inline-flex items-center gap-1 font-semibold text-rose-600">
+                      <span className="inline-flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400">
                         <Clock className="w-3 h-3" />
                         <span>{dueCards.length} due</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 font-medium text-emerald-700">
+                      <span className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
                         <CheckCircle2 className="w-3 h-3" />
                         <span>Caught up</span>
                       </span>
@@ -447,8 +447,8 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       title="Inspect mastery distribution"
                       className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
                         isSelectedForChart
-                          ? 'bg-blue-50 text-blue-600'
-                          : 'text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100'
+                          ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400'
+                          : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                       }`}
                     >
                       <BarChart3 className="w-4 h-4" />
@@ -464,7 +464,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                           setActiveMenuId((prev) => (prev === deck.id ? null : deck.id));
                         }}
                         aria-label="Deck options"
-                        className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer"
+                        className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
@@ -473,7 +473,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       {activeMenuId === deck.id && (
                         <div
                           onClick={(e) => e.stopPropagation()}
-                          className="absolute right-0 top-9 z-20 w-48 rounded-2xl bg-white p-1.5 shadow-lg border border-black/5 text-xs text-neutral-700"
+                          className="absolute right-0 top-9 z-20 w-48 rounded-2xl bg-white dark:bg-neutral-850 p-1.5 shadow-lg border border-black/5 dark:border-white/10 text-xs text-neutral-700 dark:text-neutral-200"
                         >
                           <button
                             type="button"
@@ -481,9 +481,9 @@ export const DecksView: React.FC<DecksViewProps> = ({
                               setActiveMenuId(null);
                               onInspectDeck(deck);
                             }}
-                            className="w-full text-left px-3 py-2 rounded-xl hover:bg-neutral-100 flex items-center gap-2 cursor-pointer"
+                            className="w-full text-left px-3 py-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 cursor-pointer"
                           >
-                            <BookOpen className="w-3.5 h-3.5 text-neutral-500" />
+                            <BookOpen className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
                             <span>Inspect Cards</span>
                           </button>
                           <button
@@ -492,11 +492,11 @@ export const DecksView: React.FC<DecksViewProps> = ({
                             onClick={() => handleExportDeckCsv(deck)}
                             className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
                               deckCards.length === 0
-                                ? 'text-neutral-300 cursor-not-allowed'
-                                : 'hover:bg-neutral-100 cursor-pointer'
+                                ? 'text-neutral-300 dark:text-neutral-600 cursor-not-allowed'
+                                : 'hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer'
                             }`}
                           >
-                            <Download className="w-3.5 h-3.5 text-neutral-500" />
+                            <Download className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
                             <span>Export Backup (.csv)</span>
                           </button>
                           <button
@@ -505,11 +505,11 @@ export const DecksView: React.FC<DecksViewProps> = ({
                             onClick={() => handleExportDeck(deck)}
                             className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
                               deckCards.length === 0
-                                ? 'text-neutral-300 cursor-not-allowed'
-                                : 'hover:bg-neutral-100 cursor-pointer'
+                                ? 'text-neutral-300 dark:text-neutral-600 cursor-not-allowed'
+                                : 'hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer'
                             }`}
                           >
-                            <Download className="w-3.5 h-3.5 text-neutral-500" />
+                            <Download className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
                             <span>Export Table (.tsv)</span>
                           </button>
                           {confirmDeleteId === deck.id ? (
@@ -529,7 +529,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteId(deck.id)}
-                              className="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-50 text-rose-600 flex items-center gap-2 cursor-pointer"
+                              className="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center gap-2 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               <span>Delete Deck</span>
@@ -547,26 +547,26 @@ export const DecksView: React.FC<DecksViewProps> = ({
                     e.stopPropagation();
                     onInspectDeck(deck);
                   }}
-                  className="text-base sm:text-lg font-bold text-neutral-900 tracking-tight cursor-pointer hover:text-blue-600 transition-colors mb-1.5 line-clamp-1"
+                  className="text-base sm:text-lg font-bold text-neutral-900 dark:text-neutral-100 tracking-tight cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors mb-1.5 line-clamp-1"
                 >
                   {deck.title}
                 </h3>
-                <p className="text-xs text-neutral-500 line-clamp-2 mb-4 leading-relaxed">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2 mb-4 leading-relaxed">
                   {deck.description || 'Vocabulary spaced repetition collection.'}
                 </p>
               </div>
 
               {/* Progress & Card State Segmented Bar */}
               <div>
-                <div className="flex items-center justify-between text-[11px] text-neutral-500 mb-1.5 tabular-nums">
-                  <span className="font-semibold text-neutral-700">
+                <div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400 mb-1.5 tabular-nums">
+                  <span className="font-semibold text-neutral-700 dark:text-neutral-300">
                     {deckCards.length} Total Cards
                   </span>
                   <span>{masteredPercent}% Mastered</span>
                 </div>
 
                 {/* Mini Visual SRS Progress Bar */}
-                <div className="h-2 w-full rounded-full bg-neutral-100 flex overflow-hidden mb-4">
+                <div className="h-2 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 flex overflow-hidden mb-4">
                   {masteredCount > 0 && (
                     <div
                       style={{ width: `${(masteredCount / deckCards.length) * 100}%` }}
@@ -602,11 +602,11 @@ export const DecksView: React.FC<DecksViewProps> = ({
                   onClick={(e) => e.stopPropagation()}
                   className="flex items-center justify-between gap-2 mb-3"
                 >
-                  <span className="text-[11px] font-medium text-neutral-500">Order</span>
+                  <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Order</span>
                   <div
                     role="group"
                     aria-label={`Card order for ${deck.title}`}
-                    className="inline-flex items-center p-0.5 bg-neutral-100 rounded-xl border border-neutral-200/70 text-[11px] font-medium"
+                    className="inline-flex items-center p-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-neutral-200/70 dark:border-neutral-700 text-[11px] font-medium"
                   >
                     <button
                       type="button"
@@ -619,8 +619,8 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       title="Show foreign word & transliteration first, then definition"
                       className={`px-2 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                         deckDirection === 'target-first'
-                          ? 'bg-white text-neutral-900 shadow-2xs font-semibold'
-                          : 'text-neutral-500 hover:text-neutral-800'
+                          ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
+                          : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
                       }`}
                     >
                       Word → Def
@@ -637,7 +637,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                         deckDirection === 'definition-first'
                           ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
-                          : 'text-neutral-500 hover:text-neutral-800'
+                          : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
                       }`}
                     >
                       <ArrowLeftRight className="w-3 h-3 shrink-0" />
@@ -658,7 +658,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                     className={`flex-1 py-2.5 px-3 rounded-2xl font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer tabular-nums ${
                       dueCards.length > 0
                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : 'bg-neutral-900 hover:bg-black text-white'
+                        : 'bg-neutral-900 dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900'
                     }`}
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
@@ -672,7 +672,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       playHapticFeedback('tap');
                       onInspectDeck(deck);
                     }}
-                    className="py-2.5 px-3 rounded-2xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium text-xs transition-colors cursor-pointer"
+                    className="py-2.5 px-3 rounded-2xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-medium text-xs transition-colors cursor-pointer"
                     title="View cards in table"
                   >
                     Browse
@@ -689,15 +689,15 @@ export const DecksView: React.FC<DecksViewProps> = ({
             playHapticFeedback('tap');
             onNavigateToImport();
           }}
-          className="border-2 border-dashed border-neutral-300 hover:border-blue-400 rounded-3xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:bg-blue-50/30 group min-h-[220px]"
+          className="border-2 border-dashed border-neutral-300 dark:border-neutral-700 hover:border-blue-400 dark:hover:border-blue-500 rounded-3xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:bg-blue-50/30 dark:hover:bg-blue-950/20 group min-h-[220px]"
         >
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 group-hover:bg-blue-100 text-blue-600 flex items-center justify-center mb-3 transition-colors">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 transition-colors">
             <Plus className="w-6 h-6" />
           </div>
-          <h4 className="text-sm font-bold text-neutral-800 mb-1 group-hover:text-blue-600 transition-colors">
+          <h4 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             Import Another Table
           </h4>
-          <p className="text-xs text-neutral-500 max-w-xs leading-relaxed">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-xs leading-relaxed">
             Paste rows with an English word and translation to generate a new smart deck.
           </p>
         </div>
@@ -705,10 +705,10 @@ export const DecksView: React.FC<DecksViewProps> = ({
 
       {/* Empty Search State */}
       {filteredDecks.length === 0 && (
-        <div className="bg-white rounded-3xl p-12 text-center border border-black/5 shadow-xs">
-          <Search className="w-8 h-8 text-neutral-300 mx-auto mb-3" />
-          <h3 className="font-bold text-base text-neutral-800 mb-1">No matching decks found</h3>
-          <p className="text-xs text-neutral-500 mb-4">
+        <div className="bg-white dark:bg-neutral-900 rounded-3xl p-12 text-center border border-black/5 dark:border-white/10 shadow-xs">
+          <Search className="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
+          <h3 className="font-bold text-base text-neutral-800 dark:text-neutral-200 mb-1">No matching decks found</h3>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
             Try adjusting your search keywords or filter options.
           </p>
           <button
@@ -717,7 +717,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
               setSelectedLanguage('all');
               setFilterMode('all');
             }}
-            className="px-4 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-xs font-semibold text-neutral-700"
+            className="px-4 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-semibold text-neutral-700 dark:text-neutral-200 cursor-pointer"
           >
             Clear Filters
           </button>
