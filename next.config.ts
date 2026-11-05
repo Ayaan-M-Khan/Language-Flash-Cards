@@ -7,6 +7,7 @@ export default function config(phase: string): NextConfig {
   return {
     // Isolate dev server artifacts from `next build` so compiling never wipes active dev manifests or chunks
     distDir: isDevServer ? '.next-dev' : '.next',
+    output: 'standalone',
     reactStrictMode: true,
     eslint: {
       ignoreDuringBuilds: true,
