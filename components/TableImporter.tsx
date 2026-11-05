@@ -189,64 +189,27 @@ export const TableImporter: React.FC<TableImporterProps> = ({
     setErrorMessage(null);
 
     try {
-      // 1. DIVIDE 81-CARD ARRAY INTO CHUNKS OF 15-20 (chunk size 16)
-      const CHUNK_SIZE = 16;
-      const chunks: (typeof validRows)[] = [];
-      for (let i = 0; i < validRows.length; i += CHUNK_SIZE) {
-        chunks.push(validRows.slice(i, i + CHUNK_SIZE));
+      const res = await fetch('/api/generate-decks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          words: validRows,
+          deckTitle: deckTitle.trim() || parsed.detectedTitle,
+          targetLanguage: targetLanguage.trim() || parsed.detectedLanguage,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
       }
 
-      // 2. USE Promise.all TO FETCH AI ENHANCEMENTS FOR EACH BATCH CONCURRENTLY
-      const batchPromises = chunks.map(async (chunk, chunkIdx) => {
-        try {
-          const res = await fetch('/api/generate-decks', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              words: chunk,
-              deckTitle: deckTitle.trim() || parsed.detectedTitle,
-              targetLanguage: targetLanguage.trim() || parsed.detectedLanguage,
-              batchIndex: chunkIdx,
-              totalBatches: chunks.length,
-            }),
-          });
-
-          if (!res.ok) {
-            console.warn(`Batch ${chunkIdx + 1}/${chunks.length} request returned status ${res.status}`);
-            return null;
-          }
-
-          return await res.json();
-        } catch (batchErr) {
-          console.warn(`Batch ${chunkIdx + 1}/${chunks.length} fetch failed:`, batchErr);
-          return null;
-        }
-      });
-
-      const batchResults = await Promise.all(batchPromises);
-
-      // Collect all enriched cards and metadata across all batches
-      const allAiCards: any[] = [];
-      let detectedMeta: any = null;
-      let hasAnyFallback = false;
-
-      batchResults.forEach((batch) => {
-        if (batch) {
-          if (!detectedMeta) {
-            detectedMeta = batch;
-          }
-          if (batch.fallback) {
-            hasAnyFallback = true;
-          }
-          if (Array.isArray(batch.cards)) {
-            allAiCards.push(...batch.cards);
-          }
-        }
-      });
+      const data = await res.json();
+      const allAiCards: any[] = Array.isArray(data.cards) ? data.cards : [];
+      const hasAnyFallback = Boolean(data.fallback);
 
       const newDeckId = `deck-ai-${Date.now()}`;
       const cleanLanguage =
-        detectedMeta?.detectedLanguage ||
+        data.detectedLanguage ||
         targetLanguage.trim() ||
         parsed.detectedLanguage ||
         'Foreign Language';
@@ -254,25 +217,22 @@ export const TableImporter: React.FC<TableImporterProps> = ({
       const newDeck: Deck = {
         id: newDeckId,
         title:
-          detectedMeta?.deckTitle ||
+          data.deckTitle ||
           deckTitle.trim() ||
           parsed.detectedTitle ||
           `${cleanLanguage} Smart Deck`,
         language: cleanLanguage,
         languageCode:
-          detectedMeta?.languageCode || parsed.detectedLanguageCode || 'es-ES',
+          data.languageCode || parsed.detectedLanguageCode || 'es-ES',
         color:
-          (detectedMeta?.color as any) || (parsed.detectedColor as any) || 'indigo',
+          (data.color as any) || (parsed.detectedColor as any) || 'indigo',
         description:
-          detectedMeta?.deckDescription ||
+          data.deckDescription ||
           `Smart spaced repetition deck with ${validRows.length} vocabulary words across ${parsed.sections?.length || 1} sections.`,
-        icon: detectedMeta?.icon || parsed.detectedIcon || 'Sparkles',
+        icon: data.icon || parsed.detectedIcon || 'Sparkles',
         createdAt: new Date().toISOString(),
       };
 
-      // 3. MERGE GENERATED DATA BACK INTO THE ORIGINAL ARRAY WITHOUT LOSING ANY CARDS
-      // Strictly map over ALL original validRows (e.g. all 81 cards).
-      // Never replace the array with a partial response.
       const aiBatchTimestamp = Date.now();
       const newCards: Flashcard[] = validRows.map((row, idx) => {
         const staggerOffset = scheduleMode === 'staggered' ? idx : 0;
@@ -299,7 +259,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
             partOfSpeech:
               row.partOfSpeech?.trim() ||
               aiCard?.partOfSpeech?.trim() ||
-              (row.targetWord.includes(' ') ? 'phrase' : 'word'),
+              (row.targetWord.includes(' ') ? 'phrase / expression' : 'word'),
             category: row.category?.trim() || aiCard?.category?.trim() || 'Core Vocabulary',
             exampleSentence: aiCard?.exampleTarget
               ? {
@@ -319,7 +279,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
         deckId: newDeckId,
         cardCount: newCards.length,
         deckTitle: newDeck.title,
-        isFallback: hasAnyFallback || batchResults.some((b) => b === null),
+        isFallback: hasAnyFallback,
       });
     } catch (err: unknown) {
       console.warn('AI smart enrich failed, falling back to local generator', err);

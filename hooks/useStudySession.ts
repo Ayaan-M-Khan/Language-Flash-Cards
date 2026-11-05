@@ -202,7 +202,9 @@ export function useStudySession(
       // Advance strictly 1 card: pop ONLY currentItems[0], making currentItems[1] the next card
       const [, ...remaining] = currentItems;
       let nextItems: StudyQueueItem[];
-      if (rating === 'again' || rating === 'hard') {
+      // Only re-queue failed cards ('again') within the current study session (3 cards later).
+      // 'hard' schedules the card for review after 1 day (tomorrow) and concludes it for the current session.
+      if (rating === 'again') {
         stepCounterRef.current += 1;
         const requeuedItem: StudyQueueItem = {
           card: updatedCard,

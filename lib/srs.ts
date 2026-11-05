@@ -33,13 +33,9 @@ export function calculateSM2(card: Flashcard, rating: SM2Rating, referenceDate: 
       break;
     }
     case 'hard': {
-      // Hard recall: minor progression, slight ease penalty
+      // Hard recall: show again after a day (1 day interval)
       nextRepetitions = repetitions + 1;
-      if (repetitions === 0) {
-        nextIntervalDays = 1;
-      } else {
-        nextIntervalDays = Math.max(1, Math.round(intervalDays * 1.2));
-      }
+      nextIntervalDays = 1;
       nextEaseFactor = Math.max(1.3, easeFactor - 0.15);
       nextState = 'review';
       break;
