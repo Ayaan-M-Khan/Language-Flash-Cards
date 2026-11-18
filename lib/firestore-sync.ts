@@ -188,7 +188,7 @@ export async function saveDeckAndCardsToFirestore(
     const firstChunk = cards.slice(0, CHUNK_SIZE);
     for (const card of firstChunk) {
       const cardRef = doc(db, 'users', userId, 'decks', deck.id, 'cards', card.id);
-      const cardPayload = {
+      const cardPayload: Record<string, unknown> = {
         id: card.id,
         deckId: deck.id,
         userId,
@@ -204,10 +204,10 @@ export async function saveDeckAndCardsToFirestore(
         intervalDays: card.intervalDays,
         easeFactor: Math.max(1.3, card.easeFactor || 2.5),
         dueDate: card.dueDate,
-        lastReviewedAt: card.lastReviewedAt || undefined,
-        exampleSentence: card.exampleSentence || undefined,
         createdAt: new Date().toISOString(),
       };
+      if (card.lastReviewedAt) cardPayload.lastReviewedAt = card.lastReviewedAt;
+      if (card.exampleSentence) cardPayload.exampleSentence = card.exampleSentence;
       initialBatch.set(cardRef, cardPayload);
     }
     await initialBatch.commit();
@@ -218,7 +218,7 @@ export async function saveDeckAndCardsToFirestore(
       const chunk = cards.slice(i, i + CHUNK_SIZE);
       for (const card of chunk) {
         const cardRef = doc(db, 'users', userId, 'decks', deck.id, 'cards', card.id);
-        const cardPayload = {
+        const cardPayload: Record<string, unknown> = {
           id: card.id,
           deckId: deck.id,
           userId,
@@ -234,10 +234,10 @@ export async function saveDeckAndCardsToFirestore(
           intervalDays: card.intervalDays,
           easeFactor: Math.max(1.3, card.easeFactor || 2.5),
           dueDate: card.dueDate,
-          lastReviewedAt: card.lastReviewedAt || undefined,
-          exampleSentence: card.exampleSentence || undefined,
           createdAt: new Date().toISOString(),
         };
+        if (card.lastReviewedAt) cardPayload.lastReviewedAt = card.lastReviewedAt;
+        if (card.exampleSentence) cardPayload.exampleSentence = card.exampleSentence;
         chunkBatch.set(cardRef, cardPayload);
       }
       await chunkBatch.commit();
@@ -313,22 +313,25 @@ export async function recordUserStudyProgress(
       currentProfile.lastStudiedDate
     );
     const masteredCount = allUserCards.filter((c) => c.state === 'mastered').length;
-    const totalReviews = currentProfile.totalReviews + 1;
+    const nextTotalReviews = (currentProfile.totalReviews || 0) + 1;
+    const nowIso = new Date().toISOString();
 
     const userDocRef = doc(db, 'users', userId);
-    const updates = {
+    await updateDoc(userDocRef, {
       streak: newStreak,
       lastStudiedDate: todayStr,
-      totalReviews,
+      totalReviews: increment(1),
       cardsMastered: masteredCount,
-      updatedAt: new Date().toISOString(),
-    };
-
-    await updateDoc(userDocRef, updates);
+      updatedAt: nowIso,
+    });
 
     return {
       ...currentProfile,
-      ...updates,
+      streak: newStreak,
+      lastStudiedDate: todayStr,
+      totalReviews: nextTotalReviews,
+      cardsMastered: masteredCount,
+      updatedAt: nowIso,
     };
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, path);
@@ -486,7 +489,7 @@ export async function saveCardToFirestore(
   const path = `users/${userId}/decks/${deckId}/cards/${card.id}`;
   try {
     const cardRef = doc(db, 'users', userId, 'decks', deckId, 'cards', card.id);
-    await setDoc(cardRef, {
+    const payload: Record<string, unknown> = {
       id: card.id,
       deckId,
       userId,
@@ -502,10 +505,11 @@ export async function saveCardToFirestore(
       intervalDays: card.intervalDays,
       easeFactor: Math.max(1.3, card.easeFactor || 2.5),
       dueDate: card.dueDate,
-      lastReviewedAt: card.lastReviewedAt || undefined,
-      exampleSentence: card.exampleSentence || undefined,
       createdAt: new Date().toISOString(),
-    });
+    };
+    if (card.lastReviewedAt) payload.lastReviewedAt = card.lastReviewedAt;
+    if (card.exampleSentence) payload.exampleSentence = card.exampleSentence;
+    await setDoc(cardRef, payload);
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
   }

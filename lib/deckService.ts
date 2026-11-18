@@ -25,7 +25,13 @@ import {
   mergeGuestIntoAccountState,
   sortDecksDeterministically,
   hasPendingDirtyWork,
+  executeDirtyFlush,
+  sanitizeFirestoreId,
+  buildDeckFirestorePayload,
+  buildCardFirestorePayload,
 } from './sync-merge';
+
+export { sanitizeFirestoreId, buildDeckFirestorePayload, buildCardFirestorePayload };
 
 export const LOCAL_DECKS_STORAGE_KEY = 'language_flashcards_decks_guest';
 export const LOCAL_CARDS_STORAGE_KEY = 'language_flashcards_cards_guest';
@@ -84,111 +90,12 @@ export function setSyncedDeckIdsLocally(userId: string, deckIds: string[]): void
   } catch {}
 }
 
-export function sanitizeFirestoreId(rawId: string, fallbackPrefix: string): string {
-  const cleaned = (rawId || '')
-    .trim()
-    .replace(/[^a-zA-Z0-9_-]/g, '-')
-    .slice(0, 120);
-  return cleaned.length > 0 ? cleaned : `${fallbackPrefix}-${Date.now()}`;
-}
-
 export function getTodayDateString(): string {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-}
-
-/**
- * Builds a clean Firestore-compatible Deck payload with ZERO `undefined` properties
- * and strict adherence to `firestore.rules` validation bounds.
- */
-export function buildDeckFirestorePayload(
-  userId: string,
-  deck: Deck
-): Record<string, unknown> {
-  const safeId = sanitizeFirestoreId(deck.id, 'deck');
-  const nowIso = new Date().toISOString();
-  return {
-    id: safeId,
-    userId,
-    title: (deck.title || 'Vocabulary Deck').trim().slice(0, 120) || 'Vocabulary Deck',
-    language: (deck.language || 'Language').trim().slice(0, 50) || 'Language',
-    languageCode: (deck.languageCode || 'es-ES').trim().slice(0, 20) || 'es-ES',
-    color: (deck.color || 'blue').trim().slice(0, 30) || 'blue',
-    description: (deck.description || '').slice(0, 500),
-    icon: (deck.icon || 'Sparkles').slice(0, 50),
-    createdAt: (deck.createdAt || nowIso).slice(0, 40),
-    updatedAt: (deck.updatedAt || nowIso).slice(0, 40),
-  };
-}
-
-/**
- * Builds a clean Firestore-compatible Flashcard payload with ZERO `undefined` properties
- * and strict adherence to `firestore.rules` validation bounds.
- */
-export function buildCardFirestorePayload(
-  userId: string,
-  deckId: string,
-  card: Flashcard,
-  fallbackOrderIndex?: number,
-  fallbackLanguage?: string
-): Record<string, unknown> {
-  const safeDeckId = sanitizeFirestoreId(deckId, 'deck');
-  const safeCardId = sanitizeFirestoreId(card.id, 'card');
-  const nowIso = new Date().toISOString();
-  const validStates = new Set(['new', 'learning', 'review', 'mastered']);
-  const safeState = validStates.has(card.state) ? card.state : 'new';
-
-  const payload: Record<string, unknown> = {
-    id: safeCardId,
-    deckId: safeDeckId,
-    userId,
-    english: (card.english || '').slice(0, 500),
-    targetWord: (card.targetWord || '').slice(0, 500),
-    language: (card.language || fallbackLanguage || 'Language').slice(0, 50),
-    phonetic: (card.phonetic || '').slice(0, 200),
-    partOfSpeech: (card.partOfSpeech || 'phrase').slice(0, 50),
-    category: (card.category || 'General').slice(0, 100),
-    notes: (card.notes || '').slice(0, 1000),
-    state: safeState,
-    repetitions: Math.max(0, Number.isFinite(card.repetitions) ? card.repetitions : 0),
-    intervalDays: Math.max(0, Number.isFinite(card.intervalDays) ? card.intervalDays : 0),
-    easeFactor: Math.max(1.3, Number.isFinite(card.easeFactor) ? card.easeFactor : 2.5),
-    dueDate: (card.dueDate || nowIso).slice(0, 40),
-    createdAt: (card.createdAt || nowIso).slice(0, 40),
-    updatedAt: (card.updatedAt || nowIso).slice(0, 40),
-  };
-
-  const resolvedOrder =
-    typeof card.orderIndex === 'number' && Number.isFinite(card.orderIndex)
-      ? Math.max(0, Math.floor(card.orderIndex))
-      : typeof fallbackOrderIndex === 'number' && Number.isFinite(fallbackOrderIndex)
-      ? Math.max(0, Math.floor(fallbackOrderIndex))
-      : undefined;
-
-  if (resolvedOrder !== undefined) {
-    payload.orderIndex = resolvedOrder;
-  }
-
-  if (typeof card.lastReviewedAt === 'string' && card.lastReviewedAt.length > 0) {
-    payload.lastReviewedAt = card.lastReviewedAt.slice(0, 40);
-  }
-
-  if (
-    card.exampleSentence &&
-    typeof card.exampleSentence === 'object' &&
-    typeof card.exampleSentence.target === 'string' &&
-    card.exampleSentence.target.trim().length > 0
-  ) {
-    payload.exampleSentence = {
-      target: card.exampleSentence.target.slice(0, 500),
-      english: (card.exampleSentence.english || '').slice(0, 500),
-    };
-  }
-
-  return payload;
 }
 
 function mapFirestoreDocToDeck(docId: string, deckData: Partial<Deck>): Deck {
@@ -713,110 +620,15 @@ export const deckService = {
       return { nextDirtyState: dirtyState, syncedCount: 0, hadError: false };
     }
 
-    const deckMap = new Map(localDecks.map((d) => [d.id, d]));
-    const cardMap = new Map(localCards.map((c) => [c.id, c]));
+    const result = await executeDirtyFlush(localDecks, localCards, dirtyState, {
+      deleteDeck: (deckId) => this.deleteDeck(userId, deckId),
+      deleteCard: (deckId, cardId) => this.deleteCard(userId, deckId, cardId),
+      saveDeck: (deck, deckCards) => this.saveDeck(userId, deck, deckCards),
+      saveCard: (deckId, card) => this.saveCard(userId, deckId, card),
+    });
 
-    const remainingDirtyDecks = new Set(dirtyState.dirtyDeckIds);
-    const remainingDirtyCards = new Set(dirtyState.dirtyCardIds);
-    const remainingDeletedDecks = new Set(dirtyState.deletedDeckIds);
-    const remainingDeletedCards = new Map(
-      dirtyState.deletedCards.map((c) => [c.id, c])
-    );
-    const knownDecks = new Set(dirtyState.knownCloudDeckIds);
-    const knownCards = new Set(dirtyState.knownCloudCardIds);
-
-    let syncedCount = 0;
-    let hadError = false;
-
-    // 1. Process deck deletions first
-    for (const deckId of dirtyState.deletedDeckIds) {
-      try {
-        await this.deleteDeck(userId, deckId);
-        remainingDeletedDecks.delete(deckId);
-        knownDecks.delete(deckId);
-        syncedCount++;
-      } catch (err) {
-        hadError = true;
-        console.warn(`Flush deleteDeck failed for ${deckId}:`, err);
-      }
-    }
-
-    // 2. Process card deletions (skip cards whose deck was just deleted)
-    for (const ref of dirtyState.deletedCards) {
-      if (dirtyState.deletedDeckIds.includes(ref.deckId) && !remainingDeletedDecks.has(ref.deckId)) {
-        remainingDeletedCards.delete(ref.id);
-        knownCards.delete(ref.id);
-        continue;
-      }
-      try {
-        await this.deleteCard(userId, ref.deckId, ref.id);
-        remainingDeletedCards.delete(ref.id);
-        knownCards.delete(ref.id);
-        syncedCount++;
-      } catch (err) {
-        hadError = true;
-        console.warn(`Flush deleteCard failed for ${ref.id}:`, err);
-      }
-    }
-
-    // 3. Save dirty decks along with all their cards
-    for (const deckId of dirtyState.dirtyDeckIds) {
-      const deck = deckMap.get(deckId);
-      if (!deck) {
-        remainingDirtyDecks.delete(deckId);
-        continue;
-      }
-      const deckCards = sortDecksDeterministically([deck]).length
-        ? sortCardsSequentially(
-            localCards.filter((c) => c.deckId === deckId),
-            [deck]
-          )
-        : [];
-      try {
-        await this.saveDeck(userId, deck, deckCards);
-        remainingDirtyDecks.delete(deckId);
-        knownDecks.add(deckId);
-        deckCards.forEach((c) => {
-          remainingDirtyCards.delete(c.id);
-          knownCards.add(c.id);
-        });
-        syncedCount++;
-      } catch (err) {
-        hadError = true;
-        console.warn(`Flush saveDeck failed for ${deckId}:`, err);
-      }
-    }
-
-    // 4. Save remaining dirty cards (whose deck wasn't just written)
-    for (const cardId of Array.from(remainingDirtyCards)) {
-      const card = cardMap.get(cardId);
-      if (!card) {
-        remainingDirtyCards.delete(cardId);
-        continue;
-      }
-      try {
-        await this.saveCard(userId, card.deckId, card);
-        remainingDirtyCards.delete(cardId);
-        knownCards.add(cardId);
-        syncedCount++;
-      } catch (err) {
-        hadError = true;
-        console.warn(`Flush saveCard failed for ${cardId}:`, err);
-      }
-    }
-
-    const nextDirtyState: SyncDirtyState = {
-      dirtyDeckIds: Array.from(remainingDirtyDecks),
-      dirtyCardIds: Array.from(remainingDirtyCards),
-      deletedDeckIds: Array.from(remainingDeletedDecks),
-      deletedCards: Array.from(remainingDeletedCards.values()),
-      knownCloudDeckIds: Array.from(knownDecks),
-      knownCloudCardIds: Array.from(knownCards),
-    };
-
-    saveSyncDirtyState(userId, nextDirtyState);
-
-    return { nextDirtyState, syncedCount, hadError };
+    saveSyncDirtyState(userId, result.nextDirtyState);
+    return result;
   },
 
   /**

@@ -8,6 +8,10 @@ import {
   markDeckDirtyInState,
   mergeGuestIntoAccountState,
   mergeLocalAndCloudState,
+  executeDirtyFlush,
+  buildDeckFirestorePayload,
+  buildCardFirestorePayload,
+  sanitizeFirestoreId,
 } from './sync-merge';
 import type { Deck, Flashcard } from './types';
 
@@ -203,3 +207,117 @@ test('markDeckDirtyInState clears delete tombstone if same deck ID is re-added',
   assert.ok(state.dirtyDeckIds.includes('deck-x'));
   assert.equal(state.deletedDeckIds.includes('deck-x'), false);
 });
+
+test('executeDirtyFlush promotes parent deck upload when dirty card belongs to unconfirmed cloud deck', async () => {
+  const newDeck = makeDeck('deck-new');
+  const card = makeCard('card-1', 'deck-new', { english: 'Book' });
+
+  let dirtyState = createEmptyDirtyState();
+  dirtyState = markCardDirtyInState(dirtyState, 'card-1');
+
+  const savedDecks: string[] = [];
+  const savedCards: string[] = [];
+
+  const res = await executeDirtyFlush([newDeck], [card], dirtyState, {
+    deleteDeck: async () => {},
+    deleteCard: async () => {},
+    saveDeck: async (deck, cards) => {
+      savedDecks.push(deck.id);
+      assert.equal(cards.length, 1);
+    },
+    saveCard: async (_deckId, c) => {
+      savedCards.push(c.id);
+    },
+  });
+
+  assert.equal(res.hadError, false);
+  assert.deepEqual(savedDecks, ['deck-new']);
+  assert.deepEqual(savedCards, []);
+  assert.deepEqual(res.nextDirtyState.dirtyDeckIds, []);
+  assert.deepEqual(res.nextDirtyState.dirtyCardIds, []);
+  assert.ok(res.nextDirtyState.knownCloudDeckIds.includes('deck-new'));
+  assert.ok(res.nextDirtyState.knownCloudCardIds.includes('card-1'));
+});
+
+test('executeDirtyFlush retains failed items for automatic retry on next sync tick', async () => {
+  const deck = makeDeck('deck-1');
+  const card = makeCard('card-1', 'deck-1', { intervalDays: 7 });
+
+  let dirtyState = {
+    ...createEmptyDirtyState(),
+    knownCloudDeckIds: ['deck-1'],
+    knownCloudCardIds: ['card-1'],
+  };
+  dirtyState = markCardDirtyInState(dirtyState, 'card-1');
+
+  let shouldFail = true;
+  const firstTick = await executeDirtyFlush([deck], [card], dirtyState, {
+    deleteDeck: async () => {},
+    deleteCard: async () => {},
+    saveDeck: async () => {},
+    saveCard: async () => {
+      if (shouldFail) throw new Error('offline');
+    },
+  });
+
+  assert.equal(firstTick.hadError, true);
+  assert.ok(firstTick.nextDirtyState.dirtyCardIds.includes('card-1'));
+
+  shouldFail = false;
+  const secondTick = await executeDirtyFlush([deck], [card], firstTick.nextDirtyState, {
+    deleteDeck: async () => {},
+    deleteCard: async () => {},
+    saveDeck: async () => {},
+    saveCard: async () => {},
+  });
+
+  assert.equal(secondTick.hadError, false);
+  assert.equal(secondTick.syncedCount, 1);
+  assert.deepEqual(secondTick.nextDirtyState.dirtyCardIds, []);
+});
+
+test('buildDeckFirestorePayload & buildCardFirestorePayload satisfy firestore.rules bounds with zero undefined keys', () => {
+  const deck = makeDeck('deck/invalid chars!@#', {
+    title: '  My Travel Deck  ',
+    description: 'A'.repeat(600),
+  });
+  const card = makeCard('card/1', deck.id, {
+    easeFactor: 0.5,
+    repetitions: -3,
+    intervalDays: -1,
+    lastReviewedAt: undefined,
+    exampleSentence: { target: 'Hola', english: '' },
+  });
+
+  const safeDeckId = sanitizeFirestoreId(deck.id, 'deck');
+  const deckPayload = buildDeckFirestorePayload('user-123', deck);
+  const cardPayload = buildCardFirestorePayload('user-123', safeDeckId, card, 0);
+
+  const allowedDeckKeys = new Set([
+    'id', 'userId', 'title', 'language', 'languageCode',
+    'color', 'description', 'icon', 'createdAt', 'updatedAt',
+  ]);
+  const allowedCardKeys = new Set([
+    'id', 'deckId', 'userId', 'orderIndex', 'english', 'targetWord',
+    'language', 'phonetic', 'partOfSpeech', 'category', 'notes',
+    'state', 'repetitions', 'intervalDays', 'easeFactor', 'dueDate',
+    'lastReviewedAt', 'exampleSentence', 'createdAt', 'updatedAt',
+  ]);
+
+  assert.match(safeDeckId, /^[a-zA-Z0-9_-]+$/);
+  for (const [k, v] of Object.entries(deckPayload)) {
+    assert.ok(allowedDeckKeys.has(k), `Unexpected deck key: ${k}`);
+    assert.notEqual(v, undefined);
+  }
+  assert.equal((deckPayload.description as string).length, 500);
+
+  for (const [k, v] of Object.entries(cardPayload)) {
+    assert.ok(allowedCardKeys.has(k), `Unexpected card key: ${k}`);
+    assert.notEqual(v, undefined);
+  }
+  assert.ok((cardPayload.easeFactor as number) >= 1.3);
+  assert.equal(cardPayload.repetitions, 0);
+  assert.equal(cardPayload.intervalDays, 0);
+  assert.equal('lastReviewedAt' in cardPayload, false);
+});
+

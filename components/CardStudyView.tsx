@@ -14,6 +14,7 @@ import {
   ListOrdered,
   Shuffle,
   ArrowLeftRight,
+  SkipForward,
 } from 'lucide-react';
 import { CardDirection, Flashcard as FlashcardType, Deck, SM2Rating } from '@/lib/types';
 import { getPreviewIntervals, isCardDue, sortCardsSequentially } from '@/lib/srs';
@@ -100,6 +101,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     flipCard,
     rateCard,
     markAlreadyKnew,
+    skipCard,
     shuffleQueue,
     updateCardInSession,
     removeCardFromSession,
@@ -223,6 +225,16 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     playHapticFeedback('rating');
     markAlreadyKnew(targetCardId, targetStepId);
   }, [currentCard, currentStepId, isProcessing, markAlreadyKnew]);
+
+  // Handle Skip -> moves active card to the end of the session queue without changing its SRS schedule
+  const handleSkip = useCallback(() => {
+    if (!currentCard || isProcessing || cardsRemaining <= 1) return;
+    const targetCardId = currentCard.id;
+    const targetStepId = currentStepId;
+    blurActiveElement();
+    playHapticFeedback('tap');
+    skipCard(targetCardId, targetStepId);
+  }, [currentCard, currentStepId, isProcessing, cardsRemaining, skipCard]);
 
   // Handle Shuffle of current in-memory session queue (leaves SRS due dates & intervals untouched)
   const handleShuffle = useCallback(() => {
@@ -821,7 +833,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         </div>
       ) : (
         <div
-          className={`flex items-center justify-center gap-2.5 sm:gap-3 ${
+          className={`flex items-center justify-center gap-2 sm:gap-3 ${
             isProcessing ? 'pointer-events-none opacity-60' : ''
           }`}
         >
@@ -835,9 +847,9 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               handleAlreadyKnew();
             }}
             title="Already knew this word — schedule review in 7 days [K]"
-            className="py-3.5 px-4 sm:px-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100/90 dark:hover:bg-emerald-900/50 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 font-semibold text-xs sm:text-sm shadow-2xs transition-all inline-flex items-center justify-center gap-1.5 sm:gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap shrink-0"
+            className="py-3.5 px-3 sm:px-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100/90 dark:hover:bg-emerald-900/50 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 font-semibold text-xs sm:text-sm shadow-2xs transition-all inline-flex items-center justify-center gap-1 sm:gap-1.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap shrink-0"
           >
-            <Check className="w-4 h-4 shrink-0" />
+            <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span>Already Knew</span>
             <span className="text-[11px] font-medium text-emerald-600/80 dark:text-emerald-400/80 tabular-nums">
               7d
@@ -853,14 +865,30 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               e.stopPropagation();
               handleFlip();
             }}
-            className="flex-1 sm:flex-initial sm:w-64 py-3.5 px-5 sm:px-6 rounded-2xl bg-neutral-900 dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900 font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap"
+            className="flex-1 sm:flex-initial sm:w-56 py-3.5 px-4 sm:px-5 rounded-2xl bg-neutral-900 dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900 font-semibold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap"
           >
             <span>
-              {activeDirection === 'definition-first' ? 'Show Transliteration' : 'Show Answer'}
+              {activeDirection === 'definition-first' ? 'Show Translit' : 'Show Answer'}
             </span>
             <span className="hidden sm:inline text-[11px] text-neutral-400 dark:text-neutral-600 font-normal px-2 py-0.5 rounded-md bg-neutral-800 dark:bg-neutral-200">
               Space
             </span>
+          </button>
+
+          <button
+            id="skip-front-btn"
+            type="button"
+            disabled={isProcessing || cardsRemaining <= 1}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSkip();
+            }}
+            title="Skip to next card for now"
+            className="py-3.5 px-3 sm:px-4 rounded-2xl bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 font-medium text-xs sm:text-sm shadow-2xs transition-all inline-flex items-center justify-center gap-1 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <span>Skip</span>
+            <SkipForward className="w-3.5 h-3.5 shrink-0" />
           </button>
         </div>
       )}

@@ -66,6 +66,7 @@ export default function HomePage() {
   const [soundState, setSoundState] = useState<boolean>(true);
   const [lastSyncedTime, setLastSyncedTime] = useState<Date | null>(null);
   const [isAutoSyncing, setIsAutoSyncing] = useState<boolean>(false);
+  const [hasSyncError, setHasSyncError] = useState<boolean>(false);
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
   const [studySyncVersion, setStudySyncVersion] = useState<number>(0);
   const [deckDirections, setDeckDirections] = useState<Record<string, CardDirection>>({});
@@ -189,8 +190,13 @@ export default function HomePage() {
         dirtyStateRef.current = resolvedDirty;
         saveSyncDirtyState(uid, resolvedDirty);
 
-        if (!res.hadError && res.syncedCount > 0) {
-          setLastSyncedTime(new Date());
+        if (res.hadError) {
+          setHasSyncError(true);
+        } else {
+          setHasSyncError(false);
+          if (res.syncedCount > 0) {
+            setLastSyncedTime(new Date());
+          }
         }
       } else if (forceCloudPull) {
         const synced = await deckService.syncAllDecksWithCloud(
@@ -201,9 +207,31 @@ export default function HomePage() {
         );
         dirtyStateRef.current = synced.dirtyState;
         saveSyncDirtyState(uid, synced.dirtyState);
+
+        if (hydratedOwnerRef.current === uid) {
+          const prevDeckCount = decksRef.current.length;
+          const prevCardCount = cardsRef.current.length;
+          decksRef.current = synced.decks;
+          cardsRef.current = synced.cards;
+          setDecks(synced.decks);
+          setCards(synced.cards);
+          if (
+            prevDeckCount !== synced.decks.length ||
+            prevCardCount !== synced.cards.length
+          ) {
+            setStudySyncVersion((v) => v + 1);
+          }
+          try {
+            localStorage.setItem(getDecksStorageKey(uid), JSON.stringify(synced.decks));
+            localStorage.setItem(getCardsStorageKey(uid), JSON.stringify(synced.cards));
+          } catch {}
+        }
+
+        setHasSyncError(false);
         setLastSyncedTime(new Date());
       }
     } catch (err) {
+      setHasSyncError(true);
       console.warn('Continuous auto-sync cycle skipped:', err);
     } finally {
       syncInFlightRef.current = false;
@@ -486,6 +514,8 @@ export default function HomePage() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         runContinuousFlush(false);
+      } else if (document.visibilityState === 'visible') {
+        runContinuousFlush(true);
       }
     };
 
@@ -539,18 +569,18 @@ export default function HomePage() {
     return cards.filter((c) => isCardDue(c)).length;
   }, [cards]);
 
-  // Handlers (all mark dirty state immediately so continuous sync guarantees durability)
+  // Handlers (all mark dirty state & update refs synchronously so continuous sync guarantees durability)
   const handleCardReviewed = (updatedCard: Flashcard, _rating: SM2Rating) => {
     const stampedCard: Flashcard = {
       ...updatedCard,
       updatedAt: updatedCard.updatedAt || new Date().toISOString(),
     };
 
-    let nextCardsSnapshot: Flashcard[] = [];
-    setCards((prev) => {
-      nextCardsSnapshot = prev.map((c) => (c.id === stampedCard.id ? stampedCard : c));
-      return nextCardsSnapshot;
-    });
+    const nextCards = cardsRef.current.map((c) =>
+      c.id === stampedCard.id ? stampedCard : c
+    );
+    cardsRef.current = nextCards;
+    setCards(nextCards);
 
     if (user) {
       const nextDirty = markCardDirtyInState(dirtyStateRef.current, stampedCard.id);
@@ -570,7 +600,7 @@ export default function HomePage() {
           const updatedProfile = await recordUserStudyProgress(
             user.uid,
             baseProfile,
-            nextCardsSnapshot.length > 0 ? nextCardsSnapshot : cardsRef.current
+            nextCards
           );
           if (updatedProfile) {
             updateLocalProfileStats(() => updatedProfile);
@@ -603,8 +633,12 @@ export default function HomePage() {
       updatedAt: c.updatedAt || nowIso,
     }));
 
-    setDecks((prev) => [stampedDeck, ...prev]);
-    setCards((prev) => [...orderedNewCards, ...prev]);
+    const nextDecks = [stampedDeck, ...decksRef.current];
+    const nextCards = [...orderedNewCards, ...cardsRef.current];
+    decksRef.current = nextDecks;
+    cardsRef.current = nextCards;
+    setDecks(nextDecks);
+    setCards(nextCards);
 
     if (user) {
       let nextDirty = markDeckDirtyInState(dirtyStateRef.current, stampedDeck.id);
@@ -623,8 +657,12 @@ export default function HomePage() {
       .filter((c) => c.deckId === deckId)
       .map((c) => c.id);
 
-    setDecks((prev) => prev.filter((d) => d.id !== deckId));
-    setCards((prev) => prev.filter((c) => c.deckId !== deckId));
+    const nextDecks = decksRef.current.filter((d) => d.id !== deckId);
+    const nextCards = cardsRef.current.filter((c) => c.deckId !== deckId);
+    decksRef.current = nextDecks;
+    cardsRef.current = nextCards;
+    setDecks(nextDecks);
+    setCards(nextCards);
     if (selectedStudyDeckId === deckId) setSelectedStudyDeckId(null);
     if (inspectingDeck?.id === deckId) setInspectingDeck(null);
 
@@ -640,23 +678,23 @@ export default function HomePage() {
 
   const handleResetCardSchedule = (cardId: string) => {
     const nowIso = new Date().toISOString();
-    setCards((prev) =>
-      prev.map((c) => {
-        if (c.id === cardId) {
-          const resetCard: Flashcard = {
-            ...c,
-            state: 'new',
-            repetitions: 0,
-            intervalDays: 0,
-            easeFactor: 2.5,
-            dueDate: nowIso,
-            updatedAt: nowIso,
-          };
-          return resetCard;
-        }
-        return c;
-      })
-    );
+    const nextCards = cardsRef.current.map((c) => {
+      if (c.id === cardId) {
+        const resetCard: Flashcard = {
+          ...c,
+          state: 'new',
+          repetitions: 0,
+          intervalDays: 0,
+          easeFactor: 2.5,
+          dueDate: nowIso,
+          updatedAt: nowIso,
+        };
+        return resetCard;
+      }
+      return c;
+    });
+    cardsRef.current = nextCards;
+    setCards(nextCards);
 
     if (user) {
       const nextDirty = markCardDirtyInState(dirtyStateRef.current, cardId);
@@ -666,18 +704,18 @@ export default function HomePage() {
 
   const handleMakeCardDueToday = (cardId: string) => {
     const nowIso = new Date().toISOString();
-    setCards((prev) =>
-      prev.map((c) => {
-        if (c.id === cardId) {
-          return {
-            ...c,
-            dueDate: nowIso,
-            updatedAt: nowIso,
-          };
-        }
-        return c;
-      })
-    );
+    const nextCards = cardsRef.current.map((c) => {
+      if (c.id === cardId) {
+        return {
+          ...c,
+          dueDate: nowIso,
+          updatedAt: nowIso,
+        };
+      }
+      return c;
+    });
+    cardsRef.current = nextCards;
+    setCards(nextCards);
 
     if (user) {
       const nextDirty = markCardDirtyInState(dirtyStateRef.current, cardId);
@@ -691,7 +729,12 @@ export default function HomePage() {
       ...newCard,
       updatedAt: newCard.updatedAt || nowIso,
     };
-    setCards((prev) => sortCardsSequentially([...prev, stampedCard], decksRef.current));
+    const nextCards = sortCardsSequentially(
+      [...cardsRef.current, stampedCard],
+      decksRef.current
+    );
+    cardsRef.current = nextCards;
+    setCards(nextCards);
     if (user) {
       const nextDirty = markCardDirtyInState(dirtyStateRef.current, stampedCard.id);
       scheduleDirtyFlush(user.uid, nextDirty);
@@ -703,7 +746,11 @@ export default function HomePage() {
       ...updatedCard,
       updatedAt: new Date().toISOString(),
     };
-    setCards((prev) => prev.map((c) => (c.id === stampedCard.id ? stampedCard : c)));
+    const nextCards = cardsRef.current.map((c) =>
+      c.id === stampedCard.id ? stampedCard : c
+    );
+    cardsRef.current = nextCards;
+    setCards(nextCards);
 
     if (user) {
       const nextDirty = markCardDirtyInState(dirtyStateRef.current, stampedCard.id);
@@ -716,7 +763,9 @@ export default function HomePage() {
 
   const handleDeleteCard = (cardId: string) => {
     const cardToDelete = cardsRef.current.find((c) => c.id === cardId);
-    setCards((prev) => prev.filter((c) => c.id !== cardId));
+    const nextCards = cardsRef.current.filter((c) => c.id !== cardId);
+    cardsRef.current = nextCards;
+    setCards(nextCards);
     if (user && cardToDelete) {
       const nextDirty = markCardDeletedInState(
         dirtyStateRef.current,
@@ -859,6 +908,7 @@ export default function HomePage() {
         user={user}
         isSyncing={isAutoSyncing}
         lastSyncedTime={lastSyncedTime}
+        syncError={hasSyncError}
       />
     </div>
   );

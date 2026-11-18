@@ -8,12 +8,14 @@ interface FooterProps {
   user: User | null;
   isSyncing: boolean;
   lastSyncedTime: Date | null;
+  syncError?: boolean;
 }
 
 export const Footer: React.FC<FooterProps> = ({
   user,
   isSyncing,
   lastSyncedTime,
+  syncError = false,
 }) => {
   const currentYear = new Date().getFullYear();
 
@@ -45,12 +47,16 @@ export const Footer: React.FC<FooterProps> = ({
             <span className="inline-flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300 font-medium">
               {isSyncing ? (
                 <RefreshCw className="w-3 h-3 text-blue-500 animate-spin shrink-0" />
+              ) : syncError ? (
+                <RefreshCw className="w-3 h-3 text-amber-500 shrink-0" />
               ) : (
                 <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
               )}
               <span>
                 {isSyncing
                   ? 'Syncing...'
+                  : syncError
+                  ? 'Retrying sync...'
                   : lastSyncedTime
                   ? `Auto-synced ${lastSyncedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                   : 'Auto-sync active'}
