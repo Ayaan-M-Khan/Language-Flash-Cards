@@ -3,9 +3,17 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Flashcard, SM2Rating, StudySessionStats } from '@/lib/types';
 import { calculateSM2, scheduleAlreadyKnew } from '@/lib/srs';
+import {
+  clearPersistedStudySession,
+  loadPersistedStudySession,
+  reconcileSavedSessionWithCards,
+  savePersistedStudySession,
+} from '@/lib/study-session-storage';
 
 export interface UseStudySessionOptions {
   sessionKey?: string;
+  persistKey?: string;
+  isHydrated?: boolean;
   onSessionComplete?: (stats?: StudySessionStats) => void;
   onCardReviewed?: (updatedCard: Flashcard, rating: SM2Rating) => void;
 }
@@ -35,6 +43,9 @@ export function useStudySession(
     typeof optionsOrComplete === 'function'
       ? { onSessionComplete: () => optionsOrComplete() }
       : optionsOrComplete || {};
+
+  const isHydrated = normalizedOptions.isHydrated ?? true;
+  const persistKey = normalizedOptions.persistKey;
 
   // Monotonically increasing step counter guarantees every card presentation—even a re-queued card—has a unique stepId
   const stepCounterRef = useRef<number>(initialCards.length);
@@ -86,6 +97,28 @@ export function useStudySession(
     });
   }, []);
 
+  const persistSnapshot = useCallback(
+    (items: StudyQueueItem[], total: number, nextStats: StudySessionStats) => {
+      const activePersistKey = optionsRef.current.persistKey;
+      const activeHydrated = optionsRef.current.isHydrated ?? true;
+      if (!activePersistKey || !activeHydrated) return;
+
+      if (items.length === 0) {
+        clearPersistedStudySession(activePersistKey);
+        return;
+      }
+
+      savePersistedStudySession({
+        persistKey: activePersistKey,
+        remainingCardIds: items.map((i) => i.card.id),
+        totalSessionCards: total,
+        stats: nextStats,
+        updatedAt: Date.now(),
+      });
+    },
+    []
+  );
+
   const armCooldown = useCallback((durationMs: number) => {
     if (cooldownTimerRef.current) {
       clearTimeout(cooldownTimerRef.current);
@@ -97,46 +130,100 @@ export function useStudySession(
     }, durationMs);
   }, []);
 
-  // Deterministically reset session queue when deck, mode, or account hydration changes
+  // Deterministically reset session queue when explicitly restarted or starting a fresh scope
   const restartSession = useCallback(
-    (newCards?: Flashcard[]) => {
+    (newCards?: Flashcard[], options?: { skipRestore?: boolean }) => {
       if (cooldownTimerRef.current) {
         clearTimeout(cooldownTimerRef.current);
         cooldownTimerRef.current = null;
       }
-      const cardsToUse = [...(newCards ?? initialCardsRef.current)];
+      const candidateCards = [...(newCards ?? initialCardsRef.current)];
+      const activePersistKey = optionsRef.current.persistKey;
+      const activeHydrated = optionsRef.current.isHydrated ?? true;
+
+      let cardsToUse = candidateCards;
+      let nextTotal = candidateCards.length;
+      let nextStats = createInitialStats();
+
+      if (options?.skipRestore) {
+        clearPersistedStudySession(activePersistKey);
+      } else if (activePersistKey && activeHydrated) {
+        const saved = loadPersistedStudySession(activePersistKey);
+        const restored = reconcileSavedSessionWithCards(saved, candidateCards);
+        if (restored) {
+          cardsToUse = restored.queueCards;
+          nextTotal = restored.totalSessionCards;
+          nextStats = restored.stats;
+        }
+      }
+
       const freshItems = allocateQueueItems(cardsToUse);
-      const freshStats = createInitialStats();
 
       processingLockRef.current = false;
       flippedStepIdRef.current = null;
       flipGuardUntilRef.current = 0;
       queueItemsRef.current = freshItems;
-      totalCardsRef.current = freshItems.length;
-      statsRef.current = freshStats;
+      totalCardsRef.current = nextTotal;
+      statsRef.current = nextStats;
 
       setFlippedStepId(null);
-      setTotalSessionCards(freshItems.length);
+      setTotalSessionCards(nextTotal);
       setQueueItems(freshItems);
       setIsProcessing(false);
-      setStats(freshStats);
+      setStats(nextStats);
     },
     [allocateQueueItems]
   );
 
-  // Sync queue cleanly in an effect whenever the caller's sessionKey changes (never mutating refs during render)
+  // Restore saved session or sync updates smoothly across hydration, reloads, and deck switches
   const prevSessionKeyRef = useRef<string | undefined>(normalizedOptions.sessionKey);
+  const prevHydratedRef = useRef<boolean>(isHydrated);
+  const prevPersistKeyRef = useRef<string | undefined>(persistKey);
+
   useEffect(() => {
-    if (
+    const hydratedJustFinished = !prevHydratedRef.current && isHydrated;
+    const persistKeyChanged = persistKey !== prevPersistKeyRef.current;
+    const sessionKeyChanged =
       normalizedOptions.sessionKey !== undefined &&
-      normalizedOptions.sessionKey !== prevSessionKeyRef.current
-    ) {
+      normalizedOptions.sessionKey !== prevSessionKeyRef.current;
+
+    if (hydratedJustFinished || persistKeyChanged || sessionKeyChanged) {
+      prevHydratedRef.current = isHydrated;
+      prevPersistKeyRef.current = persistKey;
       prevSessionKeyRef.current = normalizedOptions.sessionKey;
       restartSession(initialCards);
-    } else if (totalCardsRef.current === 0 && initialCards.length > 0) {
-      restartSession(initialCards);
+      return;
     }
-  }, [normalizedOptions.sessionKey, initialCards, restartSession]);
+
+    if (totalCardsRef.current === 0 && initialCards.length > 0) {
+      restartSession(initialCards);
+      return;
+    }
+
+    // Keep existing queue items synchronized with edits/cloud snapshots WITHOUT resetting progress
+    if (queueItemsRef.current.length > 0 && initialCards.length > 0) {
+      const latestMap = new Map(initialCards.map((c) => [c.id, c]));
+      let didUpdateAnyCard = false;
+      const refreshedItems = queueItemsRef.current.map((item) => {
+        const fresh = latestMap.get(item.card.id);
+        if (fresh && fresh !== item.card) {
+          didUpdateAnyCard = true;
+          return { ...item, card: fresh };
+        }
+        return item;
+      });
+      if (didUpdateAnyCard) {
+        queueItemsRef.current = refreshedItems;
+        setQueueItems(refreshedItems);
+      }
+    }
+  }, [
+    isHydrated,
+    persistKey,
+    normalizedOptions.sessionKey,
+    initialCards,
+    restartSession,
+  ]);
 
   const setIsFlipped = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
     const activeItem = queueItemsRef.current[0];
@@ -229,10 +316,12 @@ export function useStudySession(
         easyCount: statsRef.current.easyCount + (rating === 'easy' ? 1 : 0),
       };
 
-      // Reset flip state BEFORE or WITH queue update; even without this, nextItems[0].stepId !== flippedStepId
       queueItemsRef.current = nextItems;
       flippedStepIdRef.current = null;
       statsRef.current = nextStats;
+
+      // Persist session progress synchronously BEFORE state updates so an immediate reload retains position
+      persistSnapshot(nextItems, totalCardsRef.current, nextStats);
 
       setFlippedStepId(null);
       setQueueItems(nextItems);
@@ -257,7 +346,7 @@ export function useStudySession(
 
       armCooldown(220);
     },
-    [armCooldown]
+    [armCooldown, persistSnapshot]
   );
 
   // Marks the active front-facing card as Already Known -> schedules 7 days out and advances strictly 1 card
@@ -288,6 +377,8 @@ export function useStudySession(
       flippedStepIdRef.current = null;
       statsRef.current = nextStats;
 
+      persistSnapshot(remaining, totalCardsRef.current, nextStats);
+
       setFlippedStepId(null);
       setQueueItems(remaining);
       setStats(nextStats);
@@ -311,7 +402,7 @@ export function useStudySession(
 
       armCooldown(220);
     },
-    [armCooldown]
+    [armCooldown, persistSnapshot]
   );
 
   // Moves ONLY queueItems[0] to the end with a fresh stepId so queueItems[1] is shown next (strictly 1-by-1)
@@ -338,12 +429,14 @@ export function useStudySession(
       queueItemsRef.current = nextItems;
       flippedStepIdRef.current = null;
 
+      persistSnapshot(nextItems, totalCardsRef.current, statsRef.current);
+
       setFlippedStepId(null);
       setQueueItems(nextItems);
 
       armCooldown(200);
     },
-    [armCooldown]
+    [armCooldown, persistSnapshot]
   );
 
   // Randomizes the remaining in-memory session queue (Fisher-Yates) without altering SRS schedules
@@ -379,11 +472,13 @@ export function useStudySession(
     queueItemsRef.current = nextItems;
     flippedStepIdRef.current = null;
 
+    persistSnapshot(nextItems, totalCardsRef.current, statsRef.current);
+
     setFlippedStepId(null);
     setQueueItems(nextItems);
 
     armCooldown(200);
-  }, [allocateQueueItems, armCooldown]);
+  }, [allocateQueueItems, armCooldown, persistSnapshot]);
 
   // Updates a card's content in-place across the active queue without altering stepId, flip state, or progress
   const updateCardInSession = useCallback((updatedCard: Flashcard) => {
@@ -398,24 +493,29 @@ export function useStudySession(
   }, []);
 
   // Removes a deleted card cleanly from the active study queue
-  const removeCardFromSession = useCallback((cardId: string) => {
-    initialCardsRef.current = initialCardsRef.current.filter((c) => c.id !== cardId);
-    const prevHead = queueItemsRef.current[0];
-    const nextItems = queueItemsRef.current.filter((item) => item.card.id !== cardId);
-    const removedCount = queueItemsRef.current.length - nextItems.length;
+  const removeCardFromSession = useCallback(
+    (cardId: string) => {
+      initialCardsRef.current = initialCardsRef.current.filter((c) => c.id !== cardId);
+      const prevHead = queueItemsRef.current[0];
+      const nextItems = queueItemsRef.current.filter((item) => item.card.id !== cardId);
+      const removedCount = queueItemsRef.current.length - nextItems.length;
 
-    queueItemsRef.current = nextItems;
-    if (prevHead && prevHead.card.id === cardId) {
-      flippedStepIdRef.current = null;
-      setFlippedStepId(null);
-    }
-    if (removedCount > 0) {
-      const nextTotal = Math.max(0, totalCardsRef.current - removedCount);
-      totalCardsRef.current = nextTotal;
-      setTotalSessionCards(nextTotal);
-    }
-    setQueueItems(nextItems);
-  }, []);
+      queueItemsRef.current = nextItems;
+      if (prevHead && prevHead.card.id === cardId) {
+        flippedStepIdRef.current = null;
+        setFlippedStepId(null);
+      }
+      let nextTotal = totalCardsRef.current;
+      if (removedCount > 0) {
+        nextTotal = Math.max(0, totalCardsRef.current - removedCount);
+        totalCardsRef.current = nextTotal;
+        setTotalSessionCards(nextTotal);
+      }
+      persistSnapshot(nextItems, nextTotal, statsRef.current);
+      setQueueItems(nextItems);
+    },
+    [persistSnapshot]
+  );
 
   const activeItem = queueItems[0] || null;
   const currentCard = activeItem?.card || null;

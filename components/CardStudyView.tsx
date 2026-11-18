@@ -39,7 +39,9 @@ interface CardStudyViewProps {
   onNavigateToImport: () => void;
   currentStreak?: number;
   userId?: string | null;
-  syncVersion?: number;
+  isHydrated?: boolean;
+  studyMode?: 'due' | 'sequential';
+  onChangeStudyMode?: (mode: 'due' | 'sequential') => void;
 }
 
 export const CardStudyView: React.FC<CardStudyViewProps> = ({
@@ -55,15 +57,29 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   onNavigateToImport,
   currentStreak = 0,
   userId = null,
-  syncVersion = 0,
+  isHydrated = true,
+  studyMode: controlledStudyMode,
+  onChangeStudyMode,
 }) => {
   const [reviewRefreshTrigger, setReviewRefreshTrigger] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  // Default to 'sequential' so ALL cards in the deck always show 1-by-1 without skipping previously reviewed cards
-  const [studyMode, setStudyMode] = useState<'sequential' | 'due'>('sequential');
+  const [localStudyMode, setLocalStudyMode] = useState<'due' | 'sequential'>('due');
   const [justShuffled, setJustShuffled] = useState(false);
   const [localDirection, setLocalDirection] = useState<CardDirection>('target-first');
   const [editingCard, setEditingCard] = useState<FlashcardType | null>(null);
+
+  const studyMode = controlledStudyMode ?? localStudyMode;
+  const setStudyMode = useCallback(
+    (next: 'due' | 'sequential' | ((prev: 'due' | 'sequential') => 'due' | 'sequential')) => {
+      const resolved = typeof next === 'function' ? next(studyMode) : next;
+      if (onChangeStudyMode) {
+        onChangeStudyMode(resolved);
+      } else {
+        setLocalStudyMode(resolved);
+      }
+    },
+    [onChangeStudyMode, studyMode]
+  );
 
   const activeDirection: CardDirection = cardDirection ?? localDirection;
 
@@ -85,10 +101,10 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     return orderedMatchingCards;
   }, [studyMode, orderedDueCards, orderedMatchingCards]);
 
-  // Re-initialize session queue ONLY when selected deck, study mode, or account hydration changes
-  const sessionKey = `${userId ?? 'guest'}::${selectedDeckId ?? 'all'}::${studyMode}::${syncVersion}`;
+  // Re-initialize / restore persisted session queue per owner + deck + study mode
+  const persistKey = `${userId ?? 'guest'}::${selectedDeckId ?? 'all'}::${studyMode}`;
 
-  // Deterministic queue-based study manager (active card is ALWAYS queue[0], advances 1-by-1)
+  // Deterministic queue-based study manager (active card is ALWAYS queue[0], advances 1-by-1 & persists across reloads)
   const {
     currentCard,
     currentStepId,
@@ -110,7 +126,9 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     stats,
     restartSession,
   } = useStudySession(initialSessionCards, {
-    sessionKey,
+    sessionKey: persistKey,
+    persistKey,
+    isHydrated,
     onCardReviewed: (updatedCard, rating) => {
       onCardReviewed(updatedCard, rating);
 
@@ -442,7 +460,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               id="empty-practice-anyway-btn"
               onClick={() => {
                 setStudyMode('sequential');
-                restartSession(orderedMatchingCards);
+                restartSession(orderedMatchingCards, { skipRestore: true });
               }}
               className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 font-semibold text-sm hover:bg-black dark:hover:bg-white transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
             >
@@ -586,7 +604,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               id="study-again-btn"
               onClick={() => {
                 setStudyMode('sequential');
-                restartSession(orderedMatchingCards);
+                restartSession(orderedMatchingCards, { skipRestore: true });
               }}
               className="flex-1 py-3 px-4 rounded-2xl bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 font-medium text-sm hover:bg-black dark:hover:bg-white transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
@@ -685,7 +703,9 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             >
               <ListOrdered className="w-3.5 h-3.5" />
               <span>
-                {studyMode === 'sequential' ? 'All' : `Due (${orderedDueCards.length})`}
+                {studyMode === 'sequential'
+                  ? `All (${orderedMatchingCards.length})`
+                  : `Due (${orderedDueCards.length})`}
               </span>
             </button>
           )}
