@@ -20,9 +20,6 @@ import {
   BookOpen,
   Plus,
   Layers,
-  Download,
-  Check,
-  ArrowLeftRight,
 } from 'lucide-react';
 import { CardDirection, CardState, Deck, Flashcard } from '@/lib/types';
 import { formatInterval, isCardDue } from '@/lib/srs';
@@ -49,12 +46,9 @@ interface DeckMasteryChartProps {
   onSelectDeck: (deckId: string) => void;
   cards: Flashcard[];
   cardDirection?: CardDirection;
-  onChangeCardDirection?: (deckId: string, direction: CardDirection) => void;
   onStudyDeck: (deckId: string, direction?: CardDirection) => void;
   onInspectDeck: (deck: Deck) => void;
   onNavigateToImport: () => void;
-  onExportDeckCsv: (deck: Deck) => void;
-  exportedDeckId?: string | null;
 }
 
 interface MasteryTooltipProps {
@@ -167,12 +161,9 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
   onSelectDeck,
   cards,
   cardDirection = 'target-first',
-  onChangeCardDirection,
   onStudyDeck,
   onInspectDeck,
   onNavigateToImport,
-  onExportDeckCsv,
-  exportedDeckId = null,
 }) => {
   const isClient = useIsClient();
   const { theme } = useTheme();
@@ -385,40 +376,6 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
         </div>
       </div>
 
-      {/* Quick Deck Switcher Buttons when multiple decks exist */}
-      {decks.length > 1 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto py-3 border-b border-neutral-100 dark:border-neutral-800">
-          {decks.map((deck) => {
-            const isSelected = deck.id === selectedDeck.id;
-            const count = deckCardCounts[deck.id] || 0;
-            return (
-              <button
-                key={deck.id}
-                type="button"
-                onClick={() => {
-                  playHapticFeedback('tap');
-                  onSelectDeck(deck.id);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer tabular-nums flex items-center gap-1.5 ${
-                  isSelected
-                    ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 font-semibold shadow-2xs'
-                    : 'bg-neutral-100/80 dark:bg-neutral-800/80 hover:bg-neutral-200/70 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 font-medium'
-                }`}
-              >
-                <span>{deck.title}</span>
-                <span
-                  className={`text-[11px] ${
-                    isSelected ? 'text-neutral-300 dark:text-neutral-600' : 'text-neutral-400 dark:text-neutral-500'
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/* Key Deck SRS Telemetry Strip (Single-Elevation Divided Row) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-neutral-100 dark:divide-neutral-800 py-3.5 border-b border-neutral-100 dark:border-neutral-800 tabular-nums">
         <div className="pr-3 py-1 sm:py-0">
@@ -592,49 +549,8 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
               ))}
             </div>
 
-            {/* Card Order Picker & Footer Action Buttons for Selected Deck */}
-            <div className="pt-4 space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-                  Card Definition Order
-                </span>
-                <div
-                  role="group"
-                  aria-label="Selected deck card order"
-                  className="inline-flex items-center p-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-neutral-200/80 dark:border-neutral-700 text-xs font-medium shrink-0"
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playHapticFeedback('tap');
-                      onChangeCardDirection?.(selectedDeck.id, 'target-first');
-                    }}
-                    className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                      cardDirection === 'target-first'
-                        ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
-                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
-                    }`}
-                  >
-                    Word → Def
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playHapticFeedback('tap');
-                      onChangeCardDirection?.(selectedDeck.id, 'definition-first');
-                    }}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                      cardDirection === 'definition-first'
-                        ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
-                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
-                    }`}
-                  >
-                    <ArrowLeftRight className="w-3 h-3 shrink-0" />
-                    <span>Def → Translit</span>
-                  </button>
-                </div>
-              </div>
-
+            {/* Streamlined Deck Quick Actions */}
+            <div className="pt-4">
               <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                 <button
                   type="button"
@@ -652,40 +568,16 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                   </span>
                 </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  playHapticFeedback('tap');
-                  onInspectDeck(selectedDeck);
-                }}
-                className="py-2.5 px-3.5 rounded-2xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
-              >
-                <BookOpen className="w-3.5 h-3.5 shrink-0" />
-                <span>Cards</span>
-              </button>
-
-              <button
-                id="selected-deck-export-csv-btn"
-                type="button"
-                onClick={() => onExportDeckCsv(selectedDeck)}
-                title={`Export "${selectedDeck.title}" (${selectedDeckCards.length} cards) as CSV`}
-                className={`py-2.5 px-3.5 rounded-2xl font-semibold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
-                  exportedDeckId === selectedDeck.id
-                    ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                    : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200'
-                }`}
-              >
-                {exportedDeckId === selectedDeck.id ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 shrink-0" />
-                    <span>Saved CSV</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-3.5 h-3.5 shrink-0" />
-                    <span>Export CSV</span>
-                  </>
-                  )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    playHapticFeedback('tap');
+                    onInspectDeck(selectedDeck);
+                  }}
+                  className="py-2.5 px-3.5 rounded-2xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+                >
+                  <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                  <span>Browse Cards</span>
                 </button>
               </div>
             </div>

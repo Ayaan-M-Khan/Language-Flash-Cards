@@ -28,7 +28,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #f2f2f7;
   color: #1c1c1e;
-  user-select: none;
   transition: background-color 200ms ease, color 200ms ease;
 }
 

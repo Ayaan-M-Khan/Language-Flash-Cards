@@ -315,9 +315,9 @@ export const TableImporter: React.FC<TableImporterProps> = ({
     <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
       {/* Header Banner */}
       <div className="mb-6 text-center sm:text-left">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 text-xs font-semibold mb-2">
+        <div className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 text-xs font-semibold uppercase tracking-wider mb-1.5">
           <FileSpreadsheet className="w-3.5 h-3.5" />
-          <span>Multi-Column & Multi-Section Table Importer</span>
+          <span>Multi-Column &amp; Multi-Section Table Importer</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-2">
           Import Vocabulary Table
@@ -678,7 +678,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                 type="button"
                 disabled={editableRows.length === 0}
                 onClick={handleGenerateInstant}
-                className="flex-1 py-3 px-4 rounded-2xl bg-neutral-900 dark:bg-white hover:bg-black dark:hover:bg-neutral-100 text-white dark:text-neutral-900 font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-xs active:scale-98"
+                className="flex-1 py-3 px-4 rounded-2xl bg-neutral-900 dark:bg-white hover:bg-black dark:hover:bg-neutral-100 text-white dark:text-neutral-900 font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98] cursor-pointer disabled:opacity-50"
                 title="Instantly generate deck with all detected words, pronunciations, and notes"
               >
                 <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -691,7 +691,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                 type="button"
                 disabled={isAiLoading || editableRows.length === 0}
                 onClick={handleAIGenerate}
-                className="py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium text-xs shadow-xs shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98"
+                className="py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium text-xs shadow-xs shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] cursor-pointer"
                 title="Enrich all cards with AI generated example sentences, mnemonics, and phonetics"
               >
                 {isAiLoading ? (

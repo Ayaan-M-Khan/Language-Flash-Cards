@@ -7,9 +7,9 @@ import {
   Sparkles,
   ChevronRight,
   CheckCircle2,
+  Check,
   Layers,
   RefreshCw,
-  Clock,
   BookOpen,
   ListOrdered,
   Shuffle,
@@ -22,6 +22,7 @@ import { WeeklyReviewTracker } from './WeeklyReviewTracker';
 import { incrementTodayReviewCount } from '@/lib/review-history';
 import { deckService } from '@/lib/deckService';
 import { Flashcard } from './Flashcard';
+import { EditCardModal } from './EditCardModal';
 import { useStudySession } from '@/hooks/useStudySession';
 
 interface CardStudyViewProps {
@@ -32,6 +33,8 @@ interface CardStudyViewProps {
   cardDirection?: CardDirection;
   onChangeCardDirection?: (direction: CardDirection) => void;
   onCardReviewed: (updatedCard: FlashcardType, rating: SM2Rating) => void;
+  onUpdateCard?: (updatedCard: FlashcardType) => void;
+  onDeleteCard?: (cardId: string) => void;
   onNavigateToImport: () => void;
   currentStreak?: number;
   userId?: string | null;
@@ -46,6 +49,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   cardDirection,
   onChangeCardDirection,
   onCardReviewed,
+  onUpdateCard,
+  onDeleteCard,
   onNavigateToImport,
   currentStreak = 0,
   userId = null,
@@ -57,6 +62,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   const [studyMode, setStudyMode] = useState<'sequential' | 'due'>('sequential');
   const [justShuffled, setJustShuffled] = useState(false);
   const [localDirection, setLocalDirection] = useState<CardDirection>('target-first');
+  const [editingCard, setEditingCard] = useState<FlashcardType | null>(null);
 
   const activeDirection: CardDirection = cardDirection ?? localDirection;
 
@@ -93,8 +99,10 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     setIsFlipped,
     flipCard,
     rateCard,
-    skipCard,
+    markAlreadyKnew,
     shuffleQueue,
+    updateCardInSession,
+    removeCardFromSession,
     isProcessing,
     isComplete,
     stats,
@@ -206,15 +214,15 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     [currentCard, currentStepId, isFlipped, isProcessing, rateCard]
   );
 
-  // Handle Skip with card-ID + step-ID lock
-  const handleSkip = useCallback(() => {
+  // Handle "Already Knew" -> schedules card 7 days ahead and advances 1 card cleanly
+  const handleAlreadyKnew = useCallback(() => {
     if (!currentCard || isProcessing) return;
     const targetCardId = currentCard.id;
     const targetStepId = currentStepId;
     blurActiveElement();
-    playHapticFeedback('tap');
-    skipCard(targetCardId, targetStepId);
-  }, [currentCard, currentStepId, isProcessing, skipCard]);
+    playHapticFeedback('rating');
+    markAlreadyKnew(targetCardId, targetStepId);
+  }, [currentCard, currentStepId, isProcessing, markAlreadyKnew]);
 
   // Handle Shuffle of current in-memory session queue (leaves SRS due dates & intervals untouched)
   const handleShuffle = useCallback(() => {
@@ -226,9 +234,24 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     setTimeout(() => setJustShuffled(false), 1200);
   }, [cardsRemaining, isProcessing, shuffleQueue]);
 
+  // Open edit modal for current card
+  const handleOpenEdit = useCallback(
+    (e?: React.MouseEvent) => {
+      if (e) e.stopPropagation();
+      if (!currentCard || isProcessing) return;
+      blurActiveElement();
+      playHapticFeedback('tap');
+      setEditingCard(currentCard);
+    },
+    [currentCard, isProcessing]
+  );
+
   // Capture-phase keyboard listener prevents focused <button> elements from double-firing on Enter/Space
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Suspend all study shortcuts while editing modal is open
+      if (editingCard) return;
+
       const target = e.target as HTMLElement | null;
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
         return;
@@ -249,6 +272,14 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         e.preventDefault();
         e.stopPropagation();
         handleSpeak();
+      } else if (e.key.toLowerCase() === 'e' && currentCard) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleOpenEdit();
+      } else if (!isFlipped && e.key.toLowerCase() === 'k' && currentCard) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleAlreadyKnew();
       } else if (isFlipped && currentCard) {
         if (e.key === '1') {
           e.preventDefault();
@@ -273,8 +304,11 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     window.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, [
+    editingCard,
     handleFlip,
     handleSpeak,
+    handleOpenEdit,
+    handleAlreadyKnew,
     handleRating,
     isFlipped,
     currentCard,
@@ -433,9 +467,17 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
   // ===================== SESSION COMPLETE SUMMARY =====================
   if (isComplete) {
-    const { againCount, hardCount, goodCount, easyCount, cardsReviewed } = stats;
+    const {
+      againCount,
+      hardCount,
+      goodCount,
+      easyCount,
+      alreadyKnewCount,
+      cardsReviewed,
+    } = stats;
     const total = cardsReviewed;
-    const retentionRate = total > 0 ? Math.round(((goodCount + easyCount) / total) * 100) : 100;
+    const passedCount = goodCount + easyCount + alreadyKnewCount;
+    const retentionRate = total > 0 ? Math.round((passedCount / total) * 100) : 100;
 
     return (
       <div className="max-w-xl mx-auto px-4 py-8">
@@ -467,8 +509,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               <span className="text-xl font-bold text-green-700 dark:text-emerald-300">{retentionRate}%</span>
             </div>
             <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-2xl border border-blue-200/50 dark:border-blue-800/50">
-              <span className="text-xs text-blue-700 dark:text-blue-400 block mb-1">Mastered/Good</span>
-              <span className="text-xl font-bold text-blue-700 dark:text-blue-300">{goodCount + easyCount}</span>
+              <span className="text-xs text-blue-700 dark:text-blue-400 block mb-1">Known / Good</span>
+              <span className="text-xl font-bold text-blue-700 dark:text-blue-300">{passedCount}</span>
             </div>
             <div className="p-3 bg-orange-50 dark:bg-orange-950/40 rounded-2xl border border-orange-200/50 dark:border-orange-800/50">
               <span className="text-xs text-orange-700 dark:text-orange-400 block mb-1">Repeat (Again)</span>
@@ -503,19 +545,20 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
                   title={`Good: ${goodCount}`}
                 />
               )}
-              {easyCount > 0 && (
+              {easyCount + alreadyKnewCount > 0 && (
                 <div
-                  style={{ width: `${(easyCount / total) * 100}%` }}
+                  style={{ width: `${((easyCount + alreadyKnewCount) / total) * 100}%` }}
                   className="bg-emerald-500"
-                  title={`Easy: ${easyCount}`}
+                  title={`Easy / Already Knew: ${easyCount + alreadyKnewCount}`}
                 />
               )}
             </div>
-            <div className="flex justify-between text-[11px] text-neutral-500 dark:text-neutral-400 mt-1.5">
+            <div className="flex flex-wrap justify-between gap-2 text-[11px] text-neutral-500 dark:text-neutral-400 mt-1.5">
               <span>Again ({againCount})</span>
               <span>Hard ({hardCount})</span>
               <span>Good ({goodCount})</span>
               <span>Easy ({easyCount})</span>
+              {alreadyKnewCount > 0 && <span>Knew ({alreadyKnewCount})</span>}
             </div>
           </div>
 
@@ -565,10 +608,10 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
   // ===================== ACTIVE STUDY CARD =====================
   return (
-    <div className="max-w-2xl mx-auto px-4 py-4 sm:py-8">
-      {/* Top Header: Deck selection, Card Face Direction, Order Mode & Queue Counter */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-4">
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="max-w-2xl mx-auto px-4 py-5 sm:py-8">
+      {/* Compact Study Controls Row */}
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 mb-3">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 min-w-0">
           <select
             id="study-deck-select"
             value={selectedDeckId || 'all'}
@@ -576,17 +619,16 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               const val = e.target.value === 'all' ? null : e.target.value;
               onSelectDeck(val);
             }}
-            className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-neutral-800 border border-black/10 dark:border-white/10 rounded-xl text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-2xs max-w-[210px] truncate cursor-pointer"
+            className="px-2.5 py-1.5 text-xs font-semibold bg-white dark:bg-neutral-800 border border-black/10 dark:border-white/10 rounded-xl text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-2xs max-w-[155px] truncate cursor-pointer"
           >
-            <option value="all">All Decks ({cards.length} cards)</option>
+            <option value="all">All Decks ({cards.length})</option>
             {decks.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.title} ({d.language})
+                {d.title}
               </option>
             ))}
           </select>
 
-          {/* Card Definition Order Toggle right beside Deck Picker */}
           {renderCardOrderSelector('study-order')}
 
           <button
@@ -598,8 +640,9 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               e.stopPropagation();
               handleShuffle();
             }}
-            title="Randomize current session queue without changing long-term SRS schedules"
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border shadow-2xs transition-all select-none touch-manipulation whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed active:scale-98 ${
+            title="Shuffle remaining cards in session"
+            aria-label="Shuffle session"
+            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium border shadow-2xs transition-all select-none touch-manipulation whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed active:scale-[0.98] ${
               justShuffled
                 ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
                 : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-700'
@@ -608,7 +651,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             <Shuffle
               className={`w-3.5 h-3.5 ${justShuffled ? 'text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 dark:text-neutral-400'}`}
             />
-            <span>{justShuffled ? 'Shuffled' : 'Shuffle'}</span>
+            <span className="hidden md:inline">{justShuffled ? 'Shuffled' : 'Shuffle'}</span>
           </button>
 
           {orderedMatchingCards.length > 0 && orderedDueCards.length < orderedMatchingCards.length && (
@@ -619,31 +662,27 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               }
               title={
                 studyMode === 'sequential'
-                  ? 'Showing all deck cards 1-by-1 in order. Click to show only due cards.'
-                  : 'Showing only due cards. Click to study all cards 1-by-1 from the beginning.'
+                  ? 'Showing all deck cards. Click for due cards only.'
+                  : 'Showing due cards only. Click for all cards.'
               }
-              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                studyMode === 'sequential'
-                  ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 border-neutral-900 dark:border-neutral-100'
-                  : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                studyMode === 'due'
+                  ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                  : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-700'
               }`}
             >
               <ListOrdered className="w-3.5 h-3.5" />
               <span>
-                {studyMode === 'sequential'
-                  ? `All 1-by-1 (${orderedMatchingCards.length})`
-                  : `Due Only (${orderedDueCards.length}/${orderedMatchingCards.length})`}
+                {studyMode === 'sequential' ? 'All' : `Due (${orderedDueCards.length})`}
               </span>
             </button>
           )}
         </div>
 
-        {/* Deterministic Queue Counter */}
-        <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 font-medium tabular-nums">
-          <Clock className="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500" />
+        {/* Clean Counter */}
+        <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 font-medium tabular-nums whitespace-nowrap shrink-0">
           <span>
-            {Math.min(completedCount + 1, totalSessionCards)} of {totalSessionCards} ({cardsRemaining}{' '}
-            left)
+            {Math.min(completedCount + 1, totalSessionCards)} / {totalSessionCards}
           </span>
           <span className="text-neutral-300 dark:text-neutral-600" aria-hidden="true">
             ·
@@ -661,21 +700,11 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           >
             {currentCard.state}
           </span>
-          {currentCard.category && (
-            <>
-              <span className="hidden sm:inline text-neutral-300 dark:text-neutral-600" aria-hidden="true">
-                ·
-              </span>
-              <span className="hidden sm:inline text-neutral-500 dark:text-neutral-400 truncate max-w-[140px]">
-                {currentCard.category}
-              </span>
-            </>
-          )}
         </div>
       </div>
 
       {/* Queue Progress Bar */}
-      <div className="w-full h-1.5 bg-neutral-200/80 dark:bg-neutral-800 rounded-full overflow-hidden mb-6">
+      <div className="w-full h-1 bg-neutral-200/80 dark:bg-neutral-800 rounded-full overflow-hidden mb-6">
         <motion.div
           className="h-full bg-blue-500 rounded-full"
           initial={{ width: 0 }}
@@ -685,7 +714,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
       </div>
 
       {/* 3D Flip Card Container — keyed by monotonic currentStepId with NO opacity wrapper around preserve-3d */}
-      <div className="w-full mb-6 min-h-[380px] sm:min-h-[420px]">
+      <div className="w-full mb-6">
         <Flashcard
           key={currentStepId}
           card={currentCard}
@@ -695,6 +724,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           isFlipped={isFlipped}
           onFlip={handleFlip}
           onSpeak={handleSpeak}
+          onEdit={onUpdateCard ? handleOpenEdit : undefined}
           isSpeaking={isSpeaking}
         />
       </div>
@@ -716,7 +746,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               e.stopPropagation();
               handleRating('again');
             }}
-            className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100/90 dark:hover:bg-rose-900/50 border border-rose-200/80 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+            className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100/90 dark:hover:bg-rose-900/50 border border-rose-200/80 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 transition-all active:scale-[0.98] shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
           >
             <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 mb-0.5">
               Again [1]
@@ -736,7 +766,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               e.stopPropagation();
               handleRating('hard');
             }}
-            className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100/90 dark:hover:bg-amber-900/50 border border-amber-200/80 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+            className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100/90 dark:hover:bg-amber-900/50 border border-amber-200/80 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 transition-all active:scale-[0.98] shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
           >
             <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 mb-0.5">
               Hard [2]
@@ -756,7 +786,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               e.stopPropagation();
               handleRating('good');
             }}
-            className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white transition-all active:scale-98 shadow-sm shadow-blue-500/25 group relative disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+            className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white transition-all active:scale-[0.98] shadow-sm shadow-blue-500/25 group relative disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
           >
             <div className="flex items-center gap-1 mb-0.5">
               <span className="text-[11px] font-bold text-blue-100">
@@ -779,7 +809,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               e.stopPropagation();
               handleRating('easy');
             }}
-            className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100/90 dark:hover:bg-emerald-900/50 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 transition-all active:scale-98 shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+            className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100/90 dark:hover:bg-emerald-900/50 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 transition-all active:scale-[0.98] shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
           >
             <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mb-0.5">
               Easy [4]
@@ -791,10 +821,29 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         </div>
       ) : (
         <div
-          className={`flex items-center justify-center gap-3 ${
+          className={`flex items-center justify-center gap-2.5 sm:gap-3 ${
             isProcessing ? 'pointer-events-none opacity-60' : ''
           }`}
         >
+          <button
+            id="already-knew-front-btn"
+            type="button"
+            disabled={isProcessing}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleAlreadyKnew();
+            }}
+            title="Already knew this word — schedule review in 7 days [K]"
+            className="py-3.5 px-4 sm:px-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100/90 dark:hover:bg-emerald-900/50 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 font-semibold text-xs sm:text-sm shadow-2xs transition-all inline-flex items-center justify-center gap-1.5 sm:gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <Check className="w-4 h-4 shrink-0" />
+            <span>Already Knew</span>
+            <span className="text-[11px] font-medium text-emerald-600/80 dark:text-emerald-400/80 tabular-nums">
+              7d
+            </span>
+          </button>
+
           <button
             id="show-answer-btn"
             type="button"
@@ -804,39 +853,41 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               e.stopPropagation();
               handleFlip();
             }}
-            className="flex-1 sm:flex-initial sm:w-64 py-3.5 px-6 rounded-2xl bg-neutral-900 dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900 font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+            className="flex-1 sm:flex-initial sm:w-64 py-3.5 px-5 sm:px-6 rounded-2xl bg-neutral-900 dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900 font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap"
           >
             <span>
               {activeDirection === 'definition-first' ? 'Show Transliteration' : 'Show Answer'}
             </span>
-            <span className="text-[11px] text-neutral-400 dark:text-neutral-600 font-normal px-2 py-0.5 rounded-md bg-neutral-800 dark:bg-neutral-200">
+            <span className="hidden sm:inline text-[11px] text-neutral-400 dark:text-neutral-600 font-normal px-2 py-0.5 rounded-md bg-neutral-800 dark:bg-neutral-200">
               Space
             </span>
-          </button>
-          <button
-            id="skip-card-front-btn"
-            type="button"
-            disabled={isProcessing}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleSkip();
-            }}
-            title="Move this card to end of session queue"
-            className="py-3.5 px-4 rounded-2xl bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 font-medium text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
-          >
-            <span>Skip</span>
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500" />
           </button>
         </div>
       )}
 
-      {/* Visual Progress Tracking Section */}
-      <WeeklyReviewTracker
-        currentStreak={currentStreak}
-        refreshTrigger={reviewRefreshTrigger}
-        userId={userId}
-      />
+      {/* In-Review Flashcard Editor Modal */}
+      {editingCard && (
+        <EditCardModal
+          card={editingCard}
+          deckTitle={currentDeck?.title}
+          languageCode={currentDeck?.languageCode}
+          onSave={(updated) => {
+            updateCardInSession(updated);
+            onUpdateCard?.(updated);
+            setEditingCard(null);
+          }}
+          onDelete={
+            onDeleteCard
+              ? (cardId) => {
+                  removeCardFromSession(cardId);
+                  onDeleteCard(cardId);
+                  setEditingCard(null);
+                }
+              : undefined
+          }
+          onClose={() => setEditingCard(null)}
+        />
+      )}
     </div>
   );
 };

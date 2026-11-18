@@ -74,6 +74,7 @@ export interface StudySessionStats {
   hardCount: number;
   goodCount: number;
   easyCount: number;
+  alreadyKnewCount: number;
   startTime: number;
   endTime?: number;
 }

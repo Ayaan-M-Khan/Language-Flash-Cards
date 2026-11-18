@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Flashcard, SM2Rating, StudySessionStats } from '@/lib/types';
-import { calculateSM2 } from '@/lib/srs';
+import { calculateSM2, scheduleAlreadyKnew } from '@/lib/srs';
 
 export interface UseStudySessionOptions {
   sessionKey?: string;
@@ -22,6 +22,7 @@ function createInitialStats(): StudySessionStats {
     hardCount: 0,
     goodCount: 0,
     easyCount: 0,
+    alreadyKnewCount: 0,
     startTime: Date.now(),
   };
 }
@@ -189,6 +190,7 @@ export function useStudySession(
       setIsProcessing(true);
 
       const sm2 = calculateSM2(activeItem.card, rating);
+      const nowIso = new Date().toISOString();
       const updatedCard: Flashcard = {
         ...activeItem.card,
         repetitions: sm2.repetitions,
@@ -196,7 +198,8 @@ export function useStudySession(
         easeFactor: sm2.easeFactor,
         state: sm2.state,
         dueDate: sm2.dueDate,
-        lastReviewedAt: new Date().toISOString(),
+        lastReviewedAt: nowIso,
+        updatedAt: nowIso,
       };
 
       // Advance strictly 1 card: pop ONLY currentItems[0], making currentItems[1] the next card
@@ -240,6 +243,60 @@ export function useStudySession(
 
       if (
         nextItems.length === 0 &&
+        totalCardsRef.current > 0 &&
+        optionsRef.current?.onSessionComplete
+      ) {
+        const completedStats: StudySessionStats = {
+          ...nextStats,
+          endTime: Date.now(),
+        };
+        setTimeout(() => {
+          optionsRef.current?.onSessionComplete?.(completedStats);
+        }, 150);
+      }
+
+      armCooldown(220);
+    },
+    [armCooldown]
+  );
+
+  // Marks the active front-facing card as Already Known -> schedules 7 days out and advances strictly 1 card
+  const markAlreadyKnew = useCallback(
+    (expectedCardId?: string, expectedStepId?: number) => {
+      if (processingLockRef.current) return;
+
+      const currentItems = queueItemsRef.current;
+      const activeItem = currentItems[0];
+      if (!activeItem) return;
+
+      if (expectedCardId && activeItem.card.id !== expectedCardId) return;
+      if (expectedStepId !== undefined && activeItem.stepId !== expectedStepId) return;
+
+      processingLockRef.current = true;
+      setIsProcessing(true);
+
+      const updatedCard = scheduleAlreadyKnew(activeItem.card);
+      const [, ...remaining] = currentItems;
+
+      const nextStats: StudySessionStats = {
+        ...statsRef.current,
+        cardsReviewed: statsRef.current.cardsReviewed + 1,
+        alreadyKnewCount: statsRef.current.alreadyKnewCount + 1,
+      };
+
+      queueItemsRef.current = remaining;
+      flippedStepIdRef.current = null;
+      statsRef.current = nextStats;
+
+      setFlippedStepId(null);
+      setQueueItems(remaining);
+      setStats(nextStats);
+
+      // Persist the 7-day schedule; log as 'easy' for Firestore reviewLog compatibility
+      optionsRef.current?.onCardReviewed?.(updatedCard, 'easy');
+
+      if (
+        remaining.length === 0 &&
         totalCardsRef.current > 0 &&
         optionsRef.current?.onSessionComplete
       ) {
@@ -328,6 +385,38 @@ export function useStudySession(
     armCooldown(200);
   }, [allocateQueueItems, armCooldown]);
 
+  // Updates a card's content in-place across the active queue without altering stepId, flip state, or progress
+  const updateCardInSession = useCallback((updatedCard: Flashcard) => {
+    initialCardsRef.current = initialCardsRef.current.map((c) =>
+      c.id === updatedCard.id ? updatedCard : c
+    );
+    const nextItems = queueItemsRef.current.map((item) =>
+      item.card.id === updatedCard.id ? { ...item, card: updatedCard } : item
+    );
+    queueItemsRef.current = nextItems;
+    setQueueItems(nextItems);
+  }, []);
+
+  // Removes a deleted card cleanly from the active study queue
+  const removeCardFromSession = useCallback((cardId: string) => {
+    initialCardsRef.current = initialCardsRef.current.filter((c) => c.id !== cardId);
+    const prevHead = queueItemsRef.current[0];
+    const nextItems = queueItemsRef.current.filter((item) => item.card.id !== cardId);
+    const removedCount = queueItemsRef.current.length - nextItems.length;
+
+    queueItemsRef.current = nextItems;
+    if (prevHead && prevHead.card.id === cardId) {
+      flippedStepIdRef.current = null;
+      setFlippedStepId(null);
+    }
+    if (removedCount > 0) {
+      const nextTotal = Math.max(0, totalCardsRef.current - removedCount);
+      totalCardsRef.current = nextTotal;
+      setTotalSessionCards(nextTotal);
+    }
+    setQueueItems(nextItems);
+  }, []);
+
   const activeItem = queueItems[0] || null;
   const currentCard = activeItem?.card || null;
   const currentStepId = activeItem?.stepId ?? 0;
@@ -353,8 +442,11 @@ export function useStudySession(
     setIsFlipped,
     flipCard,
     rateCard,
+    markAlreadyKnew,
     skipCard,
     shuffleQueue,
+    updateCardInSession,
+    removeCardFromSession,
     isProcessing,
     isComplete,
     stats,

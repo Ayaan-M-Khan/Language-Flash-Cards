@@ -90,6 +90,33 @@ export function calculateSM2(card: Flashcard, rating: SM2Rating, referenceDate: 
 }
 
 /**
+ * Marks a card as already known and schedules its next review 7 days from referenceDate.
+ */
+export function scheduleAlreadyKnew(
+  card: Flashcard,
+  referenceDate: Date = new Date()
+): Flashcard {
+  const nextDueDate = new Date(referenceDate);
+  nextDueDate.setDate(nextDueDate.getDate() + 7);
+
+  const nextRepetitions = Math.max(2, (card.repetitions || 0) + 1);
+  const nextEaseFactor = Math.min(3.2, Math.max(2.5, card.easeFactor || 2.5));
+  const nextState: CardState = nextRepetitions >= 3 ? 'mastered' : 'review';
+  const nowIso = referenceDate.toISOString();
+
+  return {
+    ...card,
+    state: nextState,
+    repetitions: nextRepetitions,
+    intervalDays: 7,
+    easeFactor: Math.round(nextEaseFactor * 100) / 100,
+    dueDate: nextDueDate.toISOString(),
+    lastReviewedAt: nowIso,
+    updatedAt: nowIso,
+  };
+}
+
+/**
  * Returns a human-friendly string for the spaced repetition interval (e.g. "10 min", "1 day", "4 days", "2 mo").
  */
 export function formatInterval(intervalDays: number): string {

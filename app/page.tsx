@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Navbar, ActiveTab } from '@/components/Navbar';
 import { CardStudyView } from '@/components/CardStudyView';
 import { TableImporter } from '@/components/TableImporter';
@@ -12,13 +12,28 @@ import { CardDirection, Deck, Flashcard, SM2Rating } from '@/lib/types';
 import { INITIAL_DECKS, INITIAL_CARDS } from '@/lib/default-data';
 import { isCardDue, sortCardsSequentially } from '@/lib/srs';
 import { useAuth } from '@/lib/AuthContext';
-import { deckService } from '@/lib/deckService';
+import {
+  deckService,
+  loadSyncDirtyState,
+  saveSyncDirtyState,
+  setSyncedDeckIdsLocally,
+} from '@/lib/deckService';
+import {
+  SyncDirtyState,
+  createEmptyDirtyState,
+  hasPendingDirtyWork,
+  markCardDeletedInState,
+  markCardDirtyInState,
+  markDeckDeletedInState,
+  markDeckDirtyInState,
+  mergeLocalAndCloudState,
+} from '@/lib/sync-merge';
 import {
   recordUserStudyProgress,
   calculateNewStreak,
   syncUserProfile,
 } from '@/lib/firestore-sync';
-import { Cloud, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
 // Account-isolated storage keys to prevent mixing between guest and user accounts
 const getDecksStorageKey = (uid?: string | null) =>
@@ -33,8 +48,11 @@ const getStreakStorageKey = (uid?: string | null) =>
 const getDirectionsStorageKey = (uid?: string | null) =>
   uid ? `language_flashcards_directions_${uid}` : 'language_flashcards_directions_guest';
 
+const CONTINUOUS_SYNC_INTERVAL_MS = 4000;
+const MUTATION_FLUSH_DEBOUNCE_MS = 350;
+
 export default function HomePage() {
-  const { user, profile, updateLocalProfileStats, signInWithGoogle } = useAuth();
+  const { user, profile, updateLocalProfileStats } = useAuth();
 
   // Consistent initial state between server and client to eliminate hydration mismatches
   const [decks, setDecks] = useState<Deck[]>(INITIAL_DECKS);
@@ -44,11 +62,10 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('study');
   const [selectedStudyDeckId, setSelectedStudyDeckId] = useState<string | null>(null);
   const [inspectingDeck, setInspectingDeck] = useState<Deck | null>(null);
-  const [hasDismissedAuthBanner, setHasDismissedAuthBanner] = useState(false);
   const [streakDays, setStreakDays] = useState<number>(0);
   const [soundState, setSoundState] = useState<boolean>(true);
   const [lastSyncedTime, setLastSyncedTime] = useState<Date | null>(null);
-  const [isManualSyncing, setIsManualSyncing] = useState<boolean>(false);
+  const [isAutoSyncing, setIsAutoSyncing] = useState<boolean>(false);
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
   const [studySyncVersion, setStudySyncVersion] = useState<number>(0);
   const [deckDirections, setDeckDirections] = useState<Record<string, CardDirection>>({});
@@ -60,6 +77,16 @@ export default function HomePage() {
   const decksRef = useRef<Deck[]>(decks);
   const cardsRef = useRef<Flashcard[]>(cards);
   const deckDirectionsRef = useRef<Record<string, CardDirection>>(deckDirections);
+  const selectedStudyDeckIdRef = useRef<string | null>(selectedStudyDeckId);
+  const dirtyStateRef = useRef<SyncDirtyState>(createEmptyDirtyState());
+  const syncInFlightRef = useRef<boolean>(false);
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userIdRef = useRef<string | null>(user?.uid ?? null);
+
+  useEffect(() => {
+    userIdRef.current = user?.uid ?? null;
+  }, [user?.uid]);
 
   useEffect(() => {
     decksRef.current = decks;
@@ -73,24 +100,155 @@ export default function HomePage() {
     deckDirectionsRef.current = deckDirections;
   }, [deckDirections]);
 
+  useEffect(() => {
+    selectedStudyDeckIdRef.current = selectedStudyDeckId;
+  }, [selectedStudyDeckId]);
+
+  const showToast = useCallback((msg: string, durationMs = 2800) => {
+    setSyncToastMessage(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
+      setSyncToastMessage(null);
+      toastTimerRef.current = null;
+    }, durationMs);
+  }, []);
+
   // Derive effective streak from profile when authenticated, or guest streak
   const effectiveStreak = profile?.streak ?? streakDays;
 
+  // Flush pending dirty changes & deletions for the current authenticated user
+  const runContinuousFlush = useCallback(async (forceCloudPull = false) => {
+    const uid = userIdRef.current;
+    if (!uid || hydratedOwnerRef.current !== uid) return;
+    if (syncInFlightRef.current) return;
+
+    const currentDirty = dirtyStateRef.current;
+    if (!forceCloudPull && !hasPendingDirtyWork(currentDirty)) {
+      return;
+    }
+
+    syncInFlightRef.current = true;
+    setIsAutoSyncing(true);
+
+    try {
+      if (hasPendingDirtyWork(currentDirty)) {
+        const res = await deckService.flushDirtyState(
+          uid,
+          decksRef.current,
+          cardsRef.current,
+          dirtyStateRef.current
+        );
+        // Merge cleared flags back without losing any NEW mutations added while flush was in-flight
+        const latestDirty = dirtyStateRef.current;
+        const uploadedSet = new Set(currentDirty.dirtyDeckIds);
+        const uploadedCardSet = new Set(currentDirty.dirtyCardIds);
+        const deletedDeckSet = new Set(currentDirty.deletedDeckIds);
+        const deletedCardSet = new Set(currentDirty.deletedCards.map((c) => c.id));
+
+        const resolvedDirty: SyncDirtyState = {
+          dirtyDeckIds: Array.from(
+            new Set([
+              ...res.nextDirtyState.dirtyDeckIds,
+              ...latestDirty.dirtyDeckIds.filter((id) => !uploadedSet.has(id)),
+            ])
+          ),
+          dirtyCardIds: Array.from(
+            new Set([
+              ...res.nextDirtyState.dirtyCardIds,
+              ...latestDirty.dirtyCardIds.filter((id) => !uploadedCardSet.has(id)),
+            ])
+          ),
+          deletedDeckIds: Array.from(
+            new Set([
+              ...res.nextDirtyState.deletedDeckIds,
+              ...latestDirty.deletedDeckIds.filter((id) => !deletedDeckSet.has(id)),
+            ])
+          ),
+          deletedCards: Array.from(
+            new Map(
+              [
+                ...res.nextDirtyState.deletedCards,
+                ...latestDirty.deletedCards.filter((c) => !deletedCardSet.has(c.id)),
+              ].map((c) => [c.id, c])
+            ).values()
+          ),
+          knownCloudDeckIds: Array.from(
+            new Set([
+              ...res.nextDirtyState.knownCloudDeckIds,
+              ...latestDirty.knownCloudDeckIds,
+            ])
+          ),
+          knownCloudCardIds: Array.from(
+            new Set([
+              ...res.nextDirtyState.knownCloudCardIds,
+              ...latestDirty.knownCloudCardIds,
+            ])
+          ),
+        };
+
+        dirtyStateRef.current = resolvedDirty;
+        saveSyncDirtyState(uid, resolvedDirty);
+
+        if (!res.hadError && res.syncedCount > 0) {
+          setLastSyncedTime(new Date());
+        }
+      } else if (forceCloudPull) {
+        const synced = await deckService.syncAllDecksWithCloud(
+          uid,
+          decksRef.current,
+          cardsRef.current,
+          dirtyStateRef.current
+        );
+        dirtyStateRef.current = synced.dirtyState;
+        saveSyncDirtyState(uid, synced.dirtyState);
+        setLastSyncedTime(new Date());
+      }
+    } catch (err) {
+      console.warn('Continuous auto-sync cycle skipped:', err);
+    } finally {
+      syncInFlightRef.current = false;
+      setIsAutoSyncing(false);
+    }
+  }, []);
+
+  const scheduleDirtyFlush = useCallback(
+    (uid: string | null | undefined, nextDirty: SyncDirtyState) => {
+      if (!uid) return;
+      dirtyStateRef.current = nextDirty;
+      saveSyncDirtyState(uid, nextDirty);
+
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+      }
+      flushTimerRef.current = setTimeout(() => {
+        flushTimerRef.current = null;
+        runContinuousFlush(false);
+      }, MUTATION_FLUSH_DEBOUNCE_MS);
+    },
+    [runContinuousFlush]
+  );
+
   // Account-Based Cross-Device Cloud Synchronization:
-  // When user logs in with Google, migrate any local guest/unsynced decks to Firestore,
-  // load all cloud decks saved on any device, and attach real-time multi-device listeners.
+  // When user logs in with Google, migrate any local guest/unsynced decks to Firestore
+  // non-destructively, load all cloud decks, and attach real-time listeners AFTER initial merge.
+  const userUid = user?.uid ?? null;
+
   useEffect(() => {
     let isCancelled = false;
     let unsubDecks: (() => void) | null = null;
-    const targetOwner = user ? user.uid : 'guest';
     const previousOwner = lastOwnerBeforeAuthChangeRef.current;
 
-    // Immediately suspend localStorage writes until targetOwner finishes hydrating
+    // Suspend localStorage writes until targetOwner finishes hydrating
     hydratedOwnerRef.current = null;
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
 
     const initAccountOrGuestData = async () => {
-      if (user) {
-        const currentUserId = user.uid;
+      if (userUid) {
+        const currentUserId = userUid;
+        dirtyStateRef.current = loadSyncDirtyState(currentUserId);
 
         // Capture any in-memory guest decks created right before clicking "Sign In with Google"
         const inMemoryGuestDecks =
@@ -130,9 +288,9 @@ export default function HomePage() {
           }
         } catch {}
 
-        setIsManualSyncing(true);
+        setIsAutoSyncing(true);
 
-        // Migrate any local/guest decks & load authoritative cross-device decks from Firestore
+        // Non-destructively merge local/guest decks & load authoritative cross-device decks from Firestore
         try {
           const synced = await deckService.migrateLocalDecksToAccount(
             currentUserId,
@@ -140,6 +298,9 @@ export default function HomePage() {
             inMemoryGuestCards
           );
           if (isCancelled) return;
+
+          dirtyStateRef.current = synced.dirtyState;
+          saveSyncDirtyState(currentUserId, synced.dirtyState);
 
           setDecks(synced.decks);
           setCards(synced.cards);
@@ -149,19 +310,13 @@ export default function HomePage() {
           setLastSyncedTime(new Date());
 
           if (synced.migratedCount > 0) {
-            setSyncToastMessage(
+            showToast(
               `Synced ${synced.migratedCount} local ${
                 synced.migratedCount === 1 ? 'deck' : 'decks'
-              } to your Google account`
-            );
-          } else {
-            setSyncToastMessage(
-              `Cloud synced • ${synced.decks.length} ${
-                synced.decks.length === 1 ? 'deck' : 'decks'
-              } loaded`
+              } to your Google account`,
+              3500
             );
           }
-          setTimeout(() => setSyncToastMessage(null), 3500);
 
           try {
             localStorage.setItem(
@@ -184,40 +339,61 @@ export default function HomePage() {
             lastOwnerBeforeAuthChangeRef.current = currentUserId;
           }
         } finally {
-          if (!isCancelled) setIsManualSyncing(false);
+          if (!isCancelled) setIsAutoSyncing(false);
         }
 
-        // Subscribe to real-time updates across all devices logged into this Google account
+        // Subscribe to real-time updates across all devices AFTER initial migration settles.
+        // Uses non-destructive mergeLocalAndCloudState so incoming snapshots NEVER wipe unsynced local changes.
         if (!isCancelled) {
           unsubDecks = deckService.subscribeUserDecks(
             currentUserId,
             (liveData) => {
-              if (isCancelled) return;
-              setDecks((prevDecks) => {
-                // If selected deck was deleted on another device, reset filter to All Decks
-                if (
-                  selectedStudyDeckId &&
-                  liveData.decks.length > 0 &&
-                  !liveData.decks.some((d) => d.id === selectedStudyDeckId)
-                ) {
-                  setSelectedStudyDeckId(null);
-                }
-                // Trigger study session queue load if deck count changed (e.g. new deck added on another device)
-                if (prevDecks.length !== liveData.decks.length) {
-                  setStudySyncVersion((v) => v + 1);
-                }
-                return liveData.decks;
+              if (isCancelled || hydratedOwnerRef.current !== currentUserId) return;
+
+              const merged = mergeLocalAndCloudState({
+                localDecks: decksRef.current,
+                localCards: cardsRef.current,
+                cloudDecks: liveData.decks,
+                cloudCards: liveData.cards,
+                dirtyState: dirtyStateRef.current,
+                isAuthoritativeCloudSnapshot: liveData.decks.length > 0,
               });
-              setCards(liveData.cards);
+
+              dirtyStateRef.current = merged.nextDirtyState;
+              saveSyncDirtyState(currentUserId, merged.nextDirtyState);
+              setSyncedDeckIdsLocally(
+                currentUserId,
+                merged.decks.map((d) => d.id)
+              );
+
+              if (
+                selectedStudyDeckIdRef.current &&
+                merged.decks.length > 0 &&
+                !merged.decks.some((d) => d.id === selectedStudyDeckIdRef.current)
+              ) {
+                setSelectedStudyDeckId(null);
+              }
+
+              const prevDeckCount = decksRef.current.length;
+              const prevCardCount = cardsRef.current.length;
+
+              setDecks(merged.decks);
+              setCards(merged.cards);
+
+              if (prevDeckCount !== merged.decks.length || prevCardCount !== merged.cards.length) {
+                setStudySyncVersion((v) => v + 1);
+              }
+
               setLastSyncedTime(new Date());
+
               try {
                 localStorage.setItem(
                   getDecksStorageKey(currentUserId),
-                  JSON.stringify(liveData.decks)
+                  JSON.stringify(merged.decks)
                 );
                 localStorage.setItem(
                   getCardsStorageKey(currentUserId),
-                  JSON.stringify(liveData.cards)
+                  JSON.stringify(merged.cards)
                 );
               } catch {}
             },
@@ -228,6 +404,7 @@ export default function HomePage() {
         }
       } else {
         // Guest Mode: load guest storage or initial starter decks cleanly
+        dirtyStateRef.current = createEmptyDirtyState();
         try {
           const guestDecksStr = localStorage.getItem(getDecksStorageKey(null));
           const guestCardsStr = localStorage.getItem(getCardsStorageKey(null));
@@ -286,9 +463,48 @@ export default function HomePage() {
     return () => {
       isCancelled = true;
       if (unsubDecks) unsubDecks();
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
+  }, [userUid, showToast]);
+
+  // Continuous background auto-sync loop every 4 seconds while signed in,
+  // plus immediate flush on browser reconnect or tab hide.
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const intervalId = setInterval(() => {
+      runContinuousFlush(false);
+    }, CONTINUOUS_SYNC_INTERVAL_MS);
+
+    const handleOnline = () => {
+      runContinuousFlush(true);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        runContinuousFlush(false);
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user?.uid, runContinuousFlush]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+    };
+  }, []);
 
   // Persist decks and cards ONLY after the current owner ('guest' or user.uid) has finished hydrating
   useEffect(() => {
@@ -323,43 +539,22 @@ export default function HomePage() {
     return cards.filter((c) => isCardDue(c)).length;
   }, [cards]);
 
-  // Manual force sync handler: pushes any unsynced local decks and pulls fresh account decks
-  const handleManualSync = async () => {
-    if (!user) return;
-    setIsManualSyncing(true);
-    try {
-      const synced = await deckService.syncAllDecksWithCloud(
-        user.uid,
-        decksRef.current,
-        cardsRef.current
-      );
-      setDecks(synced.decks);
-      setCards(synced.cards);
-      setStudySyncVersion((v) => v + 1);
-      setLastSyncedTime(new Date());
-      setSyncToastMessage('Synchronized all decks with Google account');
-      setTimeout(() => setSyncToastMessage(null), 3000);
-    } catch (err) {
-      console.warn('Manual sync failed:', err);
-    } finally {
-      setIsManualSyncing(false);
-    }
-  };
-
-  // Handlers
+  // Handlers (all mark dirty state immediately so continuous sync guarantees durability)
   const handleCardReviewed = (updatedCard: Flashcard, _rating: SM2Rating) => {
+    const stampedCard: Flashcard = {
+      ...updatedCard,
+      updatedAt: updatedCard.updatedAt || new Date().toISOString(),
+    };
+
     let nextCardsSnapshot: Flashcard[] = [];
     setCards((prev) => {
-      nextCardsSnapshot = prev.map((c) => (c.id === updatedCard.id ? updatedCard : c));
+      nextCardsSnapshot = prev.map((c) => (c.id === stampedCard.id ? stampedCard : c));
       return nextCardsSnapshot;
     });
 
     if (user) {
-      // Always persist card review state directly to Firestore for this Google account
-      deckService
-        .updateCardReview(user.uid, updatedCard.deckId, updatedCard)
-        .then(() => setLastSyncedTime(new Date()))
-        .catch((err) => console.warn('Sync review card error:', err));
+      const nextDirty = markCardDirtyInState(dirtyStateRef.current, stampedCard.id);
+      scheduleDirtyFlush(user.uid, nextDirty);
 
       // Update study streak & mastery statistics in Firestore
       const syncStats = async () => {
@@ -401,42 +596,50 @@ export default function HomePage() {
   };
 
   const handleDeckCreated = (newDeck: Deck, newCards: Flashcard[]) => {
-    const orderedNewCards = sortCardsSequentially(newCards, [newDeck]);
-    setDecks((prev) => [newDeck, ...prev]);
+    const nowIso = new Date().toISOString();
+    const stampedDeck: Deck = { ...newDeck, updatedAt: newDeck.updatedAt || nowIso };
+    const orderedNewCards = sortCardsSequentially(newCards, [stampedDeck]).map((c) => ({
+      ...c,
+      updatedAt: c.updatedAt || nowIso,
+    }));
+
+    setDecks((prev) => [stampedDeck, ...prev]);
     setCards((prev) => [...orderedNewCards, ...prev]);
 
     if (user) {
-      deckService
-        .saveDeck(user.uid, newDeck, orderedNewCards)
-        .then(() => {
-          setLastSyncedTime(new Date());
-          setSyncToastMessage(`Saved "${newDeck.title}" to your Google account`);
-          setTimeout(() => setSyncToastMessage(null), 3000);
-        })
-        .catch((err) => {
-          console.warn('Save deck to cloud failed:', err);
-        });
+      let nextDirty = markDeckDirtyInState(dirtyStateRef.current, stampedDeck.id);
+      for (const c of orderedNewCards) {
+        nextDirty = markCardDirtyInState(nextDirty, c.id);
+      }
+      scheduleDirtyFlush(user.uid, nextDirty);
+      showToast(`Created "${stampedDeck.title}" — syncing to account`);
     } else {
-      setSyncToastMessage(`Created "${newDeck.title}" (Sign in with Google to sync across devices)`);
-      setTimeout(() => setSyncToastMessage(null), 3500);
+      showToast(`Created "${stampedDeck.title}"`);
     }
   };
 
   const handleDeleteDeck = (deckId: string) => {
+    const cardIdsInDeck = cardsRef.current
+      .filter((c) => c.deckId === deckId)
+      .map((c) => c.id);
+
     setDecks((prev) => prev.filter((d) => d.id !== deckId));
     setCards((prev) => prev.filter((c) => c.deckId !== deckId));
     if (selectedStudyDeckId === deckId) setSelectedStudyDeckId(null);
     if (inspectingDeck?.id === deckId) setInspectingDeck(null);
 
     if (user) {
-      deckService
-        .deleteDeck(user.uid, deckId)
-        .then(() => setLastSyncedTime(new Date()))
-        .catch((err) => console.warn('Delete deck from cloud failed:', err));
+      const nextDirty = markDeckDeletedInState(
+        dirtyStateRef.current,
+        deckId,
+        cardIdsInDeck
+      );
+      scheduleDirtyFlush(user.uid, nextDirty);
     }
   };
 
   const handleResetCardSchedule = (cardId: string) => {
+    const nowIso = new Date().toISOString();
     setCards((prev) =>
       prev.map((c) => {
         if (c.id === cardId) {
@@ -446,58 +649,81 @@ export default function HomePage() {
             repetitions: 0,
             intervalDays: 0,
             easeFactor: 2.5,
-            dueDate: new Date().toISOString(),
+            dueDate: nowIso,
+            updatedAt: nowIso,
           };
-          if (user) {
-            deckService
-              .updateCardReview(user.uid, resetCard.deckId, resetCard)
-              .catch((err) => console.warn('Reset card schedule in cloud failed:', err));
-          }
           return resetCard;
         }
         return c;
       })
     );
+
+    if (user) {
+      const nextDirty = markCardDirtyInState(dirtyStateRef.current, cardId);
+      scheduleDirtyFlush(user.uid, nextDirty);
+    }
   };
 
   const handleMakeCardDueToday = (cardId: string) => {
+    const nowIso = new Date().toISOString();
     setCards((prev) =>
       prev.map((c) => {
         if (c.id === cardId) {
-          const dueCard: Flashcard = {
+          return {
             ...c,
-            dueDate: new Date().toISOString(),
+            dueDate: nowIso,
+            updatedAt: nowIso,
           };
-          if (user) {
-            deckService
-              .updateCardReview(user.uid, dueCard.deckId, dueCard)
-              .catch((err) => console.warn('Make card due in cloud failed:', err));
-          }
-          return dueCard;
         }
         return c;
       })
     );
+
+    if (user) {
+      const nextDirty = markCardDirtyInState(dirtyStateRef.current, cardId);
+      scheduleDirtyFlush(user.uid, nextDirty);
+    }
   };
 
   const handleAddCardToDeck = (newCard: Flashcard) => {
-    setCards((prev) => sortCardsSequentially([...prev, newCard], decksRef.current));
+    const nowIso = new Date().toISOString();
+    const stampedCard: Flashcard = {
+      ...newCard,
+      updatedAt: newCard.updatedAt || nowIso,
+    };
+    setCards((prev) => sortCardsSequentially([...prev, stampedCard], decksRef.current));
     if (user) {
-      deckService
-        .saveCard(user.uid, newCard.deckId, newCard)
-        .then(() => setLastSyncedTime(new Date()))
-        .catch((err) => console.warn('Add card to cloud failed:', err));
+      const nextDirty = markCardDirtyInState(dirtyStateRef.current, stampedCard.id);
+      scheduleDirtyFlush(user.uid, nextDirty);
+    }
+  };
+
+  const handleUpdateCard = (updatedCard: Flashcard) => {
+    const stampedCard: Flashcard = {
+      ...updatedCard,
+      updatedAt: new Date().toISOString(),
+    };
+    setCards((prev) => prev.map((c) => (c.id === stampedCard.id ? stampedCard : c)));
+
+    if (user) {
+      const nextDirty = markCardDirtyInState(dirtyStateRef.current, stampedCard.id);
+      scheduleDirtyFlush(user.uid, nextDirty);
+      showToast('Card changes saved');
+    } else {
+      showToast('Card changes saved', 2000);
     }
   };
 
   const handleDeleteCard = (cardId: string) => {
-    const cardToDelete = cards.find((c) => c.id === cardId);
+    const cardToDelete = cardsRef.current.find((c) => c.id === cardId);
     setCards((prev) => prev.filter((c) => c.id !== cardId));
     if (user && cardToDelete) {
-      deckService
-        .deleteCard(user.uid, cardToDelete.deckId, cardId)
-        .then(() => setLastSyncedTime(new Date()))
-        .catch((err) => console.warn('Delete card cloud error:', err));
+      const nextDirty = markCardDeletedInState(
+        dirtyStateRef.current,
+        cardId,
+        cardToDelete.deckId
+      );
+      scheduleDirtyFlush(user.uid, nextDirty);
     }
   };
 
@@ -537,36 +763,7 @@ export default function HomePage() {
         totalCards={cards.length}
       />
 
-      {/* Cloud Account Sync Banner for Guests */}
-      {!user && !hasDismissedAuthBanner && (
-        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white px-4 py-2.5 shadow-sm text-xs font-medium">
-          <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Cloud className="w-4 h-4 shrink-0 text-blue-200" />
-              <span>
-                <strong>Save your progress across devices:</strong> Sign in with Google to sync your decks, review schedules, and streaks.
-              </span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={signInWithGoogle}
-                className="px-2.5 py-1 rounded-full bg-white text-blue-700 font-semibold text-[11px] shadow-2xs hover:bg-blue-50 active:scale-95 transition-all"
-              >
-                Sign In
-              </button>
-              <button
-                onClick={() => setHasDismissedAuthBanner(true)}
-                className="text-white/70 hover:text-white text-xs px-1.5"
-                title="Dismiss"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Sync Toast Feedback Indicator */}
+      {/* Quiet Toast Feedback Indicator */}
       {syncToastMessage && (
         <div className="fixed top-20 right-4 z-50 animate-in fade-in slide-in-from-top-3 duration-200">
           <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-neutral-900/90 backdrop-blur-md text-white text-xs font-medium shadow-lg border border-white/10">
@@ -587,6 +784,8 @@ export default function HomePage() {
             cardDirection={getDeckDirection(selectedStudyDeckId)}
             onChangeCardDirection={(dir) => handleSetDeckDirection(selectedStudyDeckId, dir)}
             onCardReviewed={handleCardReviewed}
+            onUpdateCard={handleUpdateCard}
+            onDeleteCard={handleDeleteCard}
             onNavigateToImport={() => setActiveTab('import')}
             currentStreak={effectiveStreak}
             userId={user?.uid}
@@ -599,7 +798,6 @@ export default function HomePage() {
             decks={decks}
             cards={cards}
             deckDirections={deckDirections}
-            onChangeDeckDirection={handleSetDeckDirection}
             onSelectDeckToStudy={(deckId, dir) => handleSelectDeckToStudy(deckId, dir)}
             onNavigateToImport={() => setActiveTab('import')}
             onDeleteDeck={handleDeleteDeck}
@@ -624,6 +822,8 @@ export default function HomePage() {
             decks={decks}
             onResetCardSchedule={handleResetCardSchedule}
             onMakeCardDueToday={handleMakeCardDueToday}
+            onUpdateCard={handleUpdateCard}
+            onDeleteCard={handleDeleteCard}
             onNavigateToStudy={(deckId) => {
               if (deckId) setSelectedStudyDeckId(deckId);
               setStudySyncVersion((v) => v + 1);
@@ -649,18 +849,16 @@ export default function HomePage() {
             handleSelectDeckToStudy(deckId, dir);
           }}
           onAddCardToDeck={handleAddCardToDeck}
+          onUpdateCard={handleUpdateCard}
           onDeleteCard={handleDeleteCard}
         />
       )}
 
-      {/* Apple-styled Footer with Ayaan Khan Credits */}
+      {/* Minimal Footer with Auto-Sync Indicator & Credits */}
       <Footer
         user={user}
-        isSyncing={isManualSyncing}
-        totalDecks={decks.length}
-        totalCards={cards.length}
+        isSyncing={isAutoSyncing}
         lastSyncedTime={lastSyncedTime}
-        onManualSync={handleManualSync}
       />
     </div>
   );

@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  Sparkles,
   BookOpen,
   Plus,
   Play,
@@ -10,18 +9,11 @@ import {
   CheckCircle2,
   Trash2,
   Download,
-  Check,
   MoreHorizontal,
-  ChevronRight,
-  Flame,
   FileSpreadsheet,
   Search,
   Layers,
   GraduationCap,
-  Globe2,
-  RotateCcw,
-  BarChart3,
-  ArrowLeftRight,
 } from 'lucide-react';
 import { CardDirection, Deck, Flashcard } from '@/lib/types';
 import { isCardDue } from '@/lib/srs';
@@ -34,7 +26,6 @@ interface DecksViewProps {
   decks: Deck[];
   cards: Flashcard[];
   deckDirections?: Record<string, CardDirection>;
-  onChangeDeckDirection?: (deckId: string | null, direction: CardDirection) => void;
   onSelectDeckToStudy: (deckId: string | null, direction?: CardDirection) => void;
   onNavigateToImport: () => void;
   onDeleteDeck: (deckId: string) => void;
@@ -47,7 +38,6 @@ export const DecksView: React.FC<DecksViewProps> = ({
   decks,
   cards,
   deckDirections = {},
-  onChangeDeckDirection,
   onSelectDeckToStudy,
   onNavigateToImport,
   onDeleteDeck,
@@ -57,22 +47,12 @@ export const DecksView: React.FC<DecksViewProps> = ({
 }) => {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [exportedDeckId, setExportedDeckId] = useState<string | null>(null);
-  const exportFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(
     () => decks[0]?.id ?? null
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
   const [filterMode, setFilterMode] = useState<'all' | 'due' | 'mastered'>('all');
-
-  useEffect(() => {
-    return () => {
-      if (exportFeedbackTimerRef.current) {
-        clearTimeout(exportFeedbackTimerRef.current);
-      }
-    };
-  }, []);
 
   // Available unique languages in decks
   const availableLanguages = useMemo(() => {
@@ -117,11 +97,6 @@ export const DecksView: React.FC<DecksViewProps> = ({
     return filteredDecks[0] ?? decks[0] ?? null;
   }, [decks, filteredDecks, selectedDeckId]);
 
-  const selectedDeckCardsCount = useMemo(() => {
-    if (!selectedDeck) return 0;
-    return cards.filter((c) => c.deckId === selectedDeck.id).length;
-  }, [cards, selectedDeck]);
-
   const handleExportDeckCsv = (deck: Deck) => {
     playHapticFeedback('tap');
     const deckCards = cards.filter((c) => c.deckId === deck.id);
@@ -129,14 +104,6 @@ export const DecksView: React.FC<DecksViewProps> = ({
 
     exportDeckCardsToCsv(deck, deckCards);
     setActiveMenuId(null);
-    setExportedDeckId(deck.id);
-
-    if (exportFeedbackTimerRef.current) {
-      clearTimeout(exportFeedbackTimerRef.current);
-    }
-    exportFeedbackTimerRef.current = setTimeout(() => {
-      setExportedDeckId(null);
-    }, 2000);
   };
 
   const handleExportDeck = (deck: Deck) => {
@@ -165,53 +132,35 @@ export const DecksView: React.FC<DecksViewProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-      {/* Top Hero Banner */}
+      {/* Top Hero Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-baseline gap-2 mb-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
+          <div className="flex items-baseline gap-2 mb-0.5">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
               Vocabulary Decks
             </h1>
-            <span className="text-xs font-semibold text-blue-600 tabular-nums">
+            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 tabular-nums">
               · {decks.length} Active
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-neutral-500">
-            Intelligently scheduled spaced repetition collections with real-time cloud sync
+          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
+            Select a deck to study, browse cards, or inspect mastery
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          {selectedDeck && (
+          {totalDueToday > 0 && (
             <button
-              id="decks-export-selected-csv-btn"
+              id="decks-review-due-btn"
               type="button"
-              disabled={selectedDeckCardsCount === 0}
-              onClick={() => handleExportDeckCsv(selectedDeck)}
-              title={
-                selectedDeckCardsCount > 0
-                  ? `Back up "${selectedDeck.title}" (${selectedDeckCardsCount} cards) as CSV`
-                  : `"${selectedDeck.title}" has no cards to export yet`
-              }
-              className={`inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl font-semibold text-xs sm:text-sm transition-all whitespace-nowrap shrink-0 ${
-                selectedDeckCardsCount === 0
-                  ? 'bg-neutral-100 text-neutral-400 border border-neutral-200/80 cursor-not-allowed'
-                  : exportedDeckId === selectedDeck.id
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-pointer'
-                    : 'bg-white hover:bg-neutral-50 active:scale-98 text-neutral-700 border border-black/10 shadow-2xs cursor-pointer'
-              }`}
+              onClick={() => {
+                playHapticFeedback('tap');
+                onSelectDeckToStudy(null);
+              }}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-[0.98] text-neutral-800 dark:text-neutral-100 border border-black/10 dark:border-white/10 font-semibold text-xs sm:text-sm shadow-2xs transition-all whitespace-nowrap shrink-0 cursor-pointer tabular-nums"
             >
-              {exportedDeckId === selectedDeck.id ? (
-                <>
-                  <Check className="w-4 h-4 shrink-0" />
-                  <span>Saved CSV</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4 shrink-0" />
-                  <span>Export CSV</span>
-                </>
-              )}
+              <Play className="w-3.5 h-3.5 fill-current text-blue-600 dark:text-blue-400 shrink-0" />
+              <span>Study Due ({totalDueToday})</span>
             </button>
           )}
 
@@ -221,10 +170,10 @@ export const DecksView: React.FC<DecksViewProps> = ({
               playHapticFeedback('tap');
               onNavigateToImport();
             }}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-semibold text-xs sm:text-sm shadow-sm shadow-blue-500/25 transition-all whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-semibold text-xs sm:text-sm shadow-sm shadow-blue-500/25 transition-all whitespace-nowrap shrink-0 cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4 shrink-0" />
-            <span>Create Deck from Table</span>
+            <span>Create Deck</span>
           </button>
         </div>
       </div>
@@ -272,31 +221,6 @@ export const DecksView: React.FC<DecksViewProps> = ({
         </div>
       </div>
 
-      {/* Due Today Quick Action Banner */}
-      {totalDueToday > 0 && (
-        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm">
-                You have {totalDueToday} {totalDueToday === 1 ? 'card' : 'cards'} ready for spaced repetition
-              </h3>
-              <p className="text-xs text-blue-100">
-                Regular reviews strengthen long-term memory retention curves.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => onSelectDeckToStudy(null)}
-            className="px-4 py-2 rounded-xl bg-white text-blue-600 font-semibold text-xs shadow-sm hover:bg-blue-50 active:scale-95 transition-all shrink-0"
-          >
-            Review All Due Cards
-          </button>
-        </div>
-      )}
-
       {/* Selected Deck Card Mastery Visualization (Recharts) */}
       <DeckMasteryChart
         decks={decks}
@@ -304,12 +228,9 @@ export const DecksView: React.FC<DecksViewProps> = ({
         onSelectDeck={(deckId) => setSelectedDeckId(deckId)}
         cards={cards}
         cardDirection={selectedDeck ? deckDirections[selectedDeck.id] ?? 'target-first' : 'target-first'}
-        onChangeCardDirection={(deckId, dir) => onChangeDeckDirection?.(deckId, dir)}
         onStudyDeck={(deckId, dir) => onSelectDeckToStudy(deckId, dir)}
         onInspectDeck={onInspectDeck}
         onNavigateToImport={onNavigateToImport}
-        onExportDeckCsv={handleExportDeckCsv}
-        exportedDeckId={exportedDeckId}
       />
 
       {/* Search & Filter Bar */}
@@ -436,24 +357,6 @@ export const DecksView: React.FC<DecksViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        playHapticFeedback('tap');
-                        setSelectedDeckId(deck.id);
-                      }}
-                      aria-label={`View mastery chart for ${deck.title}`}
-                      title="Inspect mastery distribution"
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
-                        isSelectedForChart
-                          ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400'
-                          : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                      }`}
-                    >
-                      <BarChart3 className="w-4 h-4" />
-                    </button>
-
                     {/* Options Menu Toggle */}
                     <div className="relative">
                       <button
@@ -473,7 +376,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       {activeMenuId === deck.id && (
                         <div
                           onClick={(e) => e.stopPropagation()}
-                          className="absolute right-0 top-9 z-20 w-48 rounded-2xl bg-white dark:bg-neutral-850 p-1.5 shadow-lg border border-black/5 dark:border-white/10 text-xs text-neutral-700 dark:text-neutral-200"
+                          className="absolute right-0 top-9 z-20 w-48 rounded-2xl bg-white dark:bg-neutral-800 p-1.5 shadow-lg border border-black/10 dark:border-white/10 text-xs text-neutral-700 dark:text-neutral-200"
                         >
                           <button
                             type="button"
@@ -484,7 +387,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                             className="w-full text-left px-3 py-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 cursor-pointer"
                           >
                             <BookOpen className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
-                            <span>Inspect Cards</span>
+                            <span>Browse &amp; Edit Cards</span>
                           </button>
                           <button
                             type="button"
@@ -595,55 +498,6 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       title={`New: ${newCount}`}
                     />
                   )}
-                </div>
-
-                {/* Per-Deck Card Definition Order Selector */}
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center justify-between gap-2 mb-3"
-                >
-                  <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Order</span>
-                  <div
-                    role="group"
-                    aria-label={`Card order for ${deck.title}`}
-                    className="inline-flex items-center p-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-neutral-200/70 dark:border-neutral-700 text-[11px] font-medium"
-                  >
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        playHapticFeedback('tap');
-                        setSelectedDeckId(deck.id);
-                        onChangeDeckDirection?.(deck.id, 'target-first');
-                      }}
-                      title="Show foreign word & transliteration first, then definition"
-                      className={`px-2 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                        deckDirection === 'target-first'
-                          ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
-                          : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
-                      }`}
-                    >
-                      Word → Def
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        playHapticFeedback('tap');
-                        setSelectedDeckId(deck.id);
-                        onChangeDeckDirection?.(deck.id, 'definition-first');
-                      }}
-                      title="Show definition first, then transliteration & foreign word"
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                        deckDirection === 'definition-first'
-                          ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
-                          : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
-                      }`}
-                    >
-                      <ArrowLeftRight className="w-3 h-3 shrink-0" />
-                      <span>Def → Translit</span>
-                    </button>
-                  </div>
                 </div>
 
                 {/* Action Buttons */}

@@ -17,6 +17,16 @@ import { Deck, Flashcard, ReviewLog, SM2Rating } from './types';
 import { INITIAL_DECKS, INITIAL_CARDS } from './default-data';
 import { sortCardsSequentially } from './srs';
 
+import {
+  SyncDirtyState,
+  createEmptyDirtyState,
+  normalizeDirtyState,
+  mergeLocalAndCloudState,
+  mergeGuestIntoAccountState,
+  sortDecksDeterministically,
+  hasPendingDirtyWork,
+} from './sync-merge';
+
 export const LOCAL_DECKS_STORAGE_KEY = 'language_flashcards_decks_guest';
 export const LOCAL_CARDS_STORAGE_KEY = 'language_flashcards_cards_guest';
 export const LEGACY_LOCAL_STORAGE_KEY = 'local_decks';
@@ -26,6 +36,28 @@ const STARTER_DECK_IDS = new Set([
   'deck-japanese-travel',
   'deck-french-cafe',
 ]);
+
+export function getSyncMetaStorageKey(userId: string): string {
+  return `language_flashcards_sync_meta_${userId}`;
+}
+
+export function loadSyncDirtyState(userId: string): SyncDirtyState {
+  if (typeof window === 'undefined' || !userId) return createEmptyDirtyState();
+  try {
+    const raw = localStorage.getItem(getSyncMetaStorageKey(userId));
+    if (!raw) return createEmptyDirtyState();
+    return normalizeDirtyState(JSON.parse(raw));
+  } catch {
+    return createEmptyDirtyState();
+  }
+}
+
+export function saveSyncDirtyState(userId: string, state: SyncDirtyState): void {
+  if (typeof window === 'undefined' || !userId) return;
+  try {
+    localStorage.setItem(getSyncMetaStorageKey(userId), JSON.stringify(state));
+  } catch {}
+}
 
 export function getSyncedDeckIdsStorageKey(userId: string): string {
   return `language_flashcards_synced_decks_${userId}`;
@@ -50,18 +82,6 @@ export function setSyncedDeckIdsLocally(userId: string, deckIds: string[]): void
       JSON.stringify(Array.from(new Set(deckIds)))
     );
   } catch {}
-}
-
-function getPreviouslySyncedDeckIds(userId: string): Set<string> {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const raw = localStorage.getItem(getSyncedDeckIdsStorageKey(userId));
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? new Set(parsed) : new Set();
-  } catch {
-    return new Set();
-  }
 }
 
 export function sanitizeFirestoreId(rawId: string, fallbackPrefix: string): string {
@@ -100,7 +120,7 @@ export function buildDeckFirestorePayload(
     description: (deck.description || '').slice(0, 500),
     icon: (deck.icon || 'Sparkles').slice(0, 50),
     createdAt: (deck.createdAt || nowIso).slice(0, 40),
-    updatedAt: nowIso,
+    updatedAt: (deck.updatedAt || nowIso).slice(0, 40),
   };
 }
 
@@ -138,7 +158,7 @@ export function buildCardFirestorePayload(
     easeFactor: Math.max(1.3, Number.isFinite(card.easeFactor) ? card.easeFactor : 2.5),
     dueDate: (card.dueDate || nowIso).slice(0, 40),
     createdAt: (card.createdAt || nowIso).slice(0, 40),
-    updatedAt: nowIso,
+    updatedAt: (card.updatedAt || nowIso).slice(0, 40),
   };
 
   const resolvedOrder =
@@ -212,26 +232,6 @@ function mapFirestoreDocToCard(
     lastReviewedAt: cData.lastReviewedAt,
   };
   return card;
-}
-
-function sortDecksDeterministically(decks: Deck[]): Deck[] {
-  const starterOrder: Record<string, number> = {
-    'deck-spanish-core': 1,
-    'deck-japanese-travel': 2,
-    'deck-french-cafe': 3,
-  };
-  return [...decks].sort((a, b) => {
-    const aIsStarter = Boolean(starterOrder[a.id]);
-    const bIsStarter = Boolean(starterOrder[b.id]);
-    // Custom user-created decks appear first (newest first), followed by starter decks
-    if (!aIsStarter && bIsStarter) return -1;
-    if (aIsStarter && !bIsStarter) return 1;
-    if (aIsStarter && bIsStarter) return starterOrder[a.id] - starterOrder[b.id];
-    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-    if (timeA !== timeB) return timeB - timeA;
-    return a.id.localeCompare(b.id);
-  });
 }
 
 export interface UserDecksResult {
@@ -314,6 +314,10 @@ export const deckService = {
       decksColRef,
       (decksSnapshot) => {
         if (isDisposed) return;
+        // Skip empty cold-cache snapshots so offline cache never flashes empty before server responds
+        if (decksSnapshot.metadata.fromCache && decksSnapshot.empty) {
+          return;
+        }
         const rawDecks: Deck[] = [];
         const activeDeckIds = new Set<string>();
 
@@ -503,7 +507,7 @@ export const deckService = {
         ...card,
         id: safeCardId,
       });
-      await setDoc(cardRef, payload, { merge: true });
+      await setDoc(cardRef, payload);
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, path);
     }
@@ -545,6 +549,7 @@ export const deckService = {
         intervalDays: Math.max(0, card.intervalDays ?? 0),
         easeFactor: Math.max(1.3, card.easeFactor || 2.5),
         dueDate: card.dueDate,
+        updatedAt: (card.updatedAt || new Date().toISOString()).slice(0, 40),
       };
       if (typeof card.lastReviewedAt === 'string' && card.lastReviewedAt.length > 0) {
         updates.lastReviewedAt = card.lastReviewedAt.slice(0, 40);
@@ -690,135 +695,276 @@ export const deckService = {
   },
 
   /**
-   * Cross-Device Cloud Sync & Local Migration on Google Login:
-   * 1. Fetches all decks & cards stored under `users/{userId}/decks` in Firestore (so logging in on any new device transfers 100% of saved decks).
-   * 2. Merges any locally created guest decks OR previously unsynced device decks into Firestore without duplicating starter decks or resurrecting cloud-deleted decks.
-   * 3. Initializes brand-new accounts with starter decks saved directly into Firestore.
+   * Flushes all dirty decks, dirty cards, and pending tombstones (deletes) to Firestore.
+   * Only clears dirty/deleted flags for items that actually succeeded so failed writes
+   * automatically retry on the next continuous sync tick.
+   */
+  async flushDirtyState(
+    userId: string,
+    localDecks: Deck[],
+    localCards: Flashcard[],
+    dirtyState: SyncDirtyState
+  ): Promise<{
+    nextDirtyState: SyncDirtyState;
+    syncedCount: number;
+    hadError: boolean;
+  }> {
+    if (!userId || !hasPendingDirtyWork(dirtyState)) {
+      return { nextDirtyState: dirtyState, syncedCount: 0, hadError: false };
+    }
+
+    const deckMap = new Map(localDecks.map((d) => [d.id, d]));
+    const cardMap = new Map(localCards.map((c) => [c.id, c]));
+
+    const remainingDirtyDecks = new Set(dirtyState.dirtyDeckIds);
+    const remainingDirtyCards = new Set(dirtyState.dirtyCardIds);
+    const remainingDeletedDecks = new Set(dirtyState.deletedDeckIds);
+    const remainingDeletedCards = new Map(
+      dirtyState.deletedCards.map((c) => [c.id, c])
+    );
+    const knownDecks = new Set(dirtyState.knownCloudDeckIds);
+    const knownCards = new Set(dirtyState.knownCloudCardIds);
+
+    let syncedCount = 0;
+    let hadError = false;
+
+    // 1. Process deck deletions first
+    for (const deckId of dirtyState.deletedDeckIds) {
+      try {
+        await this.deleteDeck(userId, deckId);
+        remainingDeletedDecks.delete(deckId);
+        knownDecks.delete(deckId);
+        syncedCount++;
+      } catch (err) {
+        hadError = true;
+        console.warn(`Flush deleteDeck failed for ${deckId}:`, err);
+      }
+    }
+
+    // 2. Process card deletions (skip cards whose deck was just deleted)
+    for (const ref of dirtyState.deletedCards) {
+      if (dirtyState.deletedDeckIds.includes(ref.deckId) && !remainingDeletedDecks.has(ref.deckId)) {
+        remainingDeletedCards.delete(ref.id);
+        knownCards.delete(ref.id);
+        continue;
+      }
+      try {
+        await this.deleteCard(userId, ref.deckId, ref.id);
+        remainingDeletedCards.delete(ref.id);
+        knownCards.delete(ref.id);
+        syncedCount++;
+      } catch (err) {
+        hadError = true;
+        console.warn(`Flush deleteCard failed for ${ref.id}:`, err);
+      }
+    }
+
+    // 3. Save dirty decks along with all their cards
+    for (const deckId of dirtyState.dirtyDeckIds) {
+      const deck = deckMap.get(deckId);
+      if (!deck) {
+        remainingDirtyDecks.delete(deckId);
+        continue;
+      }
+      const deckCards = sortDecksDeterministically([deck]).length
+        ? sortCardsSequentially(
+            localCards.filter((c) => c.deckId === deckId),
+            [deck]
+          )
+        : [];
+      try {
+        await this.saveDeck(userId, deck, deckCards);
+        remainingDirtyDecks.delete(deckId);
+        knownDecks.add(deckId);
+        deckCards.forEach((c) => {
+          remainingDirtyCards.delete(c.id);
+          knownCards.add(c.id);
+        });
+        syncedCount++;
+      } catch (err) {
+        hadError = true;
+        console.warn(`Flush saveDeck failed for ${deckId}:`, err);
+      }
+    }
+
+    // 4. Save remaining dirty cards (whose deck wasn't just written)
+    for (const cardId of Array.from(remainingDirtyCards)) {
+      const card = cardMap.get(cardId);
+      if (!card) {
+        remainingDirtyCards.delete(cardId);
+        continue;
+      }
+      try {
+        await this.saveCard(userId, card.deckId, card);
+        remainingDirtyCards.delete(cardId);
+        knownCards.add(cardId);
+        syncedCount++;
+      } catch (err) {
+        hadError = true;
+        console.warn(`Flush saveCard failed for ${cardId}:`, err);
+      }
+    }
+
+    const nextDirtyState: SyncDirtyState = {
+      dirtyDeckIds: Array.from(remainingDirtyDecks),
+      dirtyCardIds: Array.from(remainingDirtyCards),
+      deletedDeckIds: Array.from(remainingDeletedDecks),
+      deletedCards: Array.from(remainingDeletedCards.values()),
+      knownCloudDeckIds: Array.from(knownDecks),
+      knownCloudCardIds: Array.from(knownCards),
+    };
+
+    saveSyncDirtyState(userId, nextDirtyState);
+
+    return { nextDirtyState, syncedCount, hadError };
+  },
+
+  /**
+   * Non-destructive Cross-Device Cloud Sync & Local Migration on Google Login:
+   * 1. Fetches all decks & cards stored under `users/{userId}/decks` in Firestore.
+   * 2. Preserves any unsynced local cache for this userId (e.g., offline edits/reviews) without overwriting.
+   * 3. Merges custom guest decks, added cards, and newer starter card progress from pre-login guest mode.
+   * 4. Initializes brand-new accounts (0 cloud + 0 local decks) with starter decks saved directly to Firestore.
    */
   async migrateLocalDecksToAccount(
     targetUserId?: string,
     inMemoryGuestDecks?: Deck[],
     inMemoryGuestCards?: Flashcard[]
-  ): Promise<{ decks: Deck[]; cards: Flashcard[]; migratedCount: number }> {
+  ): Promise<{
+    decks: Deck[];
+    cards: Flashcard[];
+    migratedCount: number;
+    dirtyState: SyncDirtyState;
+  }> {
     const userId = targetUserId || auth.currentUser?.uid;
     if (!userId) {
-      return { decks: [], cards: [], migratedCount: 0 };
+      return {
+        decks: [],
+        cards: [],
+        migratedCount: 0,
+        dirtyState: createEmptyDirtyState(),
+      };
     }
 
     const cloudData = await this.getUserDecks(userId);
-    const previouslySyncedIds = getPreviouslySyncedDeckIds(userId);
+    let dirtyState = loadSyncDirtyState(userId);
 
-    // Collect local candidate decks/cards from guest storage, in-memory guest session, and unsynced local user cache
-    const candidateDecksMap = new Map<string, { deck: Deck; fromGuest: boolean }>();
-    const candidateCardsMap = new Map<string, Flashcard>();
+    // 1. Read account's own local cache (rescues any offline changes/reviews on this Google account)
+    let accountCachedDecks: Deck[] = [];
+    let accountCachedCards: Flashcard[] = [];
+    try {
+      const userCachedDecksRaw = localStorage.getItem(`language_flashcards_decks_${userId}`);
+      const userCachedCardsRaw = localStorage.getItem(`language_flashcards_cards_${userId}`);
+      if (userCachedDecksRaw) {
+        const parsed = JSON.parse(userCachedDecksRaw);
+        if (Array.isArray(parsed)) accountCachedDecks = parsed;
+      }
+      if (userCachedCardsRaw) {
+        const parsed = JSON.parse(userCachedCardsRaw);
+        if (Array.isArray(parsed)) accountCachedCards = parsed;
+      }
+    } catch {}
 
-    const addCandidateDecks = (decksList: unknown, fromGuest: boolean) => {
-      if (!Array.isArray(decksList)) return;
-      for (const d of decksList) {
-        if (d && typeof d === 'object' && typeof d.id === 'string' && d.title) {
-          if (!candidateDecksMap.has(d.id)) {
-            candidateDecksMap.set(d.id, { deck: d as Deck, fromGuest });
-          }
+    // Non-destructive merge of account's local cache with cloud data
+    const accountMerged = mergeLocalAndCloudState({
+      localDecks: accountCachedDecks,
+      localCards: accountCachedCards,
+      cloudDecks: cloudData.decks,
+      cloudCards: cloudData.cards,
+      dirtyState,
+      isAuthoritativeCloudSnapshot: true,
+    });
+
+    let workingDecks = accountMerged.decks;
+    let workingCards = accountMerged.cards;
+    dirtyState = accountMerged.nextDirtyState;
+
+    // 2. Collect guest decks & cards (in-memory pre-login session + guest localStorage)
+    const guestDeckMap = new Map<string, Deck>();
+    const guestCardMap = new Map<string, Flashcard>();
+
+    const collectGuestDecks = (list: unknown) => {
+      if (!Array.isArray(list)) return;
+      for (const d of list) {
+        if (d && typeof d === 'object' && typeof d.id === 'string' && d.title && !guestDeckMap.has(d.id)) {
+          guestDeckMap.set(d.id, d as Deck);
         }
       }
     };
-
-    const addCandidateCards = (cardsList: unknown) => {
-      if (!Array.isArray(cardsList)) return;
-      for (const c of cardsList) {
-        if (c && typeof c === 'object' && typeof c.id === 'string' && c.deckId) {
-          if (!candidateCardsMap.has(c.id)) {
-            candidateCardsMap.set(c.id, c as Flashcard);
-          }
+    const collectGuestCards = (list: unknown) => {
+      if (!Array.isArray(list)) return;
+      for (const c of list) {
+        if (c && typeof c === 'object' && typeof c.id === 'string' && c.deckId && !guestCardMap.has(c.id)) {
+          guestCardMap.set(c.id, c as Flashcard);
         }
       }
     };
 
     try {
-      // 1. In-memory guest state (e.g. decks created in current tab right before clicking Sign In)
-      if (inMemoryGuestDecks && inMemoryGuestDecks.length > 0) {
-        addCandidateDecks(inMemoryGuestDecks, true);
-      }
-      if (inMemoryGuestCards && inMemoryGuestCards.length > 0) {
-        addCandidateCards(inMemoryGuestCards);
-      }
+      collectGuestDecks(inMemoryGuestDecks);
+      collectGuestCards(inMemoryGuestCards);
 
-      // 2. Guest localStorage
       const guestDecksRaw =
         localStorage.getItem(LOCAL_DECKS_STORAGE_KEY) ||
         localStorage.getItem(LEGACY_LOCAL_STORAGE_KEY);
       const guestCardsRaw = localStorage.getItem(LOCAL_CARDS_STORAGE_KEY);
-      if (guestDecksRaw) addCandidateDecks(JSON.parse(guestDecksRaw), true);
-      if (guestCardsRaw) addCandidateCards(JSON.parse(guestCardsRaw));
-
-      // 3. Account-scoped local cache on this device (rescues decks created while offline or before cloud sync succeeded)
-      const userCachedDecksRaw = localStorage.getItem(`language_flashcards_decks_${userId}`);
-      const userCachedCardsRaw = localStorage.getItem(`language_flashcards_cards_${userId}`);
-      if (userCachedDecksRaw) {
-        const parsedUserDecks = JSON.parse(userCachedDecksRaw);
-        if (Array.isArray(parsedUserDecks)) {
-          // Only consider decks that were NEVER previously confirmed synced & deleted elsewhere
-          const unsyncedUserDecks = parsedUserDecks.filter(
-            (d: Deck) => d?.id && !previouslySyncedIds.has(d.id)
-          );
-          addCandidateDecks(unsyncedUserDecks, false);
-        }
-      }
-      if (userCachedCardsRaw) {
-        addCandidateCards(JSON.parse(userCachedCardsRaw));
-      }
+      if (guestDecksRaw) collectGuestDecks(JSON.parse(guestDecksRaw));
+      if (guestCardsRaw) collectGuestCards(JSON.parse(guestCardsRaw));
     } catch (err) {
-      console.warn('Failed reading local decks during account sync:', err);
+      console.warn('Failed reading guest decks during account merge:', err);
     }
-
-    const allCandidateCards = Array.from(candidateCardsMap.values());
-    const cloudDeckIds = new Set(cloudData.decks.map((d) => d.id));
-    const cloudCardIds = new Set(cloudData.cards.map((c) => c.id));
 
     let migratedCount = 0;
-    let migratedFromGuest = false;
+    const guestDecks = Array.from(guestDeckMap.values());
+    const guestCards = Array.from(guestCardMap.values());
 
-    // Identify custom (non-starter) local decks that are not yet in Firestore
-    const unsyncedCustomDecks: Deck[] = [];
-    for (const { deck, fromGuest } of candidateDecksMap.values()) {
-      if (!cloudDeckIds.has(deck.id) && !STARTER_DECK_IDS.has(deck.id)) {
-        unsyncedCustomDecks.push(deck);
-        if (fromGuest) migratedFromGuest = true;
+    if (guestDecks.length > 0 || guestCards.length > 0) {
+      const guestMerged = mergeGuestIntoAccountState({
+        guestDecks,
+        guestCards,
+        accountDecks: workingDecks,
+        accountCards: workingCards,
+        starterDeckIds: STARTER_DECK_IDS,
+        dirtyState,
+      });
+
+      workingDecks = guestMerged.decks;
+      workingCards = guestMerged.cards;
+      dirtyState = guestMerged.nextDirtyState;
+      migratedCount = guestMerged.decksToUpload.length;
+    }
+
+    // 3. Brand-new Google account with 0 decks anywhere: seed starter decks
+    if (workingDecks.length === 0) {
+      for (const starterDeck of INITIAL_DECKS) {
+        const starterCards = sortCardsSequentially(
+          INITIAL_CARDS.filter((c) => c.deckId === starterDeck.id),
+          [starterDeck]
+        ).map((c, idx) => ({ ...c, orderIndex: c.orderIndex ?? idx }));
+        workingDecks.push(starterDeck);
+        workingCards.push(...starterCards);
+        dirtyState = {
+          ...dirtyState,
+          dirtyDeckIds: Array.from(new Set([...dirtyState.dirtyDeckIds, starterDeck.id])),
+        };
       }
+      workingDecks = sortDecksDeterministically(workingDecks);
+      workingCards = sortCardsSequentially(workingCards, workingDecks);
     }
 
-    // Upload any unsynced custom decks and their cards to Firestore
-    for (const deck of unsyncedCustomDecks) {
-      const rawDeckCards = allCandidateCards.filter((c) => c.deckId === deck.id);
-      const deckCards = sortCardsSequentially(rawDeckCards, [deck]).map((c, idx) => ({
-        ...c,
-        orderIndex: c.orderIndex ?? idx,
-      }));
-      await this.saveDeck(userId, deck, deckCards);
-      cloudData.decks.push(deck);
-      cloudData.cards.push(...deckCards);
-      cloudDeckIds.add(deck.id);
-      deckCards.forEach((c) => cloudCardIds.add(c.id));
-      migratedCount++;
-    }
+    saveSyncDirtyState(userId, dirtyState);
 
-    // Also upload any manually added cards belonging to existing cloud decks that haven't synced yet
-    for (const deck of cloudData.decks) {
-      const unsyncedCardsForDeck = allCandidateCards.filter(
-        (c) =>
-          c.deckId === deck.id &&
-          !cloudCardIds.has(c.id) &&
-          c.id.startsWith('card-manual-')
-      );
-      for (const extraCard of unsyncedCardsForDeck) {
-        await this.saveCard(userId, deck.id, extraCard);
-        cloudData.cards.push(extraCard);
-        cloudCardIds.add(extraCard.id);
-      }
-    }
+    // 4. Immediately flush pending uploads/deletes to Firestore
+    const flushResult = await this.flushDirtyState(
+      userId,
+      workingDecks,
+      workingCards,
+      dirtyState
+    );
+    dirtyState = flushResult.nextDirtyState;
 
-    // Clear guest local storage once custom guest decks have been safely migrated to cloud
-    if (migratedFromGuest) {
+    // Only clear guest local storage once custom guest items flushed without error
+    if (!flushResult.hadError && migratedCount > 0) {
       try {
         localStorage.removeItem(LOCAL_DECKS_STORAGE_KEY);
         localStorage.removeItem(LOCAL_CARDS_STORAGE_KEY);
@@ -826,72 +972,63 @@ export const deckService = {
       } catch {}
     }
 
-    // Brand-new Google account with 0 cloud decks and 0 custom local decks: seed starter decks into Firestore
-    if (cloudData.decks.length === 0) {
-      for (const starterDeck of INITIAL_DECKS) {
-        const localStarterCards = allCandidateCards.filter((c) => c.deckId === starterDeck.id);
-        const cardsToSeed = (
-          localStarterCards.length > 0
-            ? localStarterCards
-            : INITIAL_CARDS.filter((c) => c.deckId === starterDeck.id)
-        ).map((c, idx) => ({ ...c, orderIndex: c.orderIndex ?? idx }));
-
-        await this.saveDeck(userId, starterDeck, cardsToSeed);
-        cloudData.decks.push(starterDeck);
-        cloudData.cards.push(...cardsToSeed);
-      }
-    }
-
-    const sortedDecks = sortDecksDeterministically(cloudData.decks);
-    const sortedCards = sortCardsSequentially(cloudData.cards, sortedDecks);
-
-    // Record authoritative synced deck IDs for this user on this device
     setSyncedDeckIdsLocally(
       userId,
-      sortedDecks.map((d) => d.id)
+      workingDecks.map((d) => d.id)
     );
 
     return {
-      decks: sortedDecks,
-      cards: sortedCards,
+      decks: workingDecks,
+      cards: workingCards,
       migratedCount,
+      dirtyState,
     };
   },
 
   /**
-   * Force push all current local decks & cards to the user's Firestore account
-   * and return the merged cross-device state.
+   * Reconciles current local state against Firestore cloud state non-destructively
+   * and flushes any dirty local mutations.
    */
   async syncAllDecksWithCloud(
     userId: string,
     localDecks: Deck[],
-    localCards: Flashcard[]
-  ): Promise<{ decks: Deck[]; cards: Flashcard[]; uploadedCount: number }> {
+    localCards: Flashcard[],
+    currentDirtyState?: SyncDirtyState
+  ): Promise<{
+    decks: Deck[];
+    cards: Flashcard[];
+    dirtyState: SyncDirtyState;
+    syncedCount: number;
+  }> {
+    const baseDirty = currentDirtyState || loadSyncDirtyState(userId);
     const cloudData = await this.getUserDecks(userId);
-    const cloudDeckIds = new Set(cloudData.decks.map((d) => d.id));
-    const previouslySyncedIds = getPreviouslySyncedDeckIds(userId);
 
-    let uploadedCount = 0;
-    for (const deck of localDecks) {
-      if (!cloudDeckIds.has(deck.id) && !previouslySyncedIds.has(deck.id)) {
-        const deckCards = sortCardsSequentially(
-          localCards.filter((c) => c.deckId === deck.id),
-          [deck]
-        );
-        await this.saveDeck(userId, deck, deckCards);
-        cloudData.decks.push(deck);
-        cloudData.cards.push(...deckCards);
-        uploadedCount++;
-      }
-    }
+    const merged = mergeLocalAndCloudState({
+      localDecks,
+      localCards,
+      cloudDecks: cloudData.decks,
+      cloudCards: cloudData.cards,
+      dirtyState: baseDirty,
+      isAuthoritativeCloudSnapshot: true,
+    });
 
-    const sortedDecks = sortDecksDeterministically(cloudData.decks);
-    const sortedCards = sortCardsSequentially(cloudData.cards, sortedDecks);
-    setSyncedDeckIdsLocally(
+    const flushResult = await this.flushDirtyState(
       userId,
-      sortedDecks.map((d) => d.id)
+      merged.decks,
+      merged.cards,
+      merged.nextDirtyState
     );
 
-    return { decks: sortedDecks, cards: sortedCards, uploadedCount };
+    setSyncedDeckIdsLocally(
+      userId,
+      merged.decks.map((d) => d.id)
+    );
+
+    return {
+      decks: merged.decks,
+      cards: merged.cards,
+      dirtyState: flushResult.nextDirtyState,
+      syncedCount: flushResult.syncedCount,
+    };
   },
 };

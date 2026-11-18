@@ -62,7 +62,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
         onClick={handleSignIn}
         disabled={isSyncing}
         title="Sign in with your Google Account to save progress, streaks, and language decks"
-        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-semibold shadow-2xs hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-98 transition-all duration-200 disabled:opacity-60 cursor-pointer"
+        className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-semibold shadow-2xs hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-[0.98] transition-all duration-200 disabled:opacity-60 cursor-pointer whitespace-nowrap"
       >
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
           <path
@@ -99,7 +99,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
           playHapticFeedback('tap');
           setIsOpen(!isOpen);
         }}
-        className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full bg-white/90 dark:bg-neutral-800/90 border border-black/5 dark:border-white/10 hover:border-black/10 dark:hover:border-white/20 shadow-2xs hover:shadow-xs active:scale-98 transition-all cursor-pointer"
+        className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full bg-white/90 dark:bg-neutral-800/90 border border-black/5 dark:border-white/10 hover:border-black/10 dark:hover:border-white/20 shadow-2xs hover:shadow-xs active:scale-[0.98] transition-all cursor-pointer"
         title={`Account: ${user.email} (Cloud Synced)`}
       >
         {user.photoURL ? (
@@ -163,7 +163,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
           </div>
 
           {/* Progress & Mastery Overview */}
-          <div className="py-3 grid grid-cols-3 gap-2 text-center">
+          <div className="py-3 grid grid-cols-3 gap-2 text-center tabular-nums">
             <div className="p-2 rounded-2xl bg-orange-50/80 dark:bg-orange-950/40 border border-orange-100 dark:border-orange-900/40">
               <div className="flex items-center justify-center text-orange-600 dark:text-orange-400 mb-0.5">
                 <Flame className="w-4 h-4 fill-orange-500" />
@@ -196,7 +196,7 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
           </div>
 
           {/* Cloud Storage Status Details */}
-          <div className="mb-2 px-3 py-2 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/60 dark:border-neutral-700/60 text-xs text-neutral-600 dark:text-neutral-400 flex items-center justify-between">
+          <div className="mb-2 px-3 py-2 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/60 dark:border-neutral-700/60 text-xs text-neutral-600 dark:text-neutral-400 flex items-center justify-between tabular-nums">
             <div className="flex items-center gap-1.5">
               <Cloud className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
               <span>Saved Decks</span>
@@ -207,8 +207,8 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
           </div>
 
           <div className="mb-3 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100/80 dark:border-emerald-800/40 text-[11px] text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
               Multi-Device Live Sync
             </span>
             <span className="font-semibold text-emerald-700 dark:text-emerald-400">Active</span>

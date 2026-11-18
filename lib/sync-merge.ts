@@ -1,0 +1,442 @@
+import { Deck, Flashcard } from './types';
+import { sortCardsSequentially } from './srs';
+
+export interface DeletedCardRef {
+  id: string;
+  deckId: string;
+}
+
+export interface SyncDirtyState {
+  dirtyDeckIds: string[];
+  dirtyCardIds: string[];
+  deletedDeckIds: string[];
+  deletedCards: DeletedCardRef[];
+  knownCloudDeckIds: string[];
+  knownCloudCardIds: string[];
+}
+
+export function createEmptyDirtyState(): SyncDirtyState {
+  return {
+    dirtyDeckIds: [],
+    dirtyCardIds: [],
+    deletedDeckIds: [],
+    deletedCards: [],
+    knownCloudDeckIds: [],
+    knownCloudCardIds: [],
+  };
+}
+
+export function normalizeDirtyState(raw: unknown): SyncDirtyState {
+  const empty = createEmptyDirtyState();
+  if (!raw || typeof raw !== 'object') return empty;
+  const obj = raw as Record<string, unknown>;
+
+  const uniqueStrings = (val: unknown): string[] =>
+    Array.isArray(val)
+      ? Array.from(new Set(val.filter((item): item is string => typeof item === 'string' && item.length > 0)))
+      : [];
+
+  const deletedCardsMap = new Map<string, DeletedCardRef>();
+  if (Array.isArray(obj.deletedCards)) {
+    for (const entry of obj.deletedCards) {
+      if (
+        entry &&
+        typeof entry === 'object' &&
+        typeof (entry as DeletedCardRef).id === 'string' &&
+        typeof (entry as DeletedCardRef).deckId === 'string'
+      ) {
+        const ref = entry as DeletedCardRef;
+        deletedCardsMap.set(ref.id, { id: ref.id, deckId: ref.deckId });
+      }
+    }
+  }
+
+  return {
+    dirtyDeckIds: uniqueStrings(obj.dirtyDeckIds),
+    dirtyCardIds: uniqueStrings(obj.dirtyCardIds),
+    deletedDeckIds: uniqueStrings(obj.deletedDeckIds),
+    deletedCards: Array.from(deletedCardsMap.values()),
+    knownCloudDeckIds: uniqueStrings(obj.knownCloudDeckIds),
+    knownCloudCardIds: uniqueStrings(obj.knownCloudCardIds),
+  };
+}
+
+export function markDeckDirtyInState(state: SyncDirtyState, deckId: string): SyncDirtyState {
+  return {
+    ...state,
+    dirtyDeckIds: Array.from(new Set([...state.dirtyDeckIds, deckId])),
+    deletedDeckIds: state.deletedDeckIds.filter((id) => id !== deckId),
+  };
+}
+
+export function markCardDirtyInState(state: SyncDirtyState, cardId: string): SyncDirtyState {
+  return {
+    ...state,
+    dirtyCardIds: Array.from(new Set([...state.dirtyCardIds, cardId])),
+    deletedCards: state.deletedCards.filter((c) => c.id !== cardId),
+  };
+}
+
+export function markDeckDeletedInState(
+  state: SyncDirtyState,
+  deckId: string,
+  cardIdsInDeck: string[]
+): SyncDirtyState {
+  const cardIdSet = new Set(cardIdsInDeck);
+  return {
+    ...state,
+    dirtyDeckIds: state.dirtyDeckIds.filter((id) => id !== deckId),
+    dirtyCardIds: state.dirtyCardIds.filter((id) => !cardIdSet.has(id)),
+    deletedDeckIds: Array.from(new Set([...state.deletedDeckIds, deckId])),
+    deletedCards: state.deletedCards.filter((c) => c.deckId !== deckId),
+  };
+}
+
+export function markCardDeletedInState(
+  state: SyncDirtyState,
+  cardId: string,
+  deckId: string
+): SyncDirtyState {
+  const existing = state.deletedCards.filter((c) => c.id !== cardId);
+  return {
+    ...state,
+    dirtyCardIds: state.dirtyCardIds.filter((id) => id !== cardId),
+    deletedCards: [...existing, { id: cardId, deckId }],
+  };
+}
+
+export function hasPendingDirtyWork(state: SyncDirtyState): boolean {
+  return (
+    state.dirtyDeckIds.length > 0 ||
+    state.dirtyCardIds.length > 0 ||
+    state.deletedDeckIds.length > 0 ||
+    state.deletedCards.length > 0
+  );
+}
+
+export function parseIsoMs(iso?: string): number {
+  if (!iso || typeof iso !== 'string') return 0;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+export function getDeckTimestampMs(deck: Deck): number {
+  return Math.max(parseIsoMs(deck.updatedAt), parseIsoMs(deck.createdAt));
+}
+
+export function getCardTimestampMs(card: Flashcard): number {
+  return Math.max(
+    parseIsoMs(card.updatedAt),
+    parseIsoMs(card.lastReviewedAt),
+    parseIsoMs(card.createdAt)
+  );
+}
+
+function isLocalCardNewerOrRicher(localCard: Flashcard, cloudCard: Flashcard): boolean {
+  const localTs = getCardTimestampMs(localCard);
+  const cloudTs = getCardTimestampMs(cloudCard);
+
+  if (localTs > cloudTs) return true;
+  if (cloudTs > localTs) return false;
+
+  // Equal or missing timestamps: prefer the one that actually has review progress
+  if ((localCard.repetitions || 0) !== (cloudCard.repetitions || 0)) {
+    return (localCard.repetitions || 0) > (cloudCard.repetitions || 0);
+  }
+  return false;
+}
+
+export function sortDecksDeterministically(decks: Deck[]): Deck[] {
+  const starterOrder: Record<string, number> = {
+    'deck-spanish-core': 1,
+    'deck-japanese-travel': 2,
+    'deck-french-cafe': 3,
+  };
+  return [...decks].sort((a, b) => {
+    const aIsStarter = Boolean(starterOrder[a.id]);
+    const bIsStarter = Boolean(starterOrder[b.id]);
+    if (!aIsStarter && bIsStarter) return -1;
+    if (aIsStarter && !bIsStarter) return 1;
+    if (aIsStarter && bIsStarter) return starterOrder[a.id] - starterOrder[b.id];
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (timeA !== timeB) return timeB - timeA;
+    return a.id.localeCompare(b.id);
+  });
+}
+
+export interface MergeLocalAndCloudInput {
+  localDecks: Deck[];
+  localCards: Flashcard[];
+  cloudDecks: Deck[];
+  cloudCards: Flashcard[];
+  dirtyState: SyncDirtyState;
+  /**
+   * Set to true once the cloud fetch/snapshot represents authoritative server state
+   * (e.g., not an empty offline cache snapshot). Even when true, if cloudDecks is empty
+   * and localDecks has items not in deletedDeckIds, we preserve localDecks safely.
+   */
+  isAuthoritativeCloudSnapshot?: boolean;
+}
+
+export interface MergeLocalAndCloudResult {
+  decks: Deck[];
+  cards: Flashcard[];
+  nextDirtyState: SyncDirtyState;
+}
+
+/**
+ * Non-destructive bidirectional merge between local state and cloud Firestore state.
+ * - NEVER wipes local unsynced/dirty decks, cards, edits, or review progress.
+ * - NEVER resurrects locally deleted decks/cards while tombstones are pending upload.
+ * - Adopts new/updated cloud decks and cards created on other devices.
+ * - Only drops a local deck/card when cloud removed it AND it was previously confirmed on cloud AND not dirty locally.
+ */
+export function mergeLocalAndCloudState({
+  localDecks,
+  localCards,
+  cloudDecks,
+  cloudCards,
+  dirtyState,
+  isAuthoritativeCloudSnapshot = true,
+}: MergeLocalAndCloudInput): MergeLocalAndCloudResult {
+  const dirtyDeckSet = new Set(dirtyState.dirtyDeckIds);
+  const dirtyCardSet = new Set(dirtyState.dirtyCardIds);
+  const deletedDeckSet = new Set(dirtyState.deletedDeckIds);
+  const deletedCardSet = new Set(dirtyState.deletedCards.map((c) => c.id));
+  const knownCloudDeckSet = new Set(dirtyState.knownCloudDeckIds);
+  const knownCloudCardSet = new Set(dirtyState.knownCloudCardIds);
+
+  const localDeckMap = new Map<string, Deck>();
+  for (const d of localDecks) {
+    if (!deletedDeckSet.has(d.id)) {
+      localDeckMap.set(d.id, d);
+    }
+  }
+
+  const cloudDeckMap = new Map<string, Deck>();
+  for (const d of cloudDecks) {
+    if (!deletedDeckSet.has(d.id)) {
+      cloudDeckMap.set(d.id, d);
+    }
+  }
+
+  const nextDirtyDeckSet = new Set(dirtyDeckSet);
+  const nextDirtyCardSet = new Set(dirtyCardSet);
+  const nextKnownDeckSet = new Set(knownCloudDeckSet);
+  const nextKnownCardSet = new Set(knownCloudCardSet);
+
+  // Record every deck & card currently confirmed in cloud
+  for (const d of cloudDecks) {
+    nextKnownDeckSet.add(d.id);
+  }
+  for (const c of cloudCards) {
+    nextKnownCardSet.add(c.id);
+  }
+
+  const mergedDecksMap = new Map<string, Deck>();
+  const cloudHasAnyDecks = cloudDecks.length > 0;
+
+  // 1. Process cloud decks (adopting new ones & merging existing ones)
+  for (const cloudDeck of cloudDeckMap.values()) {
+    const localDeck = localDeckMap.get(cloudDeck.id);
+    if (!localDeck) {
+      mergedDecksMap.set(cloudDeck.id, cloudDeck);
+    } else if (dirtyDeckSet.has(cloudDeck.id)) {
+      // Local has pending changes; keep local unless cloud is strictly newer
+      if (getDeckTimestampMs(cloudDeck) > getDeckTimestampMs(localDeck)) {
+        mergedDecksMap.set(cloudDeck.id, cloudDeck);
+        nextDirtyDeckSet.delete(cloudDeck.id);
+      } else {
+        mergedDecksMap.set(cloudDeck.id, localDeck);
+      }
+    } else if (getDeckTimestampMs(localDeck) > getDeckTimestampMs(cloudDeck)) {
+      mergedDecksMap.set(cloudDeck.id, localDeck);
+      nextDirtyDeckSet.add(cloudDeck.id);
+    } else {
+      mergedDecksMap.set(cloudDeck.id, cloudDeck);
+    }
+  }
+
+  // 2. Process local-only decks (preserve anything not genuinely deleted on another device)
+  for (const localDeck of localDeckMap.values()) {
+    if (cloudDeckMap.has(localDeck.id)) continue;
+
+    const wasPreviouslyInCloud = knownCloudDeckSet.has(localDeck.id);
+    const shouldDropRemotelyDeleted =
+      isAuthoritativeCloudSnapshot &&
+      cloudHasAnyDecks &&
+      wasPreviouslyInCloud &&
+      !dirtyDeckSet.has(localDeck.id);
+
+    if (!shouldDropRemotelyDeleted) {
+      mergedDecksMap.set(localDeck.id, localDeck);
+      nextDirtyDeckSet.add(localDeck.id);
+    } else {
+      nextKnownDeckSet.delete(localDeck.id);
+    }
+  }
+
+  const keptDeckIds = new Set(mergedDecksMap.keys());
+
+  // 3. Merge cards belonging to kept decks
+  const localCardMap = new Map<string, Flashcard>();
+  for (const c of localCards) {
+    if (keptDeckIds.has(c.deckId) && !deletedCardSet.has(c.id)) {
+      localCardMap.set(c.id, c);
+    }
+  }
+
+  const cloudCardMap = new Map<string, Flashcard>();
+  const cloudDeckCardCounts = new Map<string, number>();
+  for (const c of cloudCards) {
+    if (keptDeckIds.has(c.deckId) && !deletedCardSet.has(c.id)) {
+      cloudCardMap.set(c.id, c);
+      cloudDeckCardCounts.set(c.deckId, (cloudDeckCardCounts.get(c.deckId) || 0) + 1);
+    }
+  }
+
+  const mergedCardsMap = new Map<string, Flashcard>();
+
+  for (const cloudCard of cloudCardMap.values()) {
+    const localCard = localCardMap.get(cloudCard.id);
+    if (!localCard) {
+      mergedCardsMap.set(cloudCard.id, cloudCard);
+    } else if (dirtyCardSet.has(cloudCard.id)) {
+      if (getCardTimestampMs(cloudCard) > getCardTimestampMs(localCard)) {
+        mergedCardsMap.set(cloudCard.id, cloudCard);
+        nextDirtyCardSet.delete(cloudCard.id);
+      } else {
+        mergedCardsMap.set(cloudCard.id, localCard);
+      }
+    } else if (isLocalCardNewerOrRicher(localCard, cloudCard)) {
+      mergedCardsMap.set(cloudCard.id, localCard);
+      nextDirtyCardSet.add(cloudCard.id);
+    } else {
+      mergedCardsMap.set(cloudCard.id, cloudCard);
+    }
+  }
+
+  for (const localCard of localCardMap.values()) {
+    if (cloudCardMap.has(localCard.id)) continue;
+
+    const deckInCloud = cloudDeckMap.has(localCard.deckId);
+    const cloudDeckHasCards = (cloudDeckCardCounts.get(localCard.deckId) || 0) > 0;
+    const wasPreviouslyInCloud = knownCloudCardSet.has(localCard.id);
+
+    const shouldDropRemotelyDeleted =
+      isAuthoritativeCloudSnapshot &&
+      deckInCloud &&
+      cloudDeckHasCards &&
+      wasPreviouslyInCloud &&
+      !dirtyCardSet.has(localCard.id);
+
+    if (!shouldDropRemotelyDeleted) {
+      mergedCardsMap.set(localCard.id, localCard);
+      nextDirtyCardSet.add(localCard.id);
+    } else {
+      nextKnownCardSet.delete(localCard.id);
+    }
+  }
+
+  // Filter out tombstones for decks/cards no longer present in cloud either
+  const rawCloudDeckIds = new Set(cloudDecks.map((d) => d.id));
+  const rawCloudCardIds = new Set(cloudCards.map((c) => c.id));
+  const remainingDeletedDecks = dirtyState.deletedDeckIds.filter((id) =>
+    rawCloudDeckIds.has(id)
+  );
+  const remainingDeletedCards = dirtyState.deletedCards.filter((ref) =>
+    rawCloudCardIds.has(ref.id)
+  );
+
+  const sortedDecks = sortDecksDeterministically(Array.from(mergedDecksMap.values()));
+  const sortedCards = sortCardsSequentially(
+    Array.from(mergedCardsMap.values()),
+    sortedDecks
+  );
+
+  return {
+    decks: sortedDecks,
+    cards: sortedCards,
+    nextDirtyState: {
+      dirtyDeckIds: Array.from(nextDirtyDeckSet).filter((id) => keptDeckIds.has(id)),
+      dirtyCardIds: Array.from(nextDirtyCardSet).filter((id) => mergedCardsMap.has(id)),
+      deletedDeckIds: remainingDeletedDecks,
+      deletedCards: remainingDeletedCards,
+      knownCloudDeckIds: Array.from(nextKnownDeckSet),
+      knownCloudCardIds: Array.from(nextKnownCardSet),
+    },
+  };
+}
+
+/**
+ * Merges a user's pre-login Guest session (custom decks, added cards, and any reviewed starter cards)
+ * into their authenticated Google account state without wiping either side.
+ */
+export function mergeGuestIntoAccountState(params: {
+  guestDecks: Deck[];
+  guestCards: Flashcard[];
+  accountDecks: Deck[];
+  accountCards: Flashcard[];
+  starterDeckIds: Set<string>;
+  dirtyState: SyncDirtyState;
+}): {
+  decks: Deck[];
+  cards: Flashcard[];
+  nextDirtyState: SyncDirtyState;
+  decksToUpload: Deck[];
+  cardsToUpload: Flashcard[];
+} {
+  const { guestDecks, guestCards, accountDecks, accountCards, starterDeckIds, dirtyState } = params;
+
+  const accountDeckIds = new Set(accountDecks.map((d) => d.id));
+  const accountCardMap = new Map(accountCards.map((c) => [c.id, c]));
+
+  let nextDirty = { ...dirtyState };
+  const mergedDecks = [...accountDecks];
+  const mergedCardMap = new Map<string, Flashcard>(accountCards.map((c) => [c.id, c]));
+  const decksToUpload: Deck[] = [];
+  const cardsToUpload: Flashcard[] = [];
+
+  // 1. Custom guest decks not yet in account
+  for (const gDeck of guestDecks) {
+    if (!accountDeckIds.has(gDeck.id) && !starterDeckIds.has(gDeck.id)) {
+      mergedDecks.push(gDeck);
+      decksToUpload.push(gDeck);
+      nextDirty = markDeckDirtyInState(nextDirty, gDeck.id);
+    }
+  }
+
+  const keptDeckIds = new Set(mergedDecks.map((d) => d.id));
+
+  // 2. Guest cards (for new custom decks, added cards in existing decks, or fresher starter card progress)
+  for (const gCard of guestCards) {
+    if (!keptDeckIds.has(gCard.deckId)) continue;
+    const accCard = accountCardMap.get(gCard.id);
+
+    if (!accCard) {
+      // Newly added card in guest session (works for ALL card IDs, not just card-manual-)
+      mergedCardMap.set(gCard.id, gCard);
+      if (accountDeckIds.has(gCard.deckId)) {
+        cardsToUpload.push(gCard);
+      }
+      nextDirty = markCardDirtyInState(nextDirty, gCard.id);
+    } else if (isLocalCardNewerOrRicher(gCard, accCard)) {
+      // Guest edited or reviewed this card more recently than cloud
+      mergedCardMap.set(gCard.id, gCard);
+      cardsToUpload.push(gCard);
+      nextDirty = markCardDirtyInState(nextDirty, gCard.id);
+    }
+  }
+
+  const sortedDecks = sortDecksDeterministically(mergedDecks);
+  const sortedCards = sortCardsSequentially(Array.from(mergedCardMap.values()), sortedDecks);
+
+  return {
+    decks: sortedDecks,
+    cards: sortedCards,
+    nextDirtyState: nextDirty,
+    decksToUpload,
+    cardsToUpload,
+  };
+}

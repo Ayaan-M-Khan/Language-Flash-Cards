@@ -204,7 +204,7 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
             id="auth-gate-signin-btn"
             onClick={() => signInWithGoogle()}
             disabled={isSyncing}
-            className="inline-flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-neutral-900 dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900 font-semibold text-xs sm:text-sm shadow-sm transition-all active:scale-98 disabled:opacity-50 group cursor-pointer"
+            className="inline-flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-neutral-900 dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900 font-semibold text-xs sm:text-sm shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 group cursor-pointer"
           >
             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
               <path
@@ -247,28 +247,26 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
             <TrendingUp className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base sm:text-lg font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
                 Weekly Review Consistency
               </h3>
-              <span className="hidden xs:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50">
-                <CheckCircle2 className="w-3 h-3" />
+              <span className="hidden xs:inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                <CheckCircle2 className="w-3.5 h-3.5" />
                 {stats.consistencyRate}% Consistent
-              </span>
-              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50">
-                Synced to Account
               </span>
             </div>
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Spaced repetition daily retention & 7-day review activity for {profile?.displayName || user.displayName || user.email}
+              Spaced repetition daily retention &amp; 7-day review activity for {profile?.displayName || user.displayName || user.email}
             </p>
           </div>
         </div>
 
-        {/* Right action badges */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        {/* Right action controls */}
+        <div className="flex items-center gap-2 self-start sm:self-auto tabular-nums">
           <button
             id="toggle-goal-line-btn"
+            type="button"
             onClick={() => setShowGoalLine((prev) => !prev)}
             className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition-colors flex items-center gap-1.5 cursor-pointer ${
               showGoalLine
@@ -282,7 +280,7 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
           </button>
 
           <div
-            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 border border-orange-200/60 dark:border-orange-800/50 text-xs font-semibold"
+            className="flex items-center gap-1 px-2 text-orange-600 dark:text-orange-400 text-xs font-semibold"
             title="Active consecutive days studied"
           >
             <Flame className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
@@ -292,7 +290,7 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
       </div>
 
       {/* 4 Summary Metric Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-6 tabular-nums">
         {/* Total This Week */}
         <div className="p-3 sm:p-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/70 border border-black/5 dark:border-white/10 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1">

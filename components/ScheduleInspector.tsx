@@ -13,16 +13,20 @@ import {
   Zap,
   TrendingUp,
   Sliders,
+  Pencil,
 } from 'lucide-react';
 import { Flashcard, Deck } from '@/lib/types';
 import { formatInterval, isCardDue } from '@/lib/srs';
 import { speakWord, playHapticFeedback } from '@/lib/audio';
+import { EditCardModal } from './EditCardModal';
 
 interface ScheduleInspectorProps {
   cards: Flashcard[];
   decks: Deck[];
   onResetCardSchedule: (cardId: string) => void;
   onMakeCardDueToday: (cardId: string) => void;
+  onUpdateCard?: (updatedCard: Flashcard) => void;
+  onDeleteCard?: (cardId: string) => void;
   onNavigateToStudy: (deckId?: string) => void;
 }
 
@@ -31,11 +35,14 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
   decks,
   onResetCardSchedule,
   onMakeCardDueToday,
+  onUpdateCard,
+  onDeleteCard,
   onNavigateToStudy,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDeckFilter, setSelectedDeckFilter] = useState<string>('all');
   const [selectedStateFilter, setSelectedStateFilter] = useState<string>('all');
+  const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
 
   // Compute Spaced Repetition Timeline Buckets
   const timeline = useMemo(() => {
@@ -100,7 +107,7 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50 text-xs font-semibold mb-2">
+          <div className="inline-flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-1.5">
             <Calendar className="w-3.5 h-3.5" />
             <span>SuperMemo SM-2 Analytics</span>
           </div>
@@ -114,11 +121,12 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
 
         {timeline.today.length > 0 && (
           <button
+            type="button"
             onClick={() => {
               playHapticFeedback('tap');
               onNavigateToStudy();
             }}
-            className="self-start sm:self-auto px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-sm shadow-blue-500/25 transition-all flex items-center gap-2"
+            className="self-start sm:self-auto px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-sm shadow-blue-500/25 transition-all flex items-center gap-2 cursor-pointer tabular-nums"
           >
             <Sparkles className="w-4 h-4" />
             <span>Study Due Now ({timeline.today.length})</span>
@@ -127,7 +135,7 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
       </div>
 
       {/* Analytics KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 tabular-nums">
         <div className="bg-white dark:bg-neutral-900 rounded-3xl p-4 shadow-xs border border-black/5 dark:border-white/10">
           <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1">
             Active Vocabulary
@@ -169,7 +177,7 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
           Upcoming Review Horizon
         </h3>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center tabular-nums">
           <div className="p-3.5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/60">
             <span className="text-[11px] font-bold uppercase text-rose-700 dark:text-rose-300 block mb-1">
               Due Today
@@ -288,9 +296,11 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
                       <div className="flex items-center gap-1.5">
                         <span>{card.targetWord}</span>
                         <button
+                          type="button"
                           onClick={() => handleSpeak(card)}
-                          className="text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          className="text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
                           title="Listen"
+                          aria-label={`Listen to ${card.targetWord}`}
                         >
                           <Volume2 className="w-3.5 h-3.5" />
                         </button>
@@ -301,38 +311,65 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
                     </td>
                     <td className="py-2.5 px-3">
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                        className={`inline-flex items-center gap-1.5 text-[11px] font-semibold capitalize ${
                           card.state === 'mastered'
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
+                            ? 'text-emerald-700 dark:text-emerald-400'
                             : card.state === 'review'
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400'
+                            ? 'text-blue-700 dark:text-blue-400'
                             : card.state === 'learning'
-                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-400'
-                            : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+                            ? 'text-orange-700 dark:text-orange-400'
+                            : 'text-neutral-600 dark:text-neutral-400'
                         }`}
                       >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            card.state === 'mastered'
+                              ? 'bg-emerald-500'
+                              : card.state === 'review'
+                              ? 'bg-blue-500'
+                              : card.state === 'learning'
+                              ? 'bg-orange-500'
+                              : 'bg-neutral-400'
+                          }`}
+                        />
                         {card.state}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 text-neutral-600 dark:text-neutral-400 font-mono text-[11px]">
+                    <td className="py-2.5 px-3 text-neutral-600 dark:text-neutral-400 font-mono text-[11px] tabular-nums">
                       {formatInterval(card.intervalDays)}
                     </td>
-                    <td className="py-2.5 px-3 text-neutral-600 dark:text-neutral-400 font-mono text-[11px]">
+                    <td className="py-2.5 px-3 text-neutral-600 dark:text-neutral-400 font-mono text-[11px] tabular-nums">
                       {card.easeFactor.toFixed(2)}
                     </td>
                     <td className="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+                      {onUpdateCard && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playHapticFeedback('tap');
+                            setEditingCard(card);
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-blue-50 hover:text-blue-600 text-neutral-700 dark:bg-neutral-800 dark:hover:bg-blue-950/50 dark:hover:text-blue-400 dark:text-neutral-200 font-medium transition-colors cursor-pointer"
+                          title="Edit flashcard"
+                        >
+                          <Pencil className="w-3 h-3" />
+                          <span>Edit</span>
+                        </button>
+                      )}
                       {!isDue && (
                         <button
+                          type="button"
                           onClick={() => onMakeCardDueToday(card.id)}
-                          className="px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200 font-medium transition-colors"
+                          className="px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200 font-medium transition-colors cursor-pointer"
                           title="Make card due immediately for extra practice"
                         >
                           Study Now
                         </button>
                       )}
                       <button
+                        type="button"
                         onClick={() => onResetCardSchedule(card.id)}
-                        className="px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-rose-50 hover:text-rose-600 text-neutral-600 dark:bg-neutral-800 dark:hover:bg-rose-950/50 dark:hover:text-rose-400 dark:text-neutral-400 transition-colors"
+                        className="px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-rose-50 hover:text-rose-600 text-neutral-600 dark:bg-neutral-800 dark:hover:bg-rose-950/50 dark:hover:text-rose-400 dark:text-neutral-400 transition-colors cursor-pointer"
                         title="Reset progress back to new"
                       >
                         Reset
@@ -353,6 +390,28 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Card Edit Modal */}
+      {editingCard && onUpdateCard && (
+        <EditCardModal
+          card={editingCard}
+          deckTitle={decks.find((d) => d.id === editingCard.deckId)?.title}
+          languageCode={decks.find((d) => d.id === editingCard.deckId)?.languageCode}
+          onSave={(updated) => {
+            onUpdateCard(updated);
+            setEditingCard(null);
+          }}
+          onDelete={
+            onDeleteCard
+              ? (cardId) => {
+                  onDeleteCard(cardId);
+                  setEditingCard(null);
+                }
+              : undefined
+          }
+          onClose={() => setEditingCard(null)}
+        />
+      )}
     </div>
   );
 };
