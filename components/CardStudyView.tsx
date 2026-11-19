@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'motion/react';
 import confetti from 'canvas-confetti';
@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { CardDirection, Flashcard as FlashcardType, Deck, SM2Rating } from '@/lib/types';
 import { getPreviewIntervals, isCardDue, sortCardsSequentially } from '@/lib/srs';
-import { speakWord, playHapticFeedback } from '@/lib/audio';
+import { speakWord, stopSpeaking, playHapticFeedback } from '@/lib/audio';
 
 const WeeklyReviewTracker = dynamic(
   () => import('./WeeklyReviewTracker').then((mod) => mod.WeeklyReviewTracker),
@@ -65,7 +65,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
   onChangeStudyMode,
 }) => {
   const [reviewRefreshTrigger, setReviewRefreshTrigger] = useState(0);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingStepId, setSpeakingStepId] = useState<number | null>(null);
+  const speakSeqRef = useRef(0);
   const [localStudyMode, setLocalStudyMode] = useState<'due' | 'sequential'>('due');
   const [justShuffled, setJustShuffled] = useState(false);
   const [localDirection, setLocalDirection] = useState<CardDirection>('target-first');
@@ -183,18 +184,38 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     [activeDirection, onChangeCardDirection, setIsFlipped]
   );
 
-  // Handle Audio Speech
+  const isSpeaking = speakingStepId === currentStepId;
+
+  // Cancel any in-flight speech when advancing to a different card or leaving the study screen
+  useEffect(() => {
+    return () => {
+      speakSeqRef.current += 1;
+      stopSpeaking();
+    };
+  }, [currentStepId]);
+
+  // Handle Audio Speech (never gets stuck; re-clicking restarts pronunciation immediately)
   const handleSpeak = useCallback(
     async (e?: React.MouseEvent) => {
       if (e) e.stopPropagation();
-      if (!currentCard || isSpeaking) return;
+      if (!currentCard) return;
+      const seq = ++speakSeqRef.current;
+      const stepAtStart = currentStepId;
       playHapticFeedback('tap');
-      setIsSpeaking(true);
-      const code = currentDeck?.languageCode || currentCard.language || 'es-ES';
-      await speakWord(currentCard.targetWord, code);
-      setIsSpeaking(false);
+      setSpeakingStepId(stepAtStart);
+      try {
+        const languageHint = currentDeck?.languageCode || currentDeck?.language || currentCard.language;
+        await speakWord(currentCard.targetWord, languageHint, {
+          languageName: currentDeck?.language || currentCard.language,
+          fallbackText: currentCard.phonetic,
+        });
+      } finally {
+        if (speakSeqRef.current === seq) {
+          setSpeakingStepId((prev) => (prev === stepAtStart ? null : prev));
+        }
+      }
     },
-    [currentCard, currentDeck, isSpeaking]
+    [currentCard, currentDeck, currentStepId]
   );
 
   // Handle Flip with haptic feedback

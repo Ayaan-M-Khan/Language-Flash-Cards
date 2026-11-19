@@ -354,7 +354,25 @@ function analyzeHeaderRow(cells: string[]): ColumnMapping | null {
       val === 'japanese' ||
       val === 'french' ||
       val === 'german' ||
-      val === 'chinese'
+      val === 'chinese' ||
+      val === 'mandarin' ||
+      val === 'cantonese' ||
+      val === 'italian' ||
+      val === 'portuguese' ||
+      val === 'korean' ||
+      val === 'russian' ||
+      val === 'hindi' ||
+      val === 'urdu' ||
+      val === 'persian' ||
+      val === 'farsi' ||
+      val === 'turkish' ||
+      val === 'hebrew' ||
+      val === 'greek' ||
+      val === 'vietnamese' ||
+      val === 'thai' ||
+      val === 'dutch' ||
+      val === 'polish' ||
+      val === 'swedish'
     ) {
       targetCol = idx;
       matchesHeaderKeywords++;
@@ -478,51 +496,106 @@ function detectLanguageAndTheme(rows: TableRowInput[]): {
   icon: string;
 } {
   let arabicScore = 0;
+  let urduScore = 0;
+  let persianScore = 0;
   let japaneseScore = 0;
   let chineseScore = 0;
   let koreanScore = 0;
   let cyrillicScore = 0;
+  let hindiScore = 0;
+  let hebrewScore = 0;
+  let greekScore = 0;
+  let thaiScore = 0;
+  let vietnameseScore = 0;
+  let turkishScore = 0;
+  let portugueseScore = 0;
   let spanishScore = 0;
   let frenchScore = 0;
   let germanScore = 0;
+  let italianScore = 0;
 
   for (const r of rows) {
-    const text = `${r.targetWord} ${r.notes || ''}`;
+    const target = r.targetWord || '';
+    const text = `${target} ${r.notes || ''}`;
 
-    // Arabic script range
-    if (/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text)) {
+    // Arabic / Urdu / Persian script range
+    if (/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(target)) {
       arabicScore += 5;
+      if (/[ٹڈڑںےھ]/.test(target)) urduScore += 6;
+      if (/[پچژگک]/.test(target)) persianScore += 4;
     }
     // Japanese Kana
-    if (/[\u3040-\u309F\u30A0-\u30FF]/.test(text)) {
+    if (/[\u3040-\u309F\u30A0-\u30FF]/.test(target)) {
       japaneseScore += 5;
     }
     // Chinese Kanji/Hanzi without Kana
-    if (/[\u4E00-\u9FFF]/.test(text) && !/[\u3040-\u309F\u30A0-\u30FF]/.test(text)) {
+    if (/[\u4E00-\u9FFF]/.test(target) && !/[\u3040-\u309F\u30A0-\u30FF]/.test(target)) {
       chineseScore += 4;
     }
     // Korean Hangul
-    if (/[\uAC00-\uD7AF\u1100-\u11FF]/.test(text)) {
+    if (/[\uAC00-\uD7AF\u1100-\u11FF]/.test(target)) {
       koreanScore += 5;
     }
     // Cyrillic
-    if (/[\u0400-\u04FF]/.test(text)) {
+    if (/[\u0400-\u04FF]/.test(target)) {
       cyrillicScore += 5;
     }
-    // Spanish diacritics
-    if (/[áéíóúüñ¿¡]/i.test(text)) {
+    // Devanagari (Hindi)
+    if (/[\u0900-\u097F]/.test(target)) {
+      hindiScore += 5;
+    }
+    // Hebrew
+    if (/[\u0590-\u05FF]/.test(target)) {
+      hebrewScore += 5;
+    }
+    // Greek
+    if (/[\u0370-\u03FF]/.test(target)) {
+      greekScore += 5;
+    }
+    // Thai
+    if (/[\u0E00-\u0E7F]/.test(target)) {
+      thaiScore += 5;
+    }
+    // Vietnamese specific diacritics
+    if (/[ăđơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỵỷỹ]/i.test(target)) {
+      vietnameseScore += 4;
+    }
+    // Turkish specific letters
+    if (/[ğışİ]/.test(target)) {
+      turkishScore += 3;
+    }
+    // Portuguese diacritics
+    if (/[ãõ]/i.test(target) || /\b(obrigado|obrigada|olá|tudo bem)\b/i.test(target)) {
+      portugueseScore += 3;
+    }
+    // Spanish diacritics & high-frequency words
+    if (/[áéíóúüñ¿¡]/i.test(target) || /\b(hola|gracias|buenos|por favor|adiós)\b/i.test(target)) {
       spanishScore += 2;
     }
-    // French diacritics
-    if (/[àèùçœâêîôûëïü]/i.test(text)) {
+    // French diacritics & high-frequency words
+    if (/[àèùçœâêîôûëïü]/i.test(target) || /\b(bonjour|merci|au revoir|s'il vous)\b/i.test(target)) {
       frenchScore += 2;
     }
-    // German umlauts
-    if (/[äöüß]/i.test(text)) {
+    // German umlauts & high-frequency words
+    if (/[äöüß]/i.test(target) || /\b(hallo|danke|bitte|guten|wiedersehen)\b/i.test(target)) {
       germanScore += 2;
+    }
+    // Italian high-frequency words
+    if (/\b(ciao|buongiorno|grazie|prego|gelato|buonanotte|per favore)\b/i.test(target)) {
+      italianScore += 3;
+    }
+    // Fallback check on notes for Arabic script if targetWord was blank
+    if (arabicScore === 0 && /[\u0600-\u06FF]/.test(text)) {
+      arabicScore += 2;
     }
   }
 
+  if (urduScore > 0) {
+    return { language: 'Urdu', languageCode: 'ur-PK', color: 'emerald', icon: 'Compass' };
+  }
+  if (persianScore > 0 && persianScore >= arabicScore / 2) {
+    return { language: 'Persian', languageCode: 'fa-IR', color: 'emerald', icon: 'Compass' };
+  }
   if (arabicScore > 0) {
     return { language: 'Arabic', languageCode: 'ar-SA', color: 'emerald', icon: 'Compass' };
   }
@@ -538,10 +611,34 @@ function detectLanguageAndTheme(rows: TableRowInput[]): {
   if (cyrillicScore > 0) {
     return { language: 'Russian', languageCode: 'ru-RU', color: 'blue', icon: 'BookOpen' };
   }
-  if (germanScore > 1) {
+  if (hindiScore > 0) {
+    return { language: 'Hindi', languageCode: 'hi-IN', color: 'orange', icon: 'Compass' };
+  }
+  if (hebrewScore > 0) {
+    return { language: 'Hebrew', languageCode: 'he-IL', color: 'indigo', icon: 'BookOpen' };
+  }
+  if (greekScore > 0) {
+    return { language: 'Greek', languageCode: 'el-GR', color: 'teal', icon: 'BookOpen' };
+  }
+  if (thaiScore > 0) {
+    return { language: 'Thai', languageCode: 'th-TH', color: 'pink', icon: 'Sparkles' };
+  }
+  if (vietnameseScore > 0) {
+    return { language: 'Vietnamese', languageCode: 'vi-VN', color: 'teal', icon: 'Globe' };
+  }
+  if (turkishScore > 0) {
+    return { language: 'Turkish', languageCode: 'tr-TR', color: 'rose', icon: 'Coffee' };
+  }
+  if (italianScore >= Math.max(spanishScore, frenchScore, germanScore, portugueseScore) && italianScore > 1) {
+    return { language: 'Italian', languageCode: 'it-IT', color: 'green', icon: 'Coffee' };
+  }
+  if (portugueseScore > 1 && portugueseScore >= spanishScore) {
+    return { language: 'Portuguese', languageCode: 'pt-BR', color: 'teal', icon: 'Globe' };
+  }
+  if (germanScore > 1 && germanScore >= frenchScore && germanScore >= spanishScore) {
     return { language: 'German', languageCode: 'de-DE', color: 'orange', icon: 'Compass' };
   }
-  if (frenchScore > 1) {
+  if (frenchScore > 1 && frenchScore >= spanishScore) {
     return { language: 'French', languageCode: 'fr-FR', color: 'purple', icon: 'Heart' };
   }
   if (spanishScore > 1) {
@@ -549,6 +646,6 @@ function detectLanguageAndTheme(rows: TableRowInput[]): {
   }
 
   // Default fallback
-  return { language: 'Foreign Language', languageCode: 'es-ES', color: 'blue', icon: 'Sparkles' };
+  return { language: 'Foreign Language', languageCode: 'en-US', color: 'blue', icon: 'Sparkles' };
 }
 

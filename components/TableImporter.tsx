@@ -16,6 +16,7 @@ import { parseTableText } from '@/lib/table-parser';
 import { initializeCardSchedule } from '@/lib/srs';
 import { SAMPLE_TABLE_PRESETS } from '@/lib/default-data';
 import { playHapticFeedback } from '@/lib/audio';
+import { resolveSpeechLanguageCode } from '@/lib/speech-utils';
 
 interface TableImporterProps {
   onDeckCreated: (newDeck: Deck, newCards: Flashcard[]) => void;
@@ -117,20 +118,15 @@ export const TableImporter: React.FC<TableImporterProps> = ({
 
     setErrorMessage(null);
     const newDeckId = `deck-${Date.now()}`;
-    const cleanLanguage = targetLanguage || parsed.detectedLanguage || 'Language';
-
-    // Map language code for audio speech synthesis
-    let langCode = parsed.detectedLanguageCode || 'es-ES';
-    const l = cleanLanguage.toLowerCase();
-    if (l.includes('arab')) langCode = 'ar-SA';
-    else if (l.includes('japan')) langCode = 'ja-JP';
-    else if (l.includes('french')) langCode = 'fr-FR';
-    else if (l.includes('german')) langCode = 'de-DE';
-    else if (l.includes('ital')) langCode = 'it-IT';
-    else if (l.includes('chin')) langCode = 'zh-CN';
-    else if (l.includes('korean')) langCode = 'ko-KR';
-    else if (l.includes('portug')) langCode = 'pt-BR';
-    else if (l.includes('russ')) langCode = 'ru-RU';
+    const cleanLanguage = targetLanguage.trim() || parsed.detectedLanguage || 'Language';
+    const sampleTargetText = validRows
+      .slice(0, 12)
+      .map((r) => r.targetWord)
+      .join(' ');
+    const langCode = resolveSpeechLanguageCode(
+      cleanLanguage || parsed.detectedLanguageCode,
+      sampleTargetText
+    );
 
     const sectionCount = parsed.sections ? parsed.sections.length : 1;
     const newDeck: Deck = {
@@ -210,6 +206,15 @@ export const TableImporter: React.FC<TableImporterProps> = ({
         parsed.detectedLanguage ||
         'Foreign Language';
 
+      const sampleTargetText = validRows
+        .slice(0, 12)
+        .map((r) => r.targetWord)
+        .join(' ');
+      const resolvedAiLangCode = resolveSpeechLanguageCode(
+        data.languageCode || cleanLanguage || parsed.detectedLanguageCode,
+        sampleTargetText
+      );
+
       const newDeck: Deck = {
         id: newDeckId,
         title:
@@ -218,8 +223,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
           parsed.detectedTitle ||
           `${cleanLanguage} Smart Deck`,
         language: cleanLanguage,
-        languageCode:
-          data.languageCode || parsed.detectedLanguageCode || 'es-ES',
+        languageCode: resolvedAiLangCode,
         color:
           (data.color as any) || (parsed.detectedColor as any) || 'indigo',
         description:

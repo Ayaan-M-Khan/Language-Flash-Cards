@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   X,
   Plus,
@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { CardDirection, Deck, Flashcard } from '@/lib/types';
 import { formatInterval, isCardDue, initializeCardSchedule } from '@/lib/srs';
-import { speakWord, playHapticFeedback } from '@/lib/audio';
+import { speakWord, stopSpeaking, playHapticFeedback } from '@/lib/audio';
 import { EditCardModal } from './EditCardModal';
 
 interface DeckDetailModalProps {
@@ -57,6 +57,15 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
+  const [speakingCardId, setSpeakingCardId] = useState<string | null>(null);
+  const speakSeqRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      speakSeqRef.current += 1;
+      stopSpeaking();
+    };
+  }, []);
 
   const dueCount = useMemo(() => cards.filter((c) => isCardDue(c)).length, [cards]);
 
@@ -125,9 +134,20 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
     setIsAdding(false);
   };
 
-  const handleSpeak = (word: string) => {
+  const handleSpeak = async (card: Flashcard) => {
+    const seq = ++speakSeqRef.current;
     playHapticFeedback('tap');
-    speakWord(word, deck.languageCode);
+    setSpeakingCardId(card.id);
+    try {
+      await speakWord(card.targetWord, deck.languageCode || deck.language || card.language, {
+        languageName: deck.language || card.language,
+        fallbackText: card.phonetic,
+      });
+    } finally {
+      if (speakSeqRef.current === seq) {
+        setSpeakingCardId(null);
+      }
+    }
   };
 
   return (
@@ -462,8 +482,12 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                       </span>
                       <button
                         type="button"
-                        onClick={() => handleSpeak(card.targetWord)}
-                        className="text-neutral-400 dark:text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0 cursor-pointer"
+                        onClick={() => handleSpeak(card)}
+                        className={`transition-colors shrink-0 cursor-pointer ${
+                          speakingCardId === card.id
+                            ? 'text-blue-600 dark:text-blue-400 scale-110'
+                            : 'text-neutral-400 dark:text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400'
+                        }`}
                         title="Pronounce"
                         aria-label={`Pronounce ${card.targetWord}`}
                       >

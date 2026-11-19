@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, Trash2, Volume2, AlertCircle } from 'lucide-react';
 import { Flashcard } from '@/lib/types';
-import { speakWord, playHapticFeedback } from '@/lib/audio';
+import { speakWord, stopSpeaking, playHapticFeedback } from '@/lib/audio';
 
 interface EditCardModalProps {
   card: Flashcard;
@@ -35,6 +35,15 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
   const [notes, setNotes] = useState(card.notes || '');
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const speakSeqRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      speakSeqRef.current += 1;
+      stopSpeaking();
+    };
+  }, []);
 
   // Trap Escape key cleanly without triggering study view or parent modal shortcuts
   useEffect(() => {
@@ -89,10 +98,21 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
     onSave(updatedCard);
   };
 
-  const handleSpeakPreview = () => {
+  const handleSpeakPreview = async () => {
     if (!targetWord.trim()) return;
+    const seq = ++speakSeqRef.current;
     playHapticFeedback('tap');
-    speakWord(targetWord.trim(), languageCode || card.language || 'es-ES');
+    setIsSpeaking(true);
+    try {
+      await speakWord(targetWord.trim(), languageCode || card.language, {
+        languageName: card.language,
+        fallbackText: phonetic.trim() || undefined,
+      });
+    } finally {
+      if (speakSeqRef.current === seq) {
+        setIsSpeaking(false);
+      }
+    }
   };
 
   const targetIsRtl = isRtlScript(targetWord);
@@ -169,10 +189,14 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                   onClick={handleSpeakPreview}
                   disabled={!targetWord.trim()}
                   title="Listen to pronunciation"
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-40 cursor-pointer"
+                  className={`inline-flex items-center gap-1 text-[11px] font-medium disabled:opacity-40 cursor-pointer transition-colors ${
+                    isSpeaking
+                      ? 'text-blue-700 dark:text-blue-300 font-semibold'
+                      : 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
+                  }`}
                 >
-                  <Volume2 className="w-3 h-3" />
-                  <span>Listen</span>
+                  <Volume2 className={`w-3 h-3 ${isSpeaking ? 'scale-110' : ''}`} />
+                  <span>{isSpeaking ? 'Speaking...' : 'Listen'}</span>
                 </button>
               </div>
               <input
