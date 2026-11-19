@@ -1,13 +1,27 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { Navbar, ActiveTab } from '@/components/Navbar';
 import { CardStudyView } from '@/components/CardStudyView';
-import { TableImporter } from '@/components/TableImporter';
-import { DecksView } from '@/components/DecksView';
-import { ScheduleInspector } from '@/components/ScheduleInspector';
-import { DeckDetailModal } from '@/components/DeckDetailModal';
 import { Footer } from '@/components/Footer';
+
+const TableImporter = dynamic(
+  () => import('@/components/TableImporter').then((mod) => mod.TableImporter),
+  { ssr: false }
+);
+const DecksView = dynamic(
+  () => import('@/components/DecksView').then((mod) => mod.DecksView),
+  { ssr: false }
+);
+const ScheduleInspector = dynamic(
+  () => import('@/components/ScheduleInspector').then((mod) => mod.ScheduleInspector),
+  { ssr: false }
+);
+const DeckDetailModal = dynamic(
+  () => import('@/components/DeckDetailModal').then((mod) => mod.DeckDetailModal),
+  { ssr: false }
+);
 import { CardDirection, Deck, Flashcard, SM2Rating } from '@/lib/types';
 import { INITIAL_DECKS, INITIAL_CARDS } from '@/lib/default-data';
 import { isCardDue, sortCardsSequentially } from '@/lib/srs';
@@ -35,9 +49,25 @@ import {
 } from '@/lib/study-session-storage';
 import {
   recordUserStudyProgress,
-  calculateNewStreak,
   syncUserProfile,
+  syncDailyProgressToFirestore,
+  fetchUserDailyReviewsFromFirestore,
+  fetchRecentReviewLogsFromFirestore,
+  flushPendingReviewLogsToFirestore,
 } from '@/lib/firestore-sync';
+import {
+  recordReviewActivity,
+  getDailyReviewsRecord,
+  saveMergedDailyReviews,
+  saveMergedReviewEvents,
+  migrateGuestReviewHistoryToUser,
+  hasPendingProgressSync,
+  isProgressSyncDirty,
+  setProgressSyncDirty,
+  getPendingReviewEvents,
+  savePendingReviewEvents,
+} from '@/lib/review-history';
+import { computeStreakFromDailyReviews } from '@/lib/mastery-analytics';
 import { CheckCircle2 } from 'lucide-react';
 
 // Account-isolated storage keys to prevent mixing between guest and user accounts
@@ -173,21 +203,64 @@ export default function HomePage() {
     }, durationMs);
   }, []);
 
-  // Derive effective streak from profile when authenticated, or guest streak
-  const effectiveStreak = profile?.streak ?? streakDays;
+  // Derive effective streak from live daily review history and synced profile
+  const effectiveStreak = user ? Math.max(profile?.streak ?? 0, streakDays) : streakDays;
 
-  // Flush pending dirty changes & deletions for the current authenticated user
+  // Flush dirty daily review counts and queued review logs to Firestore
+  const flushProgressForUser = useCallback(async (uid: string): Promise<{ synced: boolean; hadError: boolean }> => {
+    let synced = false;
+    let hadError = false;
+
+    if (isProgressSyncDirty(uid)) {
+      try {
+        const localDaily = getDailyReviewsRecord(uid);
+        const merged = await syncDailyProgressToFirestore(uid, localDaily);
+        saveMergedDailyReviews(uid, merged.dailyReviews, { emitEvent: true });
+        setProgressSyncDirty(uid, false);
+        const realStreak = computeStreakFromDailyReviews(merged.dailyReviews);
+        setStreakDays((prev) => Math.max(prev, realStreak));
+        synced = true;
+      } catch (err) {
+        hadError = true;
+        console.warn('Failed syncing daily progress to Firestore:', err);
+      }
+    }
+
+    const pendingLogs = getPendingReviewEvents(uid);
+    if (pendingLogs.length > 0) {
+      try {
+        const res = await flushPendingReviewLogsToFirestore(uid, pendingLogs);
+        if (res.succeededIds.length > 0) {
+          const done = new Set(res.succeededIds);
+          const remaining = getPendingReviewEvents(uid).filter((ev) => !done.has(ev.id));
+          savePendingReviewEvents(uid, remaining);
+          synced = true;
+        }
+        if (res.hadError) hadError = true;
+      } catch (err) {
+        hadError = true;
+        console.warn('Failed flushing pending review logs:', err);
+      }
+    }
+
+    return { synced, hadError };
+  }, []);
+
+  // Flush pending dirty changes, deletions, and review progress for the current authenticated user
   const runContinuousFlush = useCallback(async (forceCloudPull = false) => {
     const uid = userIdRef.current;
     if (!uid || hydratedOwnerRef.current !== uid) return;
+    const hasWork =
+      hasPendingDirtyWork(dirtyStateRef.current) || hasPendingProgressSync(uid);
+
     if (syncInFlightRef.current) {
-      if (!forceCloudPull && hasPendingDirtyWork(dirtyStateRef.current)) {
+      if (!forceCloudPull && hasWork) {
         pendingFlushQueuedRef.current = true;
       }
       return;
     }
 
-    if (!forceCloudPull && !hasPendingDirtyWork(dirtyStateRef.current)) {
+    if (!forceCloudPull && !hasWork) {
       return;
     }
 
@@ -293,12 +366,22 @@ export default function HomePage() {
           setLastSyncedTime(new Date());
         }
 
+        if (hasPendingProgressSync(uid)) {
+          const progressRes = await flushProgressForUser(uid);
+          if (progressRes.hadError) {
+            setHasSyncError(true);
+          } else if (progressRes.synced) {
+            setHasSyncError(false);
+            setLastSyncedTime(new Date());
+          }
+        }
+
         shouldPullCloud = false;
       } while (
         pendingFlushQueuedRef.current &&
         userIdRef.current === uid &&
         hydratedOwnerRef.current === uid &&
-        hasPendingDirtyWork(dirtyStateRef.current)
+        (hasPendingDirtyWork(dirtyStateRef.current) || hasPendingProgressSync(uid))
       );
     } catch (err) {
       setHasSyncError(true);
@@ -308,7 +391,7 @@ export default function HomePage() {
       syncInFlightRef.current = false;
       setIsAutoSyncing(false);
     }
-  }, []);
+  }, [flushProgressForUser]);
 
   const scheduleDirtyFlush = useCallback(
     (uid: string | null | undefined, nextDirty: SyncDirtyState) => {
@@ -422,6 +505,37 @@ export default function HomePage() {
           applyUiPrefsForOwner(currentUserId, synced.decks);
           if (carriedGuestStreak > 0) {
             setStreakDays((prev) => Math.max(prev, carriedGuestStreak));
+          }
+
+          // Merge pre-login guest review history & hydrate cloud progress/reviews non-destructively
+          try {
+            migrateGuestReviewHistoryToUser(currentUserId);
+            const [cloudProgress, cloudLogs] = await Promise.all([
+              fetchUserDailyReviewsFromFirestore(currentUserId),
+              fetchRecentReviewLogsFromFirestore(currentUserId, 250),
+            ]);
+
+            if (!isCancelled) {
+              const mergedDaily = saveMergedDailyReviews(
+                currentUserId,
+                cloudProgress.dailyReviews,
+                { emitEvent: true }
+              );
+              saveMergedReviewEvents(currentUserId, cloudLogs, { emitEvent: true });
+
+              const computedStreak = computeStreakFromDailyReviews(mergedDaily.dailyReviews);
+              setStreakDays(Math.max(computedStreak, carriedGuestStreak));
+
+              if (mergedDaily.hadLocalNewer || hasPendingProgressSync(currentUserId)) {
+                setProgressSyncDirty(currentUserId, true);
+                void flushProgressForUser(currentUserId);
+              }
+            }
+          } catch (progressErr) {
+            console.warn('Progress history sync warning on login:', progressErr);
+            const localFallbackDaily = getDailyReviewsRecord(currentUserId);
+            const computedStreak = computeStreakFromDailyReviews(localFallbackDaily);
+            setStreakDays(Math.max(computedStreak, carriedGuestStreak));
           }
 
           hydratedOwnerRef.current = currentUserId;
@@ -567,7 +681,12 @@ export default function HomePage() {
             setDecks(resolvedDecks);
             setCards(resolvedCards);
             applyUiPrefsForOwner(null, resolvedDecks);
-            setStreakDays(guestStreakStr ? Number(guestStreakStr) || 0 : 0);
+            const guestDaily = getDailyReviewsRecord(null);
+            const derivedGuestStreak = computeStreakFromDailyReviews(guestDaily);
+            const storedGuestStreak = guestStreakStr ? Number(guestStreakStr) || 0 : 0;
+            const resolvedGuestStreak =
+              derivedGuestStreak > 0 ? derivedGuestStreak : storedGuestStreak;
+            setStreakDays(resolvedGuestStreak);
             hydratedOwnerRef.current = 'guest';
             lastOwnerBeforeAuthChangeRef.current = 'guest';
             setHydratedOwner('guest');
@@ -595,7 +714,7 @@ export default function HomePage() {
       isCancelled = true;
       if (unsubDecks) unsubDecks();
     };
-  }, [userUid, isAuthLoading, showToast]);
+  }, [userUid, isAuthLoading, showToast, flushProgressForUser]);
 
   // Continuous background auto-sync loop every 4 seconds while signed in,
   // plus immediate flush on browser reconnect, tab hide, or page reload/unload.
@@ -693,7 +812,7 @@ export default function HomePage() {
   );
 
   // Handlers (all persist localStorage + mark dirty state synchronously so reloads never lose work)
-  const handleCardReviewed = (updatedCard: Flashcard, _rating: SM2Rating) => {
+  const handleCardReviewed = (updatedCard: Flashcard, rating: SM2Rating) => {
     const stampedCard: Flashcard = {
       ...updatedCard,
       updatedAt: updatedCard.updatedAt || new Date().toISOString(),
@@ -706,11 +825,30 @@ export default function HomePage() {
     setCards(nextCards);
     persistOwnerSnapshotSync(user?.uid, undefined, nextCards);
 
+    // Synchronously persist daily review count + detailed rating event (works for Guest & Signed-in)
+    const recorded = recordReviewActivity(user?.uid, {
+      deckId: stampedCard.deckId,
+      cardId: stampedCard.id,
+      rating,
+      intervalDays: stampedCard.intervalDays,
+      easeFactor: stampedCard.easeFactor,
+      repetitions: stampedCard.repetitions,
+    });
+
+    const totalRecordedReviews = Object.values(recorded.dailyReviews).reduce(
+      (sum, n) => sum + (n > 0 ? n : 0),
+      0
+    );
+    setStreakDays(recorded.streak);
+    try {
+      localStorage.setItem(getStreakStorageKey(user?.uid), String(recorded.streak));
+    } catch {}
+
     if (user) {
       const nextDirty = markCardDirtyInState(dirtyStateRef.current, stampedCard.id);
       scheduleDirtyFlush(user.uid, nextDirty);
 
-      // Update study streak & mastery statistics in Firestore
+      // Update user profile streak & mastery statistics in Firestore
       const syncStats = async () => {
         try {
           const baseProfile =
@@ -724,28 +862,21 @@ export default function HomePage() {
           const updatedProfile = await recordUserStudyProgress(
             user.uid,
             baseProfile,
-            nextCards
+            nextCards,
+            {
+              computedStreak: recorded.streak,
+              computedTotalReviews: totalRecordedReviews,
+            }
           );
           if (updatedProfile) {
             updateLocalProfileStats(() => updatedProfile);
-            setStreakDays(updatedProfile.streak);
+            setStreakDays(Math.max(updatedProfile.streak, recorded.streak));
           }
         } catch (err) {
           console.warn('Sync progress error:', err);
         }
       };
       syncStats();
-    } else {
-      // Guest local streak calculation
-      try {
-        const { newStreak, todayStr } = calculateNewStreak(
-          streakDays,
-          localStorage.getItem('language_flashcards_last_studied_guest') || undefined
-        );
-        localStorage.setItem('language_flashcards_last_studied_guest', todayStr);
-        setStreakDays(newStreak);
-        localStorage.setItem(getStreakStorageKey(null), String(newStreak));
-      } catch {}
     }
   };
 
@@ -905,6 +1036,10 @@ export default function HomePage() {
       );
       scheduleDirtyFlush(user.uid, nextDirty);
     }
+    showToast(
+      cardToDelete ? `Deleted "${cardToDelete.targetWord}"` : 'Card deleted',
+      2200
+    );
   };
 
   const getDeckDirection = (deckId: string | null): CardDirection => {

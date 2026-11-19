@@ -42,7 +42,6 @@ export default function config(phase: string): NextConfig {
         },
       ],
     },
-    transpilePackages: ['motion'],
     experimental: {
       devtoolSegmentExplorer: false,
       optimizePackageImports: ['lucide-react', 'recharts'],

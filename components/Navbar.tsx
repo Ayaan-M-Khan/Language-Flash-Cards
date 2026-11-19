@@ -43,15 +43,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/85 dark:bg-neutral-900/85 border-b border-black/5 dark:border-white/10 shadow-xs transition-colors">
-      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 h-16 flex items-center justify-between gap-1.5 sm:gap-3">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Brand / App Identity */}
         <button
           type="button"
           onClick={() => handleTabClick('decks')}
           className="flex items-center gap-2.5 cursor-pointer group select-none shrink-0 text-left"
         >
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0">
-            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0">
+            <Sparkles className="w-4 h-4" />
           </div>
           <div className="hidden md:block">
             <span className="font-semibold text-base tracking-tight text-neutral-900 dark:text-neutral-100 whitespace-nowrap block leading-tight">
@@ -70,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             type="button"
             aria-label="Study"
             onClick={() => handleTabClick('study')}
-            className={`relative flex items-center gap-1.5 px-2 sm:px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
+            className={`relative flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'study'
                 ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
@@ -93,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             type="button"
             aria-label="Decks"
             onClick={() => handleTabClick('decks')}
-            className={`flex items-center gap-1.5 px-2 sm:px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'decks'
                 ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
@@ -108,7 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             type="button"
             aria-label="Import Table"
             onClick={() => handleTabClick('import')}
-            className={`flex items-center gap-1.5 px-2 sm:px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'import'
                 ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
@@ -123,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             type="button"
             aria-label="Schedule"
             onClick={() => handleTabClick('schedule')}
-            className={`flex items-center gap-1.5 px-2 sm:px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'schedule'
                 ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
@@ -135,10 +135,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         {/* Right Utility: Streak, Sound, Global Theme Toggle, and Account */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 min-w-0">
           <div
             title={`${streakDays} Day Learning Streak`}
-            className="hidden xs:flex items-center gap-1 px-1.5 text-orange-600 dark:text-orange-400 text-xs font-semibold select-none tabular-nums whitespace-nowrap"
+            className="hidden sm:flex items-center gap-1 px-1.5 text-orange-600 dark:text-orange-400 text-xs font-semibold select-none tabular-nums whitespace-nowrap"
           >
             <Flame className="w-3.5 h-3.5 fill-orange-500 text-orange-500 shrink-0" />
             <span>{streakDays}d</span>

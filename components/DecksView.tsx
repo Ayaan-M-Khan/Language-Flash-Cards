@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { CardDirection, Deck, Flashcard } from '@/lib/types';
 import { isCardDue } from '@/lib/srs';
+import { computeDeckMasteryScore } from '@/lib/mastery-analytics';
 import { exportDeckCardsToCsv } from '@/lib/csv';
 import { playHapticFeedback } from '@/lib/audio';
 import { WeeklyReviewTracker } from './WeeklyReviewTracker';
@@ -45,10 +46,8 @@ export const DecksView: React.FC<DecksViewProps> = ({
 }) => {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [showInsights, setShowInsights] = useState(false);
-  const [selectedDeckId, setSelectedDeckId] = useState<string | null>(
-    () => decks[0]?.id ?? null
-  );
+  const [showInsights, setShowInsights] = useState(true);
+  const [selectedDeckId, setSelectedDeckId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
   const [filterMode, setFilterMode] = useState<'all' | 'due' | 'mastered'>('all');
@@ -92,14 +91,11 @@ export const DecksView: React.FC<DecksViewProps> = ({
     });
   }, [decks, cards, searchQuery, selectedLanguage, filterMode]);
 
-  const selectedDeck = useMemo(() => {
-    if (decks.length === 0) return null;
-    if (selectedDeckId) {
-      const match = decks.find((d) => d.id === selectedDeckId);
-      if (match) return match;
-    }
-    return filteredDecks[0] ?? decks[0] ?? null;
-  }, [decks, filteredDecks, selectedDeckId]);
+  const resolvedMasteryDeckId = useMemo(() => {
+    if (selectedDeckId === 'all') return 'all';
+    if (decks.some((d) => d.id === selectedDeckId)) return selectedDeckId;
+    return 'all';
+  }, [decks, selectedDeckId]);
 
   const handleExportDeckCsv = (deck: Deck) => {
     playHapticFeedback('tap');
@@ -134,7 +130,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5">
       {/* Clean Minimal Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -197,27 +193,10 @@ export const DecksView: React.FC<DecksViewProps> = ({
         </div>
       </div>
 
-      {/* Collapsible Mastery & Weekly Insights (Hidden by default to keep Decks clutter-free) */}
-      {showInsights && (
-        <div className="space-y-5">
-          <DeckMasteryChart
-            decks={decks}
-            selectedDeck={selectedDeck}
-            onSelectDeck={(deckId) => setSelectedDeckId(deckId)}
-            cards={cards}
-            cardDirection={selectedDeck ? deckDirections[selectedDeck.id] ?? 'target-first' : 'target-first'}
-            onStudyDeck={(deckId, dir) => onSelectDeckToStudy(deckId, dir)}
-            onInspectDeck={onInspectDeck}
-            onNavigateToImport={onNavigateToImport}
-          />
-          <WeeklyReviewTracker currentStreak={currentStreak} userId={userId} />
-        </div>
-      )}
-
       {/* Lightweight Search & Filter Strip */}
       {decks.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-lg">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
             <input
               type="text"
@@ -294,7 +273,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
 
       {/* Clean Decks Grid */}
       {filteredDecks.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredDecks.map((deck) => {
             const deckCards = cards.filter((c) => c.deckId === deck.id);
             const dueCards = deckCards.filter((c) => isCardDue(c));
@@ -303,8 +282,8 @@ export const DecksView: React.FC<DecksViewProps> = ({
             const reviewCount = deckCards.filter((c) => c.state === 'review').length;
             const newCount = deckCards.filter((c) => c.state === 'new').length;
 
-            const masteredPercent =
-              deckCards.length > 0 ? Math.round((masteredCount / deckCards.length) * 100) : 0;
+            const masteryScore = computeDeckMasteryScore(deckCards);
+            const studiedCount = deckCards.length - newCount;
             const deckDirection: CardDirection = deckDirections[deck.id] ?? 'target-first';
 
             return (
@@ -438,7 +417,8 @@ export const DecksView: React.FC<DecksViewProps> = ({
                     </button>
                   </h3>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 tabular-nums mb-4">
-                    {deckCards.length} {deckCards.length === 1 ? 'card' : 'cards'} · {masteredPercent}% mastered
+                    {deckCards.length} {deckCards.length === 1 ? 'card' : 'cards'} · {masteryScore}% mastery
+                    {studiedCount > 0 ? ` · ${studiedCount} studied` : ''}
                   </p>
                 </div>
 
@@ -543,6 +523,32 @@ export const DecksView: React.FC<DecksViewProps> = ({
               Clear Filters
             </button>
           )}
+        </div>
+      )}
+
+      {/* Side-by-Side Mastery & Weekly Insights below Decks */}
+      {showInsights && decks.length > 0 && (
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch pt-1">
+          <div className="xl:col-span-7 flex [&>*]:w-full">
+            <DeckMasteryChart
+              decks={decks}
+              selectedDeckId={resolvedMasteryDeckId}
+              onSelectDeck={(deckId) => setSelectedDeckId(deckId)}
+              cards={cards}
+              cardDirection={
+                resolvedMasteryDeckId !== 'all'
+                  ? deckDirections[resolvedMasteryDeckId] ?? 'target-first'
+                  : 'target-first'
+              }
+              onStudyDeck={(deckId, dir) => onSelectDeckToStudy(deckId, dir)}
+              onInspectDeck={onInspectDeck}
+              onNavigateToImport={onNavigateToImport}
+              userId={userId}
+            />
+          </div>
+          <div className="xl:col-span-5 flex [&>*]:w-full">
+            <WeeklyReviewTracker currentStreak={currentStreak} userId={userId} />
+          </div>
         </div>
       )}
     </div>

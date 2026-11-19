@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Volume2, RotateCw, Pencil } from 'lucide-react';
+import { Volume2, Pencil, Trash2 } from 'lucide-react';
 import { CardDirection, Flashcard as FlashcardType } from '@/lib/types';
 
 interface FlashcardProps {
@@ -13,6 +13,7 @@ interface FlashcardProps {
   onFlip: () => void;
   onSpeak: (e?: React.MouseEvent) => void;
   onEdit?: (e?: React.MouseEvent) => void;
+  onDelete?: (e?: React.MouseEvent) => void;
   isSpeaking: boolean;
 }
 
@@ -28,6 +29,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
   onFlip,
   onSpeak,
   onEdit,
+  onDelete,
   isSpeaking,
 }) => {
   // Track whether this specific card presentation (card.id + stepId + cardDirection) has ever been flipped.
@@ -68,7 +70,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
       >
         {/* ================= CARD FRONT ================= */}
         <div
-          className="col-start-1 row-start-1 w-full min-h-[360px] sm:min-h-[400px] rounded-3xl bg-white dark:bg-neutral-900 p-6 sm:p-8 flex flex-col justify-between shadow-sm dark:shadow-2xl border border-black/5 dark:border-white/10 hover:border-black/10 dark:hover:border-white/20 transition-colors"
+          className="col-start-1 row-start-1 w-full min-h-[340px] sm:min-h-[420px] rounded-3xl bg-white dark:bg-neutral-900 p-6 sm:p-9 flex flex-col justify-between shadow-sm dark:shadow-2xl border border-black/5 dark:border-white/10 hover:border-black/10 dark:hover:border-white/20 transition-colors"
           style={{
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
@@ -113,24 +115,35 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                       <Pencil className="w-4 h-4" />
                     </button>
                   )}
+                  {onDelete && (
+                    <button
+                      id="card-delete-front-btn"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(e);
+                      }}
+                      title="Delete flashcard"
+                      aria-label="Delete flashcard"
+                      className="w-10 h-10 rounded-2xl flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
 
               {/* Front Center: English Definition */}
-              <div className="my-auto text-center py-6">
-                <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 block mb-2">
+              <div className="my-auto text-center py-8">
+                <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 block mb-2.5">
                   English Definition
                 </span>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 break-words leading-tight">
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 break-words leading-tight">
                   {card.english}
                 </h1>
               </div>
 
-              {/* Front Bottom Prompt */}
-              <div className="text-center pt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-center gap-2 text-xs text-neutral-400 dark:text-neutral-500">
-                <RotateCw className="w-3.5 h-3.5 shrink-0" />
-                <span>Tap or press Space</span>
-              </div>
+              <div className="h-4" aria-hidden="true" />
             </>
           ) : (
             <>
@@ -166,6 +179,21 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                       <Pencil className="w-4 h-4" />
                     </button>
                   )}
+                  {onDelete && (
+                    <button
+                      id="card-delete-front-btn"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(e);
+                      }}
+                      title="Delete flashcard"
+                      aria-label="Delete flashcard"
+                      className="w-10 h-10 rounded-2xl flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
 
                   <button
                     id="card-speak-front-btn"
@@ -185,26 +213,22 @@ export const Flashcard: React.FC<FlashcardProps> = ({
               </div>
 
               {/* Front Center: Foreign Target Word & Transliteration */}
-              <div className="my-auto text-center py-6">
+              <div className="my-auto text-center py-8">
                 <h1
                   dir={targetIsRtl ? 'rtl' : 'ltr'}
-                  className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 mb-3 break-words leading-tight"
+                  className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 mb-3.5 break-words leading-tight"
                 >
                   {card.targetWord}
                 </h1>
 
                 {card.phonetic && (
-                  <p className="text-sm sm:text-base font-medium text-indigo-600/90 dark:text-indigo-400 tracking-wide break-words">
+                  <p className="text-base sm:text-lg font-medium text-indigo-600/90 dark:text-indigo-400 tracking-wide break-words">
                     [{card.phonetic}]
                   </p>
                 )}
               </div>
 
-              {/* Front Bottom Prompt */}
-              <div className="text-center pt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-center gap-2 text-xs text-neutral-400 dark:text-neutral-500">
-                <RotateCw className="w-3.5 h-3.5 shrink-0" />
-                <span>Tap or press Space</span>
-              </div>
+              <div className="h-4" aria-hidden="true" />
             </>
           )}
         </div>
@@ -213,7 +237,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
         {/* Never mount the answer side into the DOM until the user flips this specific card step */}
         {hasFlippedThisStep ? (
           <div
-            className="col-start-1 row-start-1 w-full min-h-[360px] sm:min-h-[400px] rounded-3xl bg-white dark:bg-neutral-900 p-6 sm:p-8 flex flex-col justify-between shadow-sm dark:shadow-2xl border border-blue-500/20 dark:border-blue-400/30"
+            className="col-start-1 row-start-1 w-full min-h-[340px] sm:min-h-[420px] rounded-3xl bg-white dark:bg-neutral-900 p-6 sm:p-9 flex flex-col justify-between shadow-sm dark:shadow-2xl border border-blue-500/20 dark:border-blue-400/30"
             style={{
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
@@ -250,6 +274,21 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                         <Pencil className="w-4 h-4" />
                       </button>
                     )}
+                    {onDelete && (
+                      <button
+                        id="card-delete-back-btn"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(e);
+                        }}
+                        title="Delete flashcard"
+                        aria-label="Delete flashcard"
+                        className="w-10 h-10 rounded-2xl flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       id="card-speak-back-btn"
                       type="button"
@@ -268,13 +307,13 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                 </div>
 
                 {/* Back Center: Transliteration & Foreign Word */}
-                <div className="my-auto py-4 text-center sm:text-left">
+                <div className="my-auto py-5 text-center sm:text-left">
                   {card.phonetic ? (
-                    <div className="mb-4">
+                    <div className="mb-5">
                       <span className="text-xs text-neutral-400 dark:text-neutral-500 font-semibold block mb-1">
                         Transliteration
                       </span>
-                      <h2 className="text-2xl sm:text-3xl font-bold text-indigo-600 dark:text-indigo-400 tracking-tight mb-2.5 break-words">
+                      <h2 className="text-2xl sm:text-4xl font-bold text-indigo-600 dark:text-indigo-400 tracking-tight mb-2.5 break-words">
                         {card.phonetic}
                       </h2>
                       <span className="text-xs text-neutral-400 dark:text-neutral-500 font-semibold block mb-0.5">
@@ -288,56 +327,66 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                       </p>
                     </div>
                   ) : (
-                    <div className="mb-4">
+                    <div className="mb-5">
                       <span className="text-xs text-neutral-400 dark:text-neutral-500 font-semibold block mb-1">
                         {displayLanguage} / Transliteration
                       </span>
                       <h2
                         dir={targetIsRtl ? 'rtl' : 'ltr'}
-                        className="text-2xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight break-words"
+                        className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight break-words"
                       >
                         {card.targetWord}
                       </h2>
                     </div>
                   )}
 
-                  {/* Example sentence if provided */}
-                  {card.exampleSentence?.target && (
-                    <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-800/70 border border-black/5 dark:border-white/10 text-left mb-3">
-                      <p
-                        dir={isRtlScript(card.exampleSentence.target) ? 'rtl' : 'ltr'}
-                        className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-1 break-words"
-                      >
-                        “{card.exampleSentence.target}”
-                      </p>
-                      {card.exampleSentence.english && (
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400 break-words">
-                          {card.exampleSentence.english}
-                        </p>
+                  {(card.exampleSentence?.target || card.notes) && (
+                    <div
+                      className={`grid gap-4 items-stretch ${
+                        card.exampleSentence?.target && card.notes
+                          ? 'grid-cols-1 md:grid-cols-2'
+                          : 'grid-cols-1'
+                      }`}
+                    >
+                      {/* Example sentence if provided */}
+                      {card.exampleSentence?.target && (
+                        <div className="p-4 rounded-2xl bg-neutral-50/80 dark:bg-neutral-800/70 border border-black/5 dark:border-white/10 text-left">
+                          <span className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 block mb-1">
+                            Example Sentence
+                          </span>
+                          <p
+                            dir={isRtlScript(card.exampleSentence.target) ? 'rtl' : 'ltr'}
+                            className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-1 break-words"
+                          >
+                            “{card.exampleSentence.target}”
+                          </p>
+                          {card.exampleSentence.english && (
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 break-words">
+                              {card.exampleSentence.english}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Memory / Mnemonic notes */}
+                      {card.notes && (
+                        <div className="p-4 rounded-2xl bg-neutral-50/50 dark:bg-neutral-800/40 border border-black/5 dark:border-white/10 text-left">
+                          <span className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 block mb-1">
+                            Usage &amp; Memory Note
+                          </span>
+                          <p
+                            dir={isRtlScript(card.notes) ? 'rtl' : 'ltr'}
+                            className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed break-words"
+                          >
+                            {card.notes}
+                          </p>
+                        </div>
                       )}
                     </div>
                   )}
-
-                  {/* Memory / Mnemonic notes */}
-                  {card.notes && (
-                    <div className="text-left px-1">
-                      <span className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 block mb-0.5">
-                        Usage &amp; Memory Note
-                      </span>
-                      <p
-                        dir={isRtlScript(card.notes) ? 'rtl' : 'ltr'}
-                        className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed break-words"
-                      >
-                        {card.notes}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
-                {/* Hint at bottom of back */}
-                <div className="text-center pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs text-neutral-400 dark:text-neutral-500">
-                  Rate recall below · [E] edit
-                </div>
+                <div className="h-3" aria-hidden="true" />
               </>
             ) : (
               <>
@@ -377,6 +426,21 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                         <Pencil className="w-4 h-4" />
                       </button>
                     )}
+                    {onDelete && (
+                      <button
+                        id="card-delete-back-btn"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(e);
+                        }}
+                        title="Delete flashcard"
+                        aria-label="Delete flashcard"
+                        className="w-10 h-10 rounded-2xl flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       id="card-speak-back-btn"
                       type="button"
@@ -395,51 +459,61 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                 </div>
 
                 {/* Center Meaning & Context */}
-                <div className="my-auto py-4">
+                <div className="my-auto py-5">
                   <span className="text-xs text-neutral-400 dark:text-neutral-500 font-semibold block mb-1">
                     English Definition
                   </span>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight mb-4 break-words">
+                  <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight mb-5 break-words">
                     {card.english}
                   </h2>
 
-                  {/* Example sentence if provided */}
-                  {card.exampleSentence?.target && (
-                    <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-800/70 border border-black/5 dark:border-white/10 text-left mb-3">
-                      <p
-                        dir={isRtlScript(card.exampleSentence.target) ? 'rtl' : 'ltr'}
-                        className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-1 break-words"
-                      >
-                        “{card.exampleSentence.target}”
-                      </p>
-                      {card.exampleSentence.english && (
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400 break-words">
-                          {card.exampleSentence.english}
-                        </p>
+                  {(card.exampleSentence?.target || card.notes) && (
+                    <div
+                      className={`grid gap-4 items-stretch ${
+                        card.exampleSentence?.target && card.notes
+                          ? 'grid-cols-1 md:grid-cols-2'
+                          : 'grid-cols-1'
+                      }`}
+                    >
+                      {/* Example sentence if provided */}
+                      {card.exampleSentence?.target && (
+                        <div className="p-4 rounded-2xl bg-neutral-50/80 dark:bg-neutral-800/70 border border-black/5 dark:border-white/10 text-left">
+                          <span className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 block mb-1">
+                            Example Sentence
+                          </span>
+                          <p
+                            dir={isRtlScript(card.exampleSentence.target) ? 'rtl' : 'ltr'}
+                            className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mb-1 break-words"
+                          >
+                            “{card.exampleSentence.target}”
+                          </p>
+                          {card.exampleSentence.english && (
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 break-words">
+                              {card.exampleSentence.english}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Memory / Mnemonic notes */}
+                      {card.notes && (
+                        <div className="p-4 rounded-2xl bg-neutral-50/50 dark:bg-neutral-800/40 border border-black/5 dark:border-white/10 text-left">
+                          <span className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 block mb-1">
+                            Usage &amp; Memory Note
+                          </span>
+                          <p
+                            dir={isRtlScript(card.notes) ? 'rtl' : 'ltr'}
+                            className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed break-words"
+                          >
+                            {card.notes}
+                          </p>
+                        </div>
                       )}
                     </div>
                   )}
-
-                  {/* Memory / Mnemonic notes */}
-                  {card.notes && (
-                    <div className="text-left px-1">
-                      <span className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 block mb-0.5">
-                        Usage &amp; Memory Note
-                      </span>
-                      <p
-                        dir={isRtlScript(card.notes) ? 'rtl' : 'ltr'}
-                        className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed break-words"
-                      >
-                        {card.notes}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
-                {/* Hint at bottom of back */}
-                <div className="text-center pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs text-neutral-400 dark:text-neutral-500">
-                  Rate recall below · [E] edit
-                </div>
+                <div className="h-3" aria-hidden="true" />
               </>
             )}
           </div>

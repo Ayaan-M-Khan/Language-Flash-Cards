@@ -14,6 +14,12 @@ import {
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { Deck, Flashcard, UserProfile, SM2Rating, ReviewLog } from './types';
 import { INITIAL_DECKS, INITIAL_CARDS } from './default-data';
+import {
+  StoredReviewEvent,
+  mergeDailyReviewRecords,
+  formatLocalDateKey,
+} from './mastery-analytics';
+import { sanitizeFirestoreId } from './sync-merge';
 
 export function getTodayDateString(): string {
   const now = new Date();
@@ -304,23 +310,31 @@ export async function deleteDeckFromFirestore(userId: string, deckId: string): P
 export async function recordUserStudyProgress(
   userId: string,
   currentProfile: UserProfile,
-  allUserCards: Flashcard[]
+  allUserCards: Flashcard[],
+  options?: { computedStreak?: number; computedTotalReviews?: number }
 ): Promise<UserProfile> {
   const path = `users/${userId}`;
   try {
-    const { newStreak, todayStr } = calculateNewStreak(
+    const { newStreak: fallbackStreak, todayStr } = calculateNewStreak(
       currentProfile.streak,
       currentProfile.lastStudiedDate
     );
+    const newStreak =
+      typeof options?.computedStreak === 'number' && options.computedStreak >= 0
+        ? Math.max(options.computedStreak, 1)
+        : fallbackStreak;
     const masteredCount = allUserCards.filter((c) => c.state === 'mastered').length;
-    const nextTotalReviews = (currentProfile.totalReviews || 0) + 1;
+    const nextTotalReviews =
+      typeof options?.computedTotalReviews === 'number' && options.computedTotalReviews >= 0
+        ? Math.max(options.computedTotalReviews, (currentProfile.totalReviews || 0) + 1)
+        : (currentProfile.totalReviews || 0) + 1;
     const nowIso = new Date().toISOString();
 
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, {
       streak: newStreak,
       lastStudiedDate: todayStr,
-      totalReviews: increment(1),
+      totalReviews: nextTotalReviews,
       cardsMastered: masteredCount,
       updatedAt: nowIso,
     });
@@ -459,6 +473,139 @@ export function subscribeToUserDailyReviews(
       console.warn('Daily reviews subscription error:', error);
     }
   );
+}
+
+/**
+ * Non-destructively reconciles local daily review counts with Firestore `users/{uid}/progress/daily`.
+ * Uses `updateDoc` when the document already exists and `setDoc` when creating it so all
+ * writes strictly comply with `firestore.rules` (`isValidDailyProgress`).
+ */
+export async function syncDailyProgressToFirestore(
+  userId: string,
+  localDailyReviews: Record<string, number>
+): Promise<{ dailyReviews: Record<string, number>; totalReviews: number }> {
+  const progressRef = doc(db, 'users', userId, 'progress', 'daily');
+  const snap = await getDoc(progressRef);
+  const cloudRecord = snap.exists() ? parseDailyReviews(snap.data()) : {};
+
+  const merged = mergeDailyReviewRecords(localDailyReviews, cloudRecord);
+  const cleanedMap: Record<string, number> = {};
+  for (const [k, v] of Object.entries(merged.dailyReviews)) {
+    if (v > 0) cleanedMap[k] = v;
+  }
+
+  const nowIso = new Date().toISOString().slice(0, 40);
+
+  if (snap.exists()) {
+    await updateDoc(progressRef, {
+      totalReviews: merged.totalReviews,
+      dailyReviews: cleanedMap,
+      updatedAt: nowIso,
+    });
+  } else {
+    await setDoc(progressRef, {
+      userId,
+      totalReviews: merged.totalReviews,
+      dailyReviews: cleanedMap,
+      updatedAt: nowIso,
+    });
+  }
+
+  return merged;
+}
+
+/**
+ * Fetches recent individual review logs from `users/{uid}/reviews` for rating & recall accuracy hydration.
+ */
+export async function fetchRecentReviewLogsFromFirestore(
+  userId: string,
+  maxLogs = 250
+): Promise<StoredReviewEvent[]> {
+  try {
+    const snap = await getDocs(collection(db, 'users', userId, 'reviews'));
+    const validRatings = new Set<SM2Rating>(['again', 'hard', 'good', 'easy']);
+    const events: StoredReviewEvent[] = [];
+
+    snap.docs.forEach((docSnap) => {
+      const data = docSnap.data() as Partial<ReviewLog>;
+      const rating = data.rating;
+      if (!rating || !validRatings.has(rating)) return;
+      const ts = data.timestamp || data.reviewedAt || new Date().toISOString();
+      const dateStr =
+        typeof data.dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.dateStr)
+          ? data.dateStr
+          : formatLocalDateKey(new Date(ts));
+
+      events.push({
+        id: data.id || docSnap.id,
+        deckId: data.deckId || '',
+        cardId: data.cardId || '',
+        rating,
+        intervalDays: typeof data.intervalDays === 'number' ? Math.max(0, data.intervalDays) : 0,
+        easeFactor: typeof data.easeFactor === 'number' ? data.easeFactor : undefined,
+        repetitions: typeof data.repetitions === 'number' ? data.repetitions : undefined,
+        dateStr,
+        timestamp: ts,
+      });
+    });
+
+    return events
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, maxLogs);
+  } catch (err) {
+    console.warn('Failed to fetch recent review logs from Firestore:', err);
+    return [];
+  }
+}
+
+/**
+ * Flushes pending local review events to `users/{uid}/reviews/{reviewId}` individually so
+ * a single bad write never drops the rest of the queue.
+ */
+export async function flushPendingReviewLogsToFirestore(
+  userId: string,
+  pendingEvents: StoredReviewEvent[]
+): Promise<{ succeededIds: string[]; hadError: boolean }> {
+  if (!userId || pendingEvents.length === 0) {
+    return { succeededIds: [], hadError: false };
+  }
+
+  const succeededIds: string[] = [];
+  let hadError = false;
+
+  // Flush up to 50 pending logs per cycle to keep sync ticks fast
+  for (const ev of pendingEvents.slice(0, 50)) {
+    const safeId = sanitizeFirestoreId(ev.id, 'rev');
+    const reviewRef = doc(db, 'users', userId, 'reviews', safeId);
+    const ts = (ev.timestamp || new Date().toISOString()).slice(0, 40);
+    const payload: Record<string, unknown> = {
+      id: safeId,
+      userId,
+      deckId: sanitizeFirestoreId(ev.deckId || 'deck', 'deck'),
+      cardId: sanitizeFirestoreId(ev.cardId || 'card', 'card'),
+      rating: ev.rating,
+      intervalDays: Math.max(0, Number.isFinite(ev.intervalDays) ? ev.intervalDays : 0),
+      reviewedAt: ts,
+      timestamp: ts,
+      dateStr: (ev.dateStr || formatLocalDateKey(new Date())).slice(0, 20),
+    };
+    if (typeof ev.easeFactor === 'number' && Number.isFinite(ev.easeFactor)) {
+      payload.easeFactor = Math.max(1.0, Math.round(ev.easeFactor * 100) / 100);
+    }
+    if (typeof ev.repetitions === 'number' && Number.isFinite(ev.repetitions)) {
+      payload.repetitions = Math.max(0, Math.floor(ev.repetitions));
+    }
+
+    try {
+      await setDoc(reviewRef, payload);
+      succeededIds.push(ev.id);
+    } catch (err) {
+      hadError = true;
+      console.warn('Failed flushing review log to Firestore:', safeId, err);
+    }
+  }
+
+  return { succeededIds, hadError };
 }
 
 /**

@@ -4,7 +4,7 @@ import firebaseRulesPlugin from "@firebase/eslint-plugin-security-rules";
 
 export default defineConfig([
   {
-    ignores: ["dist/**/*", ".next/**/*"]
+    ignores: ["dist/**/*", ".next/**/*", ".next-dev/**/*"]
   },
   ...next,
   firebaseRulesPlugin.configs["flat/recommended"]

@@ -3,16 +3,12 @@
 import React, { useState, useMemo } from 'react';
 import {
   Sparkles,
-  FileSpreadsheet,
   Plus,
   Trash2,
   Check,
   AlertCircle,
   Zap,
-  BookOpen,
   ArrowRight,
-  Layers,
-  Filter,
   ArrowLeftRight,
 } from 'lucide-react';
 import { CardDirection, Flashcard, Deck, TableRowInput } from '@/lib/types';
@@ -312,35 +308,58 @@ export const TableImporter: React.FC<TableImporterProps> = ({
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
-      {/* Header Banner */}
-      <div className="mb-6 text-center sm:text-left">
-        <div className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 text-xs font-semibold uppercase tracking-wider mb-1.5">
-          <FileSpreadsheet className="w-3.5 h-3.5" />
-          <span>Multi-Column &amp; Multi-Section Table Importer</span>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-7">
+      {/* Compact Header & Wrapping Sample Presets */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-5">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+            Import Vocabulary Table
+          </h1>
+          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1 max-w-2xl">
+            Paste tabs, CSV, or multi-section tables from Sheets or Excel to generate spaced repetition decks.
+          </p>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-2">
-          Import Vocabulary Table
-        </h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 max-w-3xl leading-relaxed">
-          Paste any vocabulary table with columns like English, Foreign Script, Transliteration, and Notes (from Excel, Google Sheets, or web tables). We automatically parse sections, pronunciation, and categories into optimal spaced repetition decks.
-        </p>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mr-1">
+            Samples:
+          </span>
+          {SAMPLE_TABLE_PRESETS.map((preset, idx) => {
+            const isSelected = deckTitle === preset.name;
+            const shortLabel = preset.name.replace(/\s*\([^)]*\)/g, '').trim();
+            return (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={() => handleLoadPreset(idx)}
+                title={preset.name}
+                className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 border-transparent'
+                    : 'bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 border-black/10 dark:border-white/10'
+                }`}
+              >
+                {shortLabel}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* SUCCESS BANNER */}
       {successInfo && (
-        <div className="mb-6 p-4 sm:p-5 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-900 dark:text-emerald-100 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mb-5 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-900 dark:text-emerald-100 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
-              <Check className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+              <Check className="w-4 h-4" />
             </div>
             <div>
               <h3 className="text-sm font-bold">
                 Generated &ldquo;{successInfo.deckTitle}&rdquo;!
               </h3>
               <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                Created {successInfo.cardCount} flashcards with SuperMemo SM-2 optimal spaced
-                repetition schedules{successInfo.isFallback ? ' (Instant Smart Engine)' : ' (AI Enriched)'}.
+                Created {successInfo.cardCount} flashcards with SM-2 schedules
+                {successInfo.isFallback ? ' (Instant Engine)' : ' (AI Enriched)'}.
               </p>
             </div>
           </div>
@@ -383,11 +402,12 @@ export const TableImporter: React.FC<TableImporterProps> = ({
 
             <button
               id="start-study-imported-btn"
+              type="button"
               onClick={() => onNavigateToStudy(successInfo.deckId, studyDirection)}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <span>Start Studying Now</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Start Studying</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -395,41 +415,26 @@ export const TableImporter: React.FC<TableImporterProps> = ({
 
       {/* ERROR BANNER */}
       {errorMessage && (
-        <div className="mb-6 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2">
+        <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      {/* Preset Quick Loader */}
-      <div className="mb-5 flex items-center gap-2 overflow-x-auto pb-1">
-        <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
-          Quick Sample Tables:
-        </span>
-        {SAMPLE_TABLE_PRESETS.map((preset, idx) => (
-          <button
-            key={preset.name}
-            onClick={() => handleLoadPreset(idx)}
-            className="px-3 py-1 rounded-full text-xs bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-medium border border-black/5 dark:border-white/10 whitespace-nowrap transition-colors shadow-2xs cursor-pointer"
-          >
-            {preset.name}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Raw Text Paste Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Left Column: Compact Raw Input + Deck Settings + Primary Actions Above the Fold */}
         <div className="lg:col-span-5 flex flex-col gap-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 shadow-xs border border-black/5 dark:border-white/10 flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-2">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl p-4 sm:p-5 shadow-2xs border border-black/5 dark:border-white/10">
+            <div className="flex items-center justify-between gap-2 mb-2">
               <label
                 htmlFor="table-raw-textarea"
                 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400"
               >
-                Paste Raw Table Text
+                Raw Table Input
               </label>
-              <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                Tabs, CSV, Pipes, Multi-Section
+              <span className="text-[11px] text-neutral-400 dark:text-neutral-500 tabular-nums">
+                {editableRows.length} rows · {parsed.sections.length}{' '}
+                {parsed.sections.length === 1 ? 'section' : 'sections'}
               </span>
             </div>
 
@@ -438,27 +443,19 @@ export const TableImporter: React.FC<TableImporterProps> = ({
               value={rawText}
               onChange={(e) => handleRawTextChange(e.target.value)}
               placeholder={`1. Greetings & Introductions\nEnglish\tArabic Script\tTransliteration\tNotes\nWelcome\tأهلاً وسهلاً\t'ahlan wa sahlan\tFormal\nHello\tمَرحَباً\tmarHaban\t`}
-              rows={16}
-              className="w-full flex-1 p-3.5 font-mono text-xs text-neutral-800 dark:text-neutral-100 bg-neutral-50 dark:bg-neutral-800 rounded-2xl border border-black/5 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-y leading-relaxed"
+              rows={9}
+              className="w-full min-h-[200px] p-3 font-mono text-xs text-neutral-800 dark:text-neutral-100 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-black/5 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-y leading-relaxed"
             />
-
-            <div className="mt-3 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-              <span className="font-medium text-neutral-700 dark:text-neutral-300">{editableRows.length} words detected</span>
-              <span>
-                {parsed.sections.length > 1 ? `${parsed.sections.length} sections` : 'Single section'} • Delimiter: &ldquo;{parsed.detectedDelimiter === '\t' ? 'Tab' : parsed.detectedDelimiter}&rdquo;
-              </span>
-            </div>
           </div>
 
-          {/* Deck Configuration */}
-          <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 shadow-xs border border-black/5 dark:border-white/10 space-y-3.5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-              Deck Settings
-            </h3>
-
+          {/* Deck Settings & Generation CTAs */}
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl p-4 sm:p-5 shadow-2xs border border-black/5 dark:border-white/10 space-y-3.5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                <label
+                  htmlFor="deck-title-input"
+                  className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1"
+                >
                   Deck Title
                 </label>
                 <input
@@ -467,12 +464,15 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                   value={deckTitle}
                   onChange={(e) => setDeckTitle(e.target.value)}
                   placeholder="e.g. Arabic Core & Expressions"
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                <label
+                  htmlFor="target-language-input"
+                  className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1"
+                >
                   Target Language
                 </label>
                 <input
@@ -481,176 +481,198 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                   value={targetLanguage}
                   onChange={(e) => setTargetLanguage(e.target.value)}
                   placeholder="e.g. Arabic, Spanish, Japanese"
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
                 />
               </div>
             </div>
 
-            {/* Spaced Repetition Scheduling Option */}
+            {/* Schedule Curve */}
             <div>
-              <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                Spaced Repetition Schedule Curve
-              </label>
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5">
+                Initial Schedule
+              </span>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setScheduleMode('staggered')}
-                  className={`p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                  className={`px-3 py-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${
                     scheduleMode === 'staggered'
                       ? 'bg-blue-50/80 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-100 font-semibold'
                       : 'bg-neutral-50 dark:bg-neutral-800 border-black/5 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
                   }`}
                 >
-                  <span className="block text-xs font-bold">Optimal Stagger</span>
+                  <span className="block font-semibold">Optimal Stagger</span>
                   <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-normal">
-                    Paces cards evenly for long-term daily memory
+                    Paced daily retention
                   </span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setScheduleMode('immediate')}
-                  className={`p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                  className={`px-3 py-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${
                     scheduleMode === 'immediate'
                       ? 'bg-blue-50/80 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-100 font-semibold'
                       : 'bg-neutral-50 dark:bg-neutral-800 border-black/5 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
                   }`}
                 >
-                  <span className="block text-xs font-bold">All Immediate</span>
+                  <span className="block font-semibold">All Immediate</span>
                   <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-normal">
-                    Makes all words due in session 1
+                    All due in session 1
                   </span>
                 </button>
               </div>
             </div>
+
+            {/* Primary Generation Actions */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <button
+                id="generate-instant-deck-btn"
+                type="button"
+                disabled={editableRows.length === 0}
+                onClick={handleGenerateInstant}
+                className="flex-1 py-2.5 px-3.5 rounded-xl bg-neutral-900 dark:bg-white hover:bg-black dark:hover:bg-neutral-100 text-white dark:text-neutral-900 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-2xs active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                title="Instantly generate deck with all detected words, pronunciations, and notes"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                <span>Create Deck ({editableRows.length})</span>
+              </button>
+
+              <button
+                id="generate-ai-smart-deck-btn"
+                type="button"
+                disabled={isAiLoading || editableRows.length === 0}
+                onClick={handleAIGenerate}
+                className="py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 active:scale-[0.98] cursor-pointer whitespace-nowrap"
+                title="Enrich all cards with AI generated example sentences, mnemonics, and phonetics"
+              >
+                {isAiLoading ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Enriching...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                    <span>AI Enrich</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Right Column: Live Multi-Column Table Preview & Section Filter */}
-        <div className="lg:col-span-7 flex flex-col gap-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 shadow-xs border border-black/5 dark:border-white/10 flex-1 flex flex-col">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-              <div>
+        {/* Right Column: Live Multi-Column Table Preview */}
+        <div className="lg:col-span-7 flex flex-col">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl p-4 sm:p-5 shadow-2xs border border-black/5 dark:border-white/10 flex flex-col">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
+              <div className="flex items-center gap-2 min-w-0">
                 <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                  Interactive Table Preview ({displayedRows.length} of {editableRows.length})
+                  Preview
                 </span>
-                {parsed.sections.length > 1 && (
-                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                    {parsed.sections.length} thematic topics extracted with pronunciations & notes
-                  </p>
-                )}
+                <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">
+                  {displayedRows.length} of {editableRows.length} cards
+                </span>
               </div>
-              <button
-                type="button"
-                onClick={handleAddRow}
-                className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold self-start sm:self-auto"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Row</span>
-              </button>
-            </div>
 
-            {/* Section Quick Filters */}
-            {sectionCategories.length > 1 && (
-              <div className="mb-3 flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
-                <span className="text-[11px] text-neutral-400 dark:text-neutral-500 shrink-0 flex items-center gap-1">
-                  <Filter className="w-3 h-3" /> Filter:
-                </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                {sectionCategories.length > 1 && (
+                  <select
+                    aria-label="Filter by topic section"
+                    value={selectedSectionFilter}
+                    onChange={(e) => setSelectedSectionFilter(e.target.value)}
+                    className="max-w-[220px] px-2.5 py-1.5 text-xs font-medium rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 truncate cursor-pointer"
+                  >
+                    <option value="all">All Sections ({editableRows.length})</option>
+                    {sectionCategories.map((cat) => {
+                      const count = editableRows.filter((r) => r.category === cat).length;
+                      return (
+                        <option key={cat} value={cat}>
+                          {cat} ({count})
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setSelectedSectionFilter('all')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 transition-colors ${
-                    selectedSectionFilter === 'all'
-                      ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
-                  }`}
+                  onClick={handleAddRow}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 font-semibold transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  All ({editableRows.length})
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Row</span>
                 </button>
-                {sectionCategories.map((cat) => {
-                  const count = editableRows.filter((r) => r.category === cat).length;
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setSelectedSectionFilter(cat)}
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 transition-colors truncate max-w-[200px] ${
-                        selectedSectionFilter === cat
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
-                      }`}
-                      title={cat}
-                    >
-                      {cat} ({count})
-                    </button>
-                  );
-                })}
               </div>
-            )}
+            </div>
 
             {/* Table Scrollable Container */}
-            <div className="max-h-[460px] overflow-y-auto overflow-x-auto rounded-2xl border border-black/5 dark:border-white/10 bg-neutral-50/60 dark:bg-neutral-950/60 p-1">
-              <table className="w-full text-left text-xs min-w-[540px]">
-                <thead className="sticky top-0 bg-neutral-100/95 dark:bg-neutral-800/95 backdrop-blur-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-[10px] z-10">
+            <div className="max-h-[540px] overflow-y-auto overflow-x-auto rounded-xl border border-black/5 dark:border-white/10 bg-neutral-50/60 dark:bg-neutral-950/60">
+              <table className="w-full text-left text-xs min-w-[640px] table-fixed">
+                <thead className="sticky top-0 bg-neutral-100/95 dark:bg-neutral-800/95 backdrop-blur-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-[10px] z-10 border-b border-black/5 dark:border-white/10">
                   <tr>
-                    <th className="py-2 px-2.5">English</th>
-                    <th className="py-2 px-2.5">Target Script</th>
-                    <th className="py-2 px-2">Transliteration / Phonetic</th>
-                    <th className="py-2 px-2">Notes / Details</th>
-                    <th className="py-2 px-2 w-7"></th>
+                    <th className="py-2.5 px-2.5 w-[25%]">English</th>
+                    <th className="py-2.5 px-2.5 w-[25%]">Target Script</th>
+                    <th className="py-2.5 px-2.5 w-[24%]">Transliteration</th>
+                    <th className="py-2.5 px-2.5 w-[21%]">Notes</th>
+                    <th className="py-2.5 px-1 w-9"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black/5 dark:divide-white/5">
                   {displayedRows.map((row) => {
-                    // Find actual index in editableRows
                     const actualIdx = editableRows.indexOf(row);
                     const isRtl = isArabicScript(row.targetWord);
                     return (
                       <tr key={actualIdx} className="group hover:bg-white/90 dark:hover:bg-neutral-800/80 transition-colors">
-                        <td className="p-1 min-w-[120px]">
+                        <td className="p-1">
                           <input
                             type="text"
                             value={row.english}
+                            title={row.english}
                             onChange={(e) => handleCellChange(actualIdx, 'english', e.target.value)}
                             placeholder="English phrase"
-                            className="w-full px-2 py-1 bg-transparent rounded-lg focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-900 dark:text-neutral-100"
+                            className="w-full px-2 py-1 bg-transparent rounded-lg focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-900 dark:text-neutral-100 truncate"
                           />
                         </td>
-                        <td className="p-1 min-w-[130px]">
+                        <td className="p-1">
                           <input
                             type="text"
                             value={row.targetWord}
+                            title={row.targetWord}
                             dir={isRtl ? 'rtl' : 'ltr'}
                             onChange={(e) => handleCellChange(actualIdx, 'targetWord', e.target.value)}
                             placeholder="Target script"
-                            className={`w-full px-2 py-1 bg-transparent rounded-lg focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-900 dark:text-neutral-100 ${
-                              isRtl ? 'text-base text-right' : ''
+                            className={`w-full px-2 py-1 bg-transparent rounded-lg focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-900 dark:text-neutral-100 truncate ${
+                              isRtl ? 'text-sm text-right' : ''
                             }`}
                           />
                         </td>
-                        <td className="p-1 min-w-[130px]">
+                        <td className="p-1">
                           <input
                             type="text"
                             value={row.phonetic || ''}
+                            title={row.phonetic || ''}
                             onChange={(e) => handleCellChange(actualIdx, 'phonetic', e.target.value)}
-                            placeholder="e.g. marHaban"
-                            className="w-full px-2 py-1 bg-transparent rounded-lg focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-600 dark:text-neutral-300 italic text-[11px]"
+                            placeholder="Transliteration"
+                            className="w-full px-2 py-1 bg-transparent rounded-lg focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-600 dark:text-neutral-300 italic text-[11px] truncate"
                           />
                         </td>
-                        <td className="p-1 min-w-[120px]">
+                        <td className="p-1">
                           <input
                             type="text"
                             value={row.notes || ''}
+                            title={row.notes || ''}
                             onChange={(e) => handleCellChange(actualIdx, 'notes', e.target.value)}
-                            placeholder="Notes, gender, or context"
-                            className="w-full px-2 py-1 bg-transparent rounded-lg focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-500 dark:text-neutral-400 text-[11px]"
+                            placeholder="Optional notes"
+                            className="w-full px-2 py-1 bg-transparent rounded-lg focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-500 dark:text-neutral-400 text-[11px] truncate"
                           />
                         </td>
                         <td className="p-1 text-center">
                           <button
                             type="button"
                             onClick={() => handleDeleteRow(actualIdx)}
-                            className="p-1 text-neutral-300 dark:text-neutral-600 hover:text-rose-500 dark:hover:text-rose-400 rounded-md transition-colors"
+                            aria-label={`Delete row ${row.english || actualIdx + 1}`}
+                            className="p-1 text-neutral-300 dark:text-neutral-600 hover:text-rose-500 dark:hover:text-rose-400 rounded-md transition-colors cursor-pointer"
                             title="Delete row"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -668,44 +690,6 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                   )}
                 </tbody>
               </table>
-            </div>
-
-            {/* Generation CTA Buttons */}
-            <div className="mt-4 flex flex-col sm:flex-row gap-2.5">
-              {/* Instant Generator - Primary recommended for tables with rich columns */}
-              <button
-                id="generate-instant-deck-btn"
-                type="button"
-                disabled={editableRows.length === 0}
-                onClick={handleGenerateInstant}
-                className="flex-1 py-3 px-4 rounded-2xl bg-neutral-900 dark:bg-white hover:bg-black dark:hover:bg-neutral-100 text-white dark:text-neutral-900 font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98] cursor-pointer disabled:opacity-50"
-                title="Instantly generate deck with all detected words, pronunciations, and notes"
-              >
-                <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
-                <span>Create Flashcard Deck ({editableRows.length} Cards)</span>
-              </button>
-
-              {/* AI Smart Generator */}
-              <button
-                id="generate-ai-smart-deck-btn"
-                type="button"
-                disabled={isAiLoading || editableRows.length === 0}
-                onClick={handleAIGenerate}
-                className="py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium text-xs shadow-xs shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] cursor-pointer"
-                title="Enrich all cards with AI generated example sentences, mnemonics, and phonetics"
-              >
-                {isAiLoading ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>AI Enriching ({editableRows.length} Cards)...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>AI Enrich & Generate ({editableRows.length} Cards)</span>
-                  </>
-                )}
-              </button>
             </div>
           </div>
         </div>

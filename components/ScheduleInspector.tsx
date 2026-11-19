@@ -2,18 +2,12 @@
 
 import React, { useState, useMemo } from 'react';
 import {
-  Calendar,
-  Clock,
-  CheckCircle2,
   Volume2,
   Search,
-  Filter,
   Sparkles,
   RefreshCw,
-  Zap,
-  TrendingUp,
-  Sliders,
   Pencil,
+  Trash2,
 } from 'lucide-react';
 import { Flashcard, Deck } from '@/lib/types';
 import { formatInterval, isCardDue } from '@/lib/srs';
@@ -78,7 +72,6 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
 
   const masteredCount = useMemo(() => cards.filter((c) => c.state === 'mastered').length, [cards]);
   const inReviewCount = useMemo(() => cards.filter((c) => c.state === 'review').length, [cards]);
-  const newCount = useMemo(() => cards.filter((c) => c.state === 'new').length, [cards]);
 
   // Filtered card list
   const filteredCards = useMemo(() => {
@@ -103,19 +96,15 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-7">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
-          <div className="inline-flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-1.5">
-            <Calendar className="w-3.5 h-3.5" />
-            <span>SuperMemo SM-2 Analytics</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-1">
-            Spaced Repetition Schedule
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+            Schedule
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-            Scientifically calculated memory intervals based on your recall accuracy
+          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+            SM-2 review intervals and upcoming memory horizon across your decks
           </p>
         </div>
 
@@ -126,96 +115,101 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
               playHapticFeedback('tap');
               onNavigateToStudy();
             }}
-            className="self-start sm:self-auto px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-sm shadow-blue-500/25 transition-all flex items-center gap-2 cursor-pointer tabular-nums"
+            className="self-start sm:self-auto px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-xs transition-all flex items-center gap-2 cursor-pointer tabular-nums"
           >
             <Sparkles className="w-4 h-4" />
-            <span>Study Due Now ({timeline.today.length})</span>
+            <span>Study Due ({timeline.today.length})</span>
           </button>
         )}
       </div>
 
-      {/* Analytics KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 tabular-nums">
-        <div className="bg-white dark:bg-neutral-900 rounded-3xl p-4 shadow-xs border border-black/5 dark:border-white/10">
-          <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block mb-1">
-            Active Vocabulary
-          </span>
-          <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{cards.length}</span>
-          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 block mt-0.5">Total words</span>
+      {/* Consolidated Overview + Horizon Row */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-6 tabular-nums">
+        {/* Compact 4-Metric Overview Strip */}
+        <div className="xl:col-span-5 bg-white dark:bg-neutral-900 rounded-2xl p-4 sm:p-5 shadow-2xs border border-black/5 dark:border-white/10 flex flex-col justify-between">
+          <h3 className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">
+            Retention Overview
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 gap-x-4 gap-y-3">
+            <div>
+              <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 block">
+                Total Words
+              </span>
+              <span className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
+                {cards.length}
+              </span>
+            </div>
+            <div>
+              <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 block">
+                Mastered
+              </span>
+              <span className="text-xl font-bold text-emerald-700 dark:text-emerald-400">
+                {masteredCount}
+                <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500 ml-1">
+                  ({cards.length > 0 ? Math.round((masteredCount / cards.length) * 100) : 0}%)
+                </span>
+              </span>
+            </div>
+            <div>
+              <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 block">
+                In Review
+              </span>
+              <span className="text-xl font-bold text-blue-700 dark:text-blue-400">
+                {inReviewCount}
+              </span>
+            </div>
+            <div>
+              <span className="text-[11px] font-medium text-purple-600 dark:text-purple-400 block">
+                Avg Ease
+              </span>
+              <span className="text-xl font-bold text-purple-700 dark:text-purple-400">
+                {avgEase}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white dark:bg-neutral-900 rounded-3xl p-4 shadow-xs border border-black/5 dark:border-white/10">
-          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block mb-1">
-            Mastered
-          </span>
-          <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">{masteredCount}</span>
-          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 block mt-0.5">
-            {cards.length > 0 ? Math.round((masteredCount / cards.length) * 100) : 0}% of total
-          </span>
-        </div>
+        {/* Upcoming Review Horizon */}
+        <div className="xl:col-span-7 bg-white dark:bg-neutral-900 rounded-2xl p-4 sm:p-5 shadow-2xs border border-black/5 dark:border-white/10 flex flex-col justify-between">
+          <h3 className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">
+            Upcoming Review Horizon
+          </h3>
 
-        <div className="bg-white dark:bg-neutral-900 rounded-3xl p-4 shadow-xs border border-black/5 dark:border-white/10">
-          <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider block mb-1">
-            In Review
-          </span>
-          <span className="text-2xl font-bold text-blue-700 dark:text-blue-400">{inReviewCount}</span>
-          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 block mt-0.5">Active recall loop</span>
-        </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center">
+            <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/60">
+              <span className="text-[10px] font-bold uppercase text-rose-700 dark:text-rose-300 block mb-0.5">
+                Due Today
+              </span>
+              <span className="text-xl font-bold text-rose-800 dark:text-rose-200">{timeline.today.length}</span>
+            </div>
 
-        <div className="bg-white dark:bg-neutral-900 rounded-3xl p-4 shadow-xs border border-black/5 dark:border-white/10">
-          <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider block mb-1">
-            Avg Ease Factor
-          </span>
-          <span className="text-2xl font-bold text-purple-700 dark:text-purple-400">{avgEase}</span>
-          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 block mt-0.5">Standard: 2.50</span>
-        </div>
-      </div>
+            <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60">
+              <span className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-300 block mb-0.5">
+                Tomorrow
+              </span>
+              <span className="text-xl font-bold text-amber-800 dark:text-amber-200">{timeline.tomorrow.length}</span>
+            </div>
 
-      {/* Spaced Horizon Cards */}
-      <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 shadow-xs border border-black/5 dark:border-white/10 mb-8">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-4">
-          Upcoming Review Horizon
-        </h3>
+            <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/60">
+              <span className="text-[10px] font-bold uppercase text-blue-700 dark:text-blue-300 block mb-0.5">
+                2–4 Days
+              </span>
+              <span className="text-xl font-bold text-blue-800 dark:text-blue-200">{timeline.upcoming2to4.length}</span>
+            </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center tabular-nums">
-          <div className="p-3.5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/60">
-            <span className="text-[11px] font-bold uppercase text-rose-700 dark:text-rose-300 block mb-1">
-              Due Today
-            </span>
-            <span className="text-2xl font-bold text-rose-800 dark:text-rose-200">{timeline.today.length}</span>
-            <span className="text-[10px] text-rose-600 dark:text-rose-400 block mt-1">Immediate focus</span>
-          </div>
+            <div className="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60">
+              <span className="text-[10px] font-bold uppercase text-indigo-700 dark:text-indigo-300 block mb-0.5">
+                Next Week
+              </span>
+              <span className="text-xl font-bold text-indigo-800 dark:text-indigo-200">{timeline.nextWeek.length}</span>
+            </div>
 
-          <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60">
-            <span className="text-[11px] font-bold uppercase text-amber-700 dark:text-amber-300 block mb-1">
-              Tomorrow
-            </span>
-            <span className="text-2xl font-bold text-amber-800 dark:text-amber-200">{timeline.tomorrow.length}</span>
-            <span className="text-[10px] text-amber-600 dark:text-amber-400 block mt-1">24 hr retention</span>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/60">
-            <span className="text-[11px] font-bold uppercase text-blue-700 dark:text-blue-300 block mb-1">
-              2 – 4 Days
-            </span>
-            <span className="text-2xl font-bold text-blue-800 dark:text-blue-200">{timeline.upcoming2to4.length}</span>
-            <span className="text-[10px] text-blue-600 dark:text-blue-400 block mt-1">Strengthening</span>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60">
-            <span className="text-[11px] font-bold uppercase text-indigo-700 dark:text-indigo-300 block mb-1">
-              Next Week
-            </span>
-            <span className="text-2xl font-bold text-indigo-800 dark:text-indigo-200">{timeline.nextWeek.length}</span>
-            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 block mt-1">5-14 day interval</span>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
-            <span className="text-[11px] font-bold uppercase text-emerald-700 dark:text-emerald-300 block mb-1">
-              Long Term
-            </span>
-            <span className="text-2xl font-bold text-emerald-800 dark:text-emerald-200">{timeline.longTerm.length}</span>
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block mt-1">&gt; 2 weeks memory</span>
+            <div className="col-span-2 sm:col-span-1 p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
+              <span className="text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-300 block mb-0.5">
+                Long Term
+              </span>
+              <span className="text-xl font-bold text-emerald-800 dark:text-emerald-200">{timeline.longTerm.length}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -237,7 +231,7 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search word..."
-                className="pl-8 pr-3 py-1.5 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-black/10 dark:border-white/10 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-36 sm:w-48"
+                className="pl-8 pr-3 py-1.5 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-black/10 dark:border-white/10 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-40 sm:w-64"
               />
             </div>
 
@@ -341,39 +335,57 @@ export const ScheduleInspector: React.FC<ScheduleInspectorProps> = ({
                     <td className="py-2.5 px-3 text-neutral-600 dark:text-neutral-400 font-mono text-[11px] tabular-nums">
                       {card.easeFactor.toFixed(2)}
                     </td>
-                    <td className="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
-                      {onUpdateCard && (
+                    <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center justify-end gap-1">
+                        {onUpdateCard && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playHapticFeedback('tap');
+                              setEditingCard(card);
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-blue-50 hover:text-blue-600 text-neutral-700 dark:bg-neutral-800 dark:hover:bg-blue-950/50 dark:hover:text-blue-400 dark:text-neutral-200 font-medium transition-colors cursor-pointer"
+                            title="Edit flashcard"
+                          >
+                            <Pencil className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
+                        )}
+                        {onDeleteCard && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playHapticFeedback('fail');
+                              onDeleteCard(card.id);
+                            }}
+                            aria-label={`Delete ${card.targetWord}`}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-rose-50 hover:text-rose-600 text-neutral-600 dark:bg-neutral-800 dark:hover:bg-rose-950/50 dark:hover:text-rose-400 dark:text-neutral-400 font-medium transition-colors cursor-pointer"
+                            title="Delete flashcard"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Delete</span>
+                          </button>
+                        )}
+                        {!isDue && (
+                          <button
+                            type="button"
+                            onClick={() => onMakeCardDueToday(card.id)}
+                            className="px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200 font-medium transition-colors cursor-pointer"
+                            title="Make card due immediately for extra practice"
+                          >
+                            Due Now
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => {
-                            playHapticFeedback('tap');
-                            setEditingCard(card);
-                          }}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-blue-50 hover:text-blue-600 text-neutral-700 dark:bg-neutral-800 dark:hover:bg-blue-950/50 dark:hover:text-blue-400 dark:text-neutral-200 font-medium transition-colors cursor-pointer"
-                          title="Edit flashcard"
+                          onClick={() => onResetCardSchedule(card.id)}
+                          aria-label={`Reset schedule for ${card.targetWord}`}
+                          className="p-1.5 rounded-lg bg-neutral-100 hover:bg-rose-50 hover:text-rose-600 text-neutral-500 dark:bg-neutral-800 dark:hover:bg-rose-950/50 dark:hover:text-rose-400 dark:text-neutral-400 transition-colors cursor-pointer"
+                          title="Reset progress back to new"
                         >
-                          <Pencil className="w-3 h-3" />
-                          <span>Edit</span>
+                          <RefreshCw className="w-3 h-3" />
                         </button>
-                      )}
-                      {!isDue && (
-                        <button
-                          type="button"
-                          onClick={() => onMakeCardDueToday(card.id)}
-                          className="px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200 font-medium transition-colors cursor-pointer"
-                          title="Make card due immediately for extra practice"
-                        >
-                          Study Now
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => onResetCardSchedule(card.id)}
-                        className="px-2 py-1 rounded-lg text-[10px] bg-neutral-100 hover:bg-rose-50 hover:text-rose-600 text-neutral-600 dark:bg-neutral-800 dark:hover:bg-rose-950/50 dark:hover:text-rose-400 dark:text-neutral-400 transition-colors cursor-pointer"
-                        title="Reset progress back to new"
-                      >
-                        Reset
-                      </button>
+                      </div>
                     </td>
                   </tr>
                 );

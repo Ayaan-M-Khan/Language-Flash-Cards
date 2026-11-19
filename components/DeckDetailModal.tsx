@@ -140,32 +140,94 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-neutral-900 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-black/10 dark:border-white/10 animate-in fade-in zoom-in-95 duration-200"
+        className="bg-white dark:bg-neutral-900 rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-black/10 dark:border-white/10 animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Header */}
-        <div className="p-5 border-b border-black/5 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1 text-xs tabular-nums">
-              <span className="font-semibold text-blue-600 dark:text-blue-400">
-                {deck.language}
-              </span>
-              <span className="text-neutral-300 dark:text-neutral-600" aria-hidden="true">
-                ·
-              </span>
-              <span className="text-neutral-500 dark:text-neutral-400">
-                {cards.length} {cards.length === 1 ? 'card' : 'cards'} ({dueCount} due)
-              </span>
+        <div className="p-4 sm:p-5 border-b border-black/5 dark:border-white/10 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1 text-xs tabular-nums">
+                <span className="font-semibold text-blue-600 dark:text-blue-400">
+                  {deck.language}
+                </span>
+                <span className="text-neutral-300 dark:text-neutral-600" aria-hidden="true">
+                  ·
+                </span>
+                <span className="text-neutral-500 dark:text-neutral-400">
+                  {cards.length} {cards.length === 1 ? 'card' : 'cards'} ({dueCount} due)
+                </span>
+              </div>
+              <h2
+                id="deck-detail-modal-title"
+                className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight truncate"
+              >
+                {deck.title}
+              </h2>
             </div>
-            <h2
-              id="deck-detail-modal-title"
-              className="text-xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight truncate"
-            >
-              {deck.title}
-            </h2>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="hidden sm:flex items-center gap-2">
+                <div
+                  role="group"
+                  aria-label="Card definition order"
+                  className="inline-flex items-center p-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-neutral-200/80 dark:border-neutral-700 text-xs font-medium shrink-0"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playHapticFeedback('tap');
+                      onChangeCardDirection?.('target-first');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                      cardDirection === 'target-first'
+                        ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
+                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
+                    }`}
+                  >
+                    Word → Def
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playHapticFeedback('tap');
+                      onChangeCardDirection?.('definition-first');
+                    }}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                      cardDirection === 'definition-first'
+                        ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
+                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
+                    }`}
+                  >
+                    <ArrowLeftRight className="w-3 h-3 shrink-0" />
+                    <span>Def → Translit</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onStudyDeck(deck.id, cardDirection);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-2xs whitespace-nowrap cursor-pointer"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Study</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close deck browser"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Card Definition Order Toggle */}
+          <div className="flex sm:hidden items-center justify-between gap-2">
             <div
               role="group"
               aria-label="Card definition order"
@@ -177,7 +239,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                   playHapticFeedback('tap');
                   onChangeCardDirection?.('target-first');
                 }}
-                className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                className={`px-2 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   cardDirection === 'target-first'
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
                     : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
@@ -191,7 +253,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                   playHapticFeedback('tap');
                   onChangeCardDirection?.('definition-first');
                 }}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   cardDirection === 'definition-first'
                     ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
                     : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
@@ -212,14 +274,6 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>Study</span>
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close deck browser"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
