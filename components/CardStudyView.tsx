@@ -388,7 +388,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
       aria-label="Card definition order"
       className={`${
         fullWidth ? 'grid grid-cols-2 w-full' : 'inline-flex items-center shrink-0'
-      } p-0.5 bg-neutral-200/70 dark:bg-neutral-800 rounded-xl border border-black/5 dark:border-white/10 text-xs font-medium`}
+      } p-1 bg-zinc-100 dark:bg-white/[0.05] rounded-xl border border-zinc-200/70 dark:border-white/[0.06] text-xs font-medium`}
     >
       <button
         id={`${idPrefix}-word-first-btn`}
@@ -400,8 +400,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         title="Show foreign word & transliteration first, then English definition"
         className={`inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer ${
           activeDirection === 'target-first'
-            ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
-            : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
+            ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-2xs font-semibold'
+            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
         }`}
       >
         <span>Word → Def</span>
@@ -416,8 +416,8 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         title="Show English definition first, then transliteration & foreign word"
         className={`inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer ${
           activeDirection === 'definition-first'
-            ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
-            : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
+            ? 'bg-blue-600 text-white shadow-2xs font-semibold'
+            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
         }`}
       >
         <ArrowLeftRight className="w-3 h-3 shrink-0" />
@@ -432,13 +432,13 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 text-center">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-3xl bg-green-100/80 dark:bg-emerald-950/50 text-green-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
-          <CheckCircle2 className="w-8 h-8" />
+        <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40">
+          <CheckCircle2 className="w-6 h-6" />
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-2">
-          All Caught Up!
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50 mb-2">
+          All caught up
         </h2>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 max-w-xl mx-auto mb-6 leading-relaxed">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xl mx-auto mb-6 leading-relaxed">
           {totalDeckCards > 0
             ? 'You have reviewed all cards due for optimal retention today. Pick a deck and card order below to practice anytime.'
             : 'You don’t have any flashcards in this deck yet. Import a table of vocabulary words to generate smart decks instantly.'}
@@ -447,11 +447,12 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         {/* Deck filter buttons */}
         <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
           <button
+            type="button"
             onClick={() => onSelectDeck(null)}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
               selectedDeckId === null
-                ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 shadow-xs'
-                : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/5 dark:border-white/10'
+                ? 'bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950'
+                : 'bg-white dark:bg-[#111114] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/[0.05] border border-zinc-200/80 dark:border-white/[0.08]'
             }`}
           >
             All Decks ({cards.length})
@@ -462,15 +463,16 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             return (
               <button
                 key={deck.id}
+                type="button"
                 onClick={() => onSelectDeck(deck.id)}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
                   selectedDeckId === deck.id
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/5 dark:border-white/10'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-[#111114] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/[0.05] border border-zinc-200/80 dark:border-white/[0.08]'
                 }`}
               >
                 <span>{deck.title}</span>
-                <span className="text-[10px] opacity-75">
+                <span className="text-[11px] opacity-75 font-mono">
                   ({count}
                   {due > 0 ? ` · ${due} due` : ''})
                 </span>
@@ -480,40 +482,43 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
         </div>
 
         {/* Card Order Picker when choosing deck */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Card Order:</span>
+        <div className="flex items-center justify-center gap-2.5 mb-8">
+          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Card order</span>
           {renderCardOrderSelector('empty-order')}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
           {totalDeckCards > 0 && (
             <button
               id="empty-practice-anyway-btn"
+              type="button"
               onClick={() => {
                 setStudyMode('sequential');
                 restartSession(orderedMatchingCards, { skipRestore: true });
               }}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 font-semibold text-sm hover:bg-black dark:hover:bg-white transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 font-semibold text-sm hover:bg-zinc-800 dark:hover:bg-white transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <BookOpen className="w-4 h-4" />
-              <span>Practice All Cards in Order ({totalDeckCards})</span>
+              <span>Practice all in order ({totalDeckCards})</span>
             </button>
           )}
           <button
             id="empty-import-table-btn"
+            type="button"
             onClick={onNavigateToImport}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 shadow-sm shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Sparkles className="w-4 h-4" />
-            <span>Import Vocabulary Table</span>
+            <span>Import vocabulary table</span>
           </button>
           <button
             id="empty-preview-deck-btn"
+            type="button"
             onClick={() => onSelectDeck(null)}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 font-medium text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/10 dark:border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white dark:bg-[#111114] text-zinc-700 dark:text-zinc-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-white/[0.05] border border-zinc-200/80 dark:border-white/[0.08] transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            <Layers className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-            <span>View All Decks</span>
+            <Layers className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
+            <span>View all decks</span>
           </button>
         </div>
 
@@ -545,48 +550,48 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-          className="bg-white dark:bg-neutral-900 rounded-3xl p-6 sm:p-10 shadow-sm dark:shadow-2xl border border-black/5 dark:border-white/10 text-center"
+          transition={{ duration: 0.2 }}
+          className="bg-white dark:bg-[#111114] rounded-2xl p-6 sm:p-10 shadow-[0_1px_2px_rgba(15,23,42,0.03),0_12px_32px_-16px_rgba(15,23,42,0.08)] border border-zinc-200/80 dark:border-white/[0.08] text-center"
         >
-          <div className="w-16 h-16 mx-auto mb-4 rounded-3xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
-            <Sparkles className="w-8 h-8" />
+          <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/50 dark:border-blue-800/40">
+            <CheckCircle2 className="w-6 h-6" />
           </div>
 
-          <h2 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-1">
-            Session Completed!
+          <h2 className="text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50 mb-1">
+            Session complete
           </h2>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-6">
-            Optimal memory consolidation active for {currentDeck?.title || 'Selected Deck'}
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6">
+            Memory consolidation updated for {currentDeck?.title || 'Selected Deck'}
           </p>
 
-          {/* Retention Stats Circle & Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 tabular-nums">
-            <div className="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-2xl border border-black/5 dark:border-white/10">
-              <span className="text-xs text-neutral-500 dark:text-neutral-400 block mb-1">Reviewed</span>
-              <span className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{total}</span>
+          {/* Hairline-divided Retention Summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-zinc-100 dark:divide-white/[0.06] border-y border-zinc-100 dark:border-white/[0.06] py-4 mb-6 tabular-nums">
+            <div className="px-3 py-1">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400 block mb-1">Reviewed</span>
+              <span className="text-xl font-semibold font-mono text-zinc-950 dark:text-zinc-50">{total}</span>
             </div>
-            <div className="p-3 bg-green-50 dark:bg-emerald-950/40 rounded-2xl border border-green-200/50 dark:border-emerald-800/50">
-              <span className="text-xs text-green-700 dark:text-emerald-400 block mb-1">Retention</span>
-              <span className="text-xl font-bold text-green-700 dark:text-emerald-300">{retentionRate}%</span>
+            <div className="px-3 py-1">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400 block mb-1">Retention</span>
+              <span className="text-xl font-semibold font-mono text-emerald-600 dark:text-emerald-400">{retentionRate}%</span>
             </div>
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-2xl border border-blue-200/50 dark:border-blue-800/50">
-              <span className="text-xs text-blue-700 dark:text-blue-400 block mb-1">Known / Good</span>
-              <span className="text-xl font-bold text-blue-700 dark:text-blue-300">{passedCount}</span>
+            <div className="px-3 py-1">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400 block mb-1">Known / Good</span>
+              <span className="text-xl font-semibold font-mono text-blue-600 dark:text-blue-400">{passedCount}</span>
             </div>
-            <div className="p-3 bg-orange-50 dark:bg-orange-950/40 rounded-2xl border border-orange-200/50 dark:border-orange-800/50">
-              <span className="text-xs text-orange-700 dark:text-orange-400 block mb-1">Repeat (Again)</span>
-              <span className="text-xl font-bold text-orange-700 dark:text-orange-300">{againCount}</span>
+            <div className="px-3 py-1">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400 block mb-1">Repeat</span>
+              <span className="text-xl font-semibold font-mono text-amber-600 dark:text-amber-400">{againCount}</span>
             </div>
           </div>
 
           {/* Rating distribution bar */}
           <div className="mb-6 text-left tabular-nums">
-            <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 block mb-2">
-              Performance Breakdown
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 block mb-2">
+              Performance breakdown
             </span>
-            <div className="h-3 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 flex overflow-hidden">
+            <div className="h-2 w-full rounded-full bg-zinc-100 dark:bg-white/[0.06] flex overflow-hidden">
               {againCount > 0 && (
                 <div
                   style={{ width: `${(againCount / total) * 100}%` }}
@@ -604,7 +609,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               {goodCount > 0 && (
                 <div
                   style={{ width: `${(goodCount / total) * 100}%` }}
-                  className="bg-blue-500"
+                  className="bg-blue-600"
                   title={`Good: ${goodCount}`}
                 />
               )}
@@ -616,7 +621,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
                 />
               )}
             </div>
-            <div className="flex flex-wrap justify-between gap-2 text-[11px] text-neutral-500 dark:text-neutral-400 mt-1.5">
+            <div className="flex flex-wrap justify-between gap-2 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-2">
               <span>Again ({againCount})</span>
               <span>Hard ({hardCount})</span>
               <span>Good ({goodCount})</span>
@@ -626,31 +631,33 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           </div>
 
           {/* Card Order Selector before restarting */}
-          <div className="flex items-center justify-center gap-2 mb-5">
-            <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Next Pass Order:</span>
+          <div className="flex items-center justify-center gap-2.5 mb-6">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Next pass order</span>
             {renderCardOrderSelector('complete-order')}
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-2.5">
             <button
               id="study-again-btn"
+              type="button"
               onClick={() => {
                 setStudyMode('sequential');
                 restartSession(orderedMatchingCards, { skipRestore: true });
               }}
-              className="flex-1 py-3 px-4 rounded-2xl bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 font-medium text-sm hover:bg-black dark:hover:bg-white transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="flex-1 h-11 px-4 rounded-xl bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 font-semibold text-sm hover:bg-zinc-800 dark:hover:bg-white transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>Review All Again (1-by-1)</span>
+              <span>Review all again</span>
             </button>
             <button
               id="study-import-more-btn"
+              type="button"
               onClick={onNavigateToImport}
-              className="flex-1 py-3 px-4 rounded-2xl bg-blue-600 text-white font-medium text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="flex-1 h-11 px-4 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <Sparkles className="w-4 h-4" />
-              <span>Add More Words</span>
+              <span>Add more words</span>
             </button>
           </div>
         </motion.div>
@@ -676,10 +683,10 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
 
   // ===================== ACTIVE STUDY CARD =====================
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-7">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {/* Compact 2-Row Mobile & Tablet Controls (hidden on desktop where sticky sidebar lives) */}
-      <div className="lg:hidden space-y-2 mb-3.5">
-        <div className="flex items-center justify-between gap-2">
+      <div className="lg:hidden space-y-2.5 mb-4">
+        <div className="flex items-center justify-between gap-2.5">
           <select
             id="study-deck-select-mobile"
             aria-label="Select study deck"
@@ -688,7 +695,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               const val = e.target.value === 'all' ? null : e.target.value;
               onSelectDeck(val);
             }}
-            className="flex-1 min-w-0 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-neutral-800 border border-black/10 dark:border-white/10 rounded-xl text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-2xs truncate cursor-pointer"
+            className="flex-1 min-w-0 h-9 px-3 text-xs font-medium bg-white dark:bg-[#111114] border border-zinc-200/80 dark:border-white/[0.08] rounded-xl text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 truncate cursor-pointer"
           >
             <option value="all">All Decks ({cards.length})</option>
             {decks.map((d) => (
@@ -698,22 +705,22 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             ))}
           </select>
 
-          <div className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 font-medium tabular-nums whitespace-nowrap shrink-0">
+          <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-medium font-mono tabular-nums whitespace-nowrap shrink-0">
             <span>
-              {Math.min(completedCount + 1, totalSessionCards)} / {totalSessionCards}
+              {Math.min(completedCount + 1, totalSessionCards)}/{totalSessionCards}
             </span>
-            <span className="text-neutral-300 dark:text-neutral-600" aria-hidden="true">
+            <span className="text-zinc-300 dark:text-zinc-700" aria-hidden="true">
               ·
             </span>
             <span
-              className={`font-semibold capitalize ${
+              className={`font-sans font-semibold capitalize ${
                 currentCard.state === 'new'
                   ? 'text-blue-600 dark:text-blue-400'
                   : currentCard.state === 'learning'
-                  ? 'text-orange-600 dark:text-orange-400'
+                  ? 'text-amber-600 dark:text-amber-400'
                   : currentCard.state === 'mastered'
                   ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-indigo-600 dark:text-indigo-400'
+                  : 'text-zinc-700 dark:text-zinc-300'
               }`}
             >
               {currentCard.state}
@@ -736,14 +743,14 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
               }}
               title="Shuffle remaining cards in session"
               aria-label="Shuffle session"
-              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium border shadow-2xs transition-all select-none touch-manipulation whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed active:scale-[0.98] ${
+              className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl text-xs font-medium border transition-all select-none touch-manipulation whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed active:scale-[0.98] ${
                 justShuffled
-                  ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
-                  : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                  ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60'
+                  : 'bg-white dark:bg-[#111114] text-zinc-700 dark:text-zinc-300 border-zinc-200/80 dark:border-white/[0.08] hover:bg-zinc-50 dark:hover:bg-white/[0.05]'
               }`}
             >
               <Shuffle
-                className={`w-3.5 h-3.5 ${justShuffled ? 'text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 dark:text-neutral-400'}`}
+                className={`w-3.5 h-3.5 ${justShuffled ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-400 dark:text-zinc-500'}`}
               />
               <span className="hidden sm:inline">{justShuffled ? 'Shuffled' : 'Shuffle'}</span>
             </button>
@@ -759,10 +766,10 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
                     ? 'Showing all deck cards. Click for due cards only.'
                     : 'Showing due cards only. Click for all cards.'
                 }
-                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl text-xs font-medium border transition-colors whitespace-nowrap shrink-0 cursor-pointer font-mono ${
                   studyMode === 'due'
-                    ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                    : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                    ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/60'
+                    : 'bg-white dark:bg-[#111114] text-zinc-600 dark:text-zinc-300 border-zinc-200/80 dark:border-white/[0.08] hover:bg-zinc-50 dark:hover:bg-white/[0.05]'
                 }`}
               >
                 <ListOrdered className="w-3.5 h-3.5" />
@@ -781,17 +788,17 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
         {/* Primary Study Stage */}
         <div className="lg:col-span-8 flex flex-col">
-          {/* Queue Progress Bar */}
-          <div className="w-full h-1.5 bg-neutral-200/80 dark:bg-neutral-800 rounded-full overflow-hidden mb-5">
+          {/* Precision Progress Rail */}
+          <div className="w-full h-1 bg-zinc-200/80 dark:bg-white/[0.08] rounded-full overflow-hidden mb-5">
             <motion.div
-              className="h-full bg-blue-500 rounded-full"
+              className="h-full bg-blue-600 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${progressPercent}%` }}
-              transition={{ duration: 0.25 }}
+              transition={{ duration: 0.2 }}
             />
           </div>
 
-          {/* 3D Flip Card Container — keyed by monotonic currentStepId with NO opacity wrapper around preserve-3d */}
+          {/* 3D Flip Card Container */}
           <div className="w-full mb-5">
             <Flashcard
               key={currentStepId}
@@ -808,10 +815,10 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
             />
           </div>
 
-          {/* Action Tray: 4-Level SuperMemo SM-2 Interval Buttons & Navigation */}
+          {/* Action Tray: 4-Level SuperMemo SM-2 Interval Buttons & Front Controls */}
           {isFlipped ? (
             <div
-              className={`grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 tabular-nums ${
+              className={`grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 tabular-nums ${
                 isProcessing ? 'pointer-events-none opacity-60' : ''
               }`}
             >
@@ -825,12 +832,12 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
                   e.stopPropagation();
                   handleRating('again');
                 }}
-                className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100/90 dark:hover:bg-rose-900/50 border border-rose-200/80 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 transition-all active:scale-[0.98] shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+                className="flex flex-col items-center justify-center py-3 px-3 rounded-xl bg-white dark:bg-[#111114] hover:bg-rose-50/90 dark:hover:bg-rose-950/35 border border-zinc-200/80 dark:border-white/[0.08] hover:border-rose-300 dark:hover:border-rose-800/70 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
               >
-                <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 mb-0.5">
-                  Again [1]
+                <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+                  Again <span className="font-mono text-[10px] opacity-65 ml-0.5">[1]</span>
                 </span>
-                <span className="text-xs text-rose-800 dark:text-rose-200 font-medium">
+                <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-0.5">
                   {previewIntervals.again}
                 </span>
               </button>
@@ -845,12 +852,12 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
                   e.stopPropagation();
                   handleRating('hard');
                 }}
-                className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100/90 dark:hover:bg-amber-900/50 border border-amber-200/80 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 transition-all active:scale-[0.98] shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+                className="flex flex-col items-center justify-center py-3 px-3 rounded-xl bg-white dark:bg-[#111114] hover:bg-amber-50/90 dark:hover:bg-amber-950/35 border border-zinc-200/80 dark:border-white/[0.08] hover:border-amber-300 dark:hover:border-amber-800/70 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
               >
-                <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 mb-0.5">
-                  Hard [2]
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  Hard <span className="font-mono text-[10px] opacity-65 ml-0.5">[2]</span>
                 </span>
-                <span className="text-xs text-amber-900 dark:text-amber-100 font-medium">
+                <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-0.5">
                   {previewIntervals.hard}
                 </span>
               </button>
@@ -865,15 +872,13 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
                   e.stopPropagation();
                   handleRating('good');
                 }}
-                className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white transition-all active:scale-[0.98] shadow-sm shadow-blue-500/25 group relative disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+                className="flex flex-col items-center justify-center py-3 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white transition-all active:scale-[0.98] shadow-sm shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
               >
-                <div className="flex items-center gap-1 mb-0.5">
-                  <span className="text-[11px] font-bold text-blue-100">
-                    Good [3]
-                  </span>
+                <span className="inline-flex items-center gap-0.5 text-xs font-semibold">
+                  Good <span className="font-mono text-[10px] text-blue-100 ml-0.5">[3]</span>
                   <ChevronRight className="w-3.5 h-3.5 text-blue-200" />
-                </div>
-                <span className="text-xs text-white font-medium">
+                </span>
+                <span className="text-[11px] font-mono text-blue-50 mt-0.5">
                   {previewIntervals.good}
                 </span>
               </button>
@@ -888,19 +893,19 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
                   e.stopPropagation();
                   handleRating('easy');
                 }}
-                className="flex flex-col items-center justify-center p-3 sm:py-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100/90 dark:hover:bg-emerald-900/50 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 transition-all active:scale-[0.98] shadow-2xs group disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
+                className="flex flex-col items-center justify-center py-3 px-3 rounded-xl bg-white dark:bg-[#111114] hover:bg-emerald-50/90 dark:hover:bg-emerald-950/35 border border-zinc-200/80 dark:border-white/[0.08] hover:border-emerald-300 dark:hover:border-emerald-800/70 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer"
               >
-                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mb-0.5">
-                  Easy [4]
+                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                  Easy <span className="font-mono text-[10px] opacity-65 ml-0.5">[4]</span>
                 </span>
-                <span className="text-xs text-emerald-900 dark:text-emerald-100 font-medium">
+                <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-0.5">
                   {previewIntervals.easy}
                 </span>
               </button>
             </div>
           ) : (
             <div
-              className={`flex items-center justify-center gap-2 sm:gap-3.5 ${
+              className={`flex items-center justify-center gap-2.5 sm:gap-3 ${
                 isProcessing ? 'pointer-events-none opacity-60' : ''
               }`}
             >
@@ -914,11 +919,11 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
                   handleAlreadyKnew();
                 }}
                 title="Already knew this word — schedule review in 7 days [K]"
-                className="py-3.5 px-3 sm:px-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100/90 dark:hover:bg-emerald-900/50 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 font-semibold text-xs sm:text-sm shadow-2xs transition-all inline-flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap shrink-0"
+                className="h-11 px-3.5 sm:px-4 rounded-xl bg-white dark:bg-[#111114] hover:bg-emerald-50/80 dark:hover:bg-emerald-950/35 border border-zinc-200/90 dark:border-white/[0.09] hover:border-emerald-300 dark:hover:border-emerald-800/70 text-emerald-700 dark:text-emerald-400 font-medium text-xs sm:text-sm transition-all inline-flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap shrink-0"
               >
                 <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span>Already Knew</span>
-                <span className="text-[11px] font-medium text-emerald-600/80 dark:text-emerald-400/80 tabular-nums">
+                <span className="font-mono text-[11px] text-emerald-600/75 dark:text-emerald-400/75 tabular-nums">
                   7d
                 </span>
               </button>
@@ -932,14 +937,14 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
                   e.stopPropagation();
                   handleFlip();
                 }}
-                className="flex-1 sm:flex-initial sm:min-w-[240px] py-3.5 px-4 sm:px-6 rounded-2xl bg-neutral-900 dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900 font-semibold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap"
+                className="flex-1 sm:flex-initial sm:min-w-[230px] h-11 px-4 sm:px-6 rounded-xl bg-zinc-950 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white text-white dark:text-zinc-950 font-semibold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-2.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap"
               >
                 <span>
                   {activeDirection === 'definition-first' ? 'Show Translit' : 'Show Answer'}
                 </span>
-                <span className="hidden sm:inline text-[11px] text-neutral-400 dark:text-neutral-600 font-normal px-2 py-0.5 rounded-md bg-neutral-800 dark:bg-neutral-200">
+                <kbd className="hidden sm:inline font-mono text-[10px] text-zinc-400 dark:text-zinc-500 font-normal px-1.5 py-0.5 rounded-md bg-white/10 dark:bg-black/10">
                   Space
-                </span>
+                </kbd>
               </button>
 
               <button
@@ -952,7 +957,7 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
                   handleSkip();
                 }}
                 title="Skip to next card for now"
-                className="py-3.5 px-3 sm:px-5 rounded-2xl bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 font-medium text-xs sm:text-sm shadow-2xs transition-all inline-flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap shrink-0"
+                className="h-11 px-3.5 sm:px-4 rounded-xl bg-white dark:bg-[#111114] hover:bg-zinc-50 dark:hover:bg-white/[0.05] border border-zinc-200/90 dark:border-white/[0.09] text-zinc-600 dark:text-zinc-300 font-medium text-xs sm:text-sm transition-all inline-flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed select-none touch-manipulation cursor-pointer whitespace-nowrap shrink-0"
               >
                 <span>Skip</span>
                 <SkipForward className="w-3.5 h-3.5 shrink-0" />
@@ -961,175 +966,177 @@ export const CardStudyView: React.FC<CardStudyViewProps> = ({
           )}
         </div>
 
-        {/* Desktop Sticky Session Control & Queue Panel */}
-        <aside className="hidden lg:flex lg:col-span-4 flex-col gap-4 sticky top-20">
-          <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 shadow-2xs border border-black/5 dark:border-white/10 space-y-4">
-            {/* Session Progress & State */}
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 block">
-                  Session Progress
-                </span>
-                <div className="text-lg font-bold text-neutral-900 dark:text-neutral-100 tabular-nums mt-0.5">
-                  {Math.min(completedCount + 1, totalSessionCards)}{' '}
-                  <span className="text-sm font-medium text-neutral-400 dark:text-neutral-500">
-                    / {totalSessionCards}
+        {/* Unified Single-Card Sticky Session Sidebar */}
+        <aside className="hidden lg:block lg:col-span-4 sticky top-[4.75rem]">
+          <div className="bg-white dark:bg-[#111114] rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(15,23,42,0.03),0_10px_28px_-18px_rgba(15,23,42,0.07)] divide-y divide-zinc-100 dark:divide-white/[0.06]">
+            {/* Section 1: Progress & Metrics */}
+            <div className="p-5 space-y-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <div>
+                  <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 block">
+                    Session progress
                   </span>
+                  <div className="text-xl font-semibold font-mono text-zinc-950 dark:text-zinc-50 tabular-nums mt-0.5">
+                    {Math.min(completedCount + 1, totalSessionCards)}
+                    <span className="text-sm font-normal text-zinc-400 dark:text-zinc-500 ml-1">
+                      / {totalSessionCards}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <span
-                className={`px-2.5 py-1 rounded-xl text-xs font-semibold capitalize ${
-                  currentCard.state === 'new'
-                    ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
-                    : currentCard.state === 'learning'
-                    ? 'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300'
-                    : currentCard.state === 'mastered'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300'
-                }`}
-              >
-                {currentCard.state}
-              </span>
-            </div>
-
-            {/* Compact 3-Metric Strip */}
-            <div className="grid grid-cols-3 divide-x divide-black/5 dark:divide-white/10 rounded-2xl bg-neutral-50 dark:bg-neutral-800/70 py-2.5 text-center tabular-nums">
-              <div>
-                <span className="text-sm font-bold text-neutral-900 dark:text-neutral-100 block">
-                  {cardsRemaining}
-                </span>
-                <span className="text-[11px] text-neutral-500 dark:text-neutral-400">Left</span>
-              </div>
-              <div>
-                <span className="text-sm font-bold text-blue-600 dark:text-blue-400 block">
-                  {completedCount}
-                </span>
-                <span className="text-[11px] text-neutral-500 dark:text-neutral-400">Done</span>
-              </div>
-              <div>
-                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 block">
-                  {deckMasteredCount}
-                </span>
-                <span className="text-[11px] text-neutral-500 dark:text-neutral-400">Mastered</span>
-              </div>
-            </div>
-
-            {/* Active Deck Selector */}
-            <div>
-              <label
-                htmlFor="study-deck-select"
-                className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-1.5"
-              >
-                Active Deck
-              </label>
-              <select
-                id="study-deck-select"
-                aria-label="Select study deck"
-                value={selectedDeckId || 'all'}
-                onChange={(e) => {
-                  const val = e.target.value === 'all' ? null : e.target.value;
-                  onSelectDeck(val);
-                }}
-                className="w-full px-3 py-2 text-xs font-semibold bg-neutral-50 dark:bg-neutral-800 border border-black/10 dark:border-white/10 rounded-xl text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 truncate cursor-pointer"
-              >
-                <option value="all">All Decks ({cards.length})</option>
-                {decks.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Card Face Direction */}
-            <div>
-              <span className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-1.5">
-                Card Direction
-              </span>
-              {renderCardOrderSelector('study-order', true)}
-            </div>
-
-            {/* Queue Controls */}
-            <div className="flex items-center gap-2 pt-0.5">
-              <button
-                id="shuffle-queue-btn"
-                type="button"
-                disabled={isProcessing || cardsRemaining <= 1}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleShuffle();
-                }}
-                title="Shuffle remaining cards in session"
-                aria-label="Shuffle session"
-                className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-all select-none whitespace-nowrap cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed active:scale-[0.98] ${
-                  justShuffled
-                    ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
-                    : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-700'
-                }`}
-              >
-                <Shuffle
-                  className={`w-3.5 h-3.5 ${justShuffled ? 'text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 dark:text-neutral-400'}`}
-                />
-                <span>{justShuffled ? 'Shuffled' : 'Shuffle'}</span>
-              </button>
-
-              {orderedMatchingCards.length > 0 && orderedDueCards.length < orderedMatchingCards.length && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setStudyMode((prev) => (prev === 'sequential' ? 'due' : 'sequential'))
-                  }
-                  title={
-                    studyMode === 'sequential'
-                      ? 'Showing all deck cards. Click for due cards only.'
-                      : 'Showing due cards only. Click for all cards.'
-                  }
-                  className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-colors whitespace-nowrap cursor-pointer ${
-                    studyMode === 'due'
-                      ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                      : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                <span
+                  className={`text-xs font-medium capitalize ${
+                    currentCard.state === 'new'
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : currentCard.state === 'learning'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : currentCard.state === 'mastered'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-zinc-600 dark:text-zinc-300'
                   }`}
                 >
-                  <ListOrdered className="w-3.5 h-3.5 shrink-0" />
-                  <span>
-                    {studyMode === 'sequential'
-                      ? `All (${orderedMatchingCards.length})`
-                      : `Due (${orderedDueCards.length})`}
-                  </span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Up Next Queue Preview */}
-          {upcomingCards.length > 0 && (
-            <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 shadow-2xs border border-black/5 dark:border-white/10">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                  Up Next
-                </span>
-                <span className="text-[11px] text-neutral-400 dark:text-neutral-500 tabular-nums">
-                  {cardsRemaining - 1} queued
+                  {currentCard.state}
                 </span>
               </div>
-              <ul className="divide-y divide-black/5 dark:divide-white/5">
-                {upcomingCards.map((card, idx) => (
-                  <li
-                    key={`${card.id}-${idx}`}
-                    className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-3 text-xs"
-                  >
-                    <span className="font-medium text-neutral-800 dark:text-neutral-200 truncate">
-                      {activeDirection === 'definition-first' ? card.english : card.targetWord}
-                    </span>
-                    <span className="text-[11px] text-neutral-400 dark:text-neutral-500 capitalize shrink-0">
-                      {card.state}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+
+              {/* Clean Hairline-Divided 3-Metric Row (no nested boxes) */}
+              <div className="grid grid-cols-3 divide-x divide-zinc-100 dark:divide-white/[0.06] pt-3 border-t border-zinc-100 dark:border-white/[0.06] text-center tabular-nums">
+                <div>
+                  <span className="text-sm font-semibold font-mono text-zinc-900 dark:text-zinc-100 block">
+                    {cardsRemaining}
+                  </span>
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400">Left</span>
+                </div>
+                <div>
+                  <span className="text-sm font-semibold font-mono text-blue-600 dark:text-blue-400 block">
+                    {completedCount}
+                  </span>
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400">Done</span>
+                </div>
+                <div>
+                  <span className="text-sm font-semibold font-mono text-emerald-600 dark:text-emerald-400 block">
+                    {deckMasteredCount}
+                  </span>
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400">Mastered</span>
+                </div>
+              </div>
             </div>
-          )}
+
+            {/* Section 2: Deck, Direction & Queue Controls */}
+            <div className="p-5 space-y-4">
+              <div>
+                <label
+                  htmlFor="study-deck-select"
+                  className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5"
+                >
+                  Active deck
+                </label>
+                <select
+                  id="study-deck-select"
+                  aria-label="Select study deck"
+                  value={selectedDeckId || 'all'}
+                  onChange={(e) => {
+                    const val = e.target.value === 'all' ? null : e.target.value;
+                    onSelectDeck(val);
+                  }}
+                  className="w-full h-9 px-3 text-xs font-medium bg-zinc-50/90 dark:bg-[#18181B] border border-zinc-200/80 dark:border-white/[0.08] rounded-xl text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 truncate cursor-pointer"
+                >
+                  <option value="all">All Decks ({cards.length})</option>
+                  {decks.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">
+                  Card direction
+                </span>
+                {renderCardOrderSelector('study-order', true)}
+              </div>
+
+              <div className="flex items-center gap-2 pt-0.5">
+                <button
+                  id="shuffle-queue-btn"
+                  type="button"
+                  disabled={isProcessing || cardsRemaining <= 1}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleShuffle();
+                  }}
+                  title="Shuffle remaining cards in session"
+                  aria-label="Shuffle session"
+                  className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs font-medium border transition-all select-none whitespace-nowrap cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed active:scale-[0.98] ${
+                    justShuffled
+                      ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60'
+                      : 'bg-zinc-50/80 dark:bg-[#18181B] text-zinc-700 dark:text-zinc-300 border-zinc-200/80 dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-white/[0.06]'
+                  }`}
+                >
+                  <Shuffle
+                    className={`w-3.5 h-3.5 ${justShuffled ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-400 dark:text-zinc-500'}`}
+                  />
+                  <span>{justShuffled ? 'Shuffled' : 'Shuffle'}</span>
+                </button>
+
+                {orderedMatchingCards.length > 0 && orderedDueCards.length < orderedMatchingCards.length && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setStudyMode((prev) => (prev === 'sequential' ? 'due' : 'sequential'))
+                    }
+                    title={
+                      studyMode === 'sequential'
+                        ? 'Showing all deck cards. Click for due cards only.'
+                        : 'Showing due cards only. Click for all cards.'
+                    }
+                    className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs font-medium border transition-colors whitespace-nowrap cursor-pointer font-mono ${
+                      studyMode === 'due'
+                        ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/60'
+                        : 'bg-zinc-50/80 dark:bg-[#18181B] text-zinc-600 dark:text-zinc-300 border-zinc-200/80 dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <ListOrdered className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      {studyMode === 'sequential'
+                        ? `All (${orderedMatchingCards.length})`
+                        : `Due (${orderedDueCards.length})`}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Section 3: Up Next Queue Preview */}
+            {upcomingCards.length > 0 && (
+              <div className="p-5">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                    Up next
+                  </span>
+                  <span className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500 tabular-nums">
+                    {cardsRemaining - 1} queued
+                  </span>
+                </div>
+                <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
+                  {upcomingCards.map((card, idx) => (
+                    <li
+                      key={`${card.id}-${idx}`}
+                      className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-3 text-xs"
+                    >
+                      <span className="font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                        {activeDirection === 'definition-first' ? card.english : card.targetWord}
+                      </span>
+                      <span className="text-[11px] text-zinc-400 dark:text-zinc-500 capitalize shrink-0">
+                        {card.state}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </aside>
       </div>
 

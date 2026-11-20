@@ -312,21 +312,21 @@ export const TableImporter: React.FC<TableImporterProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-7">
-      {/* Compact Header & Wrapping Sample Presets */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-5">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 sm:py-9">
+      {/* Header & Sample Presets */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+          <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
             Import Vocabulary Table
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1 max-w-2xl">
+          <p className="text-xs sm:text-[13px] text-zinc-500 dark:text-zinc-400 mt-1 max-w-2xl">
             Paste tabs, CSV, or multi-section tables from Sheets or Excel to generate spaced repetition decks.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mr-1">
-            Samples:
+          <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500 mr-1">
+            Samples
           </span>
           {SAMPLE_TABLE_PRESETS.map((preset, idx) => {
             const isSelected = deckTitle === preset.name;
@@ -337,10 +337,10 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                 type="button"
                 onClick={() => handleLoadPreset(idx)}
                 title={preset.name}
-                className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
+                className={`h-8 px-2.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
                   isSelected
-                    ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 border-transparent'
-                    : 'bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 border-black/10 dark:border-white/10'
+                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 border-transparent'
+                    : 'bg-white dark:bg-[#111114] hover:bg-zinc-50 dark:hover:bg-[#18181B] text-zinc-700 dark:text-zinc-300 border-zinc-200/80 dark:border-white/[0.08]'
                 }`}
               >
                 {shortLabel}
@@ -352,18 +352,18 @@ export const TableImporter: React.FC<TableImporterProps> = ({
 
       {/* SUCCESS BANNER */}
       {successInfo && (
-        <div className="mb-5 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-900 dark:text-emerald-100 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mb-5 p-4 rounded-2xl bg-emerald-50/75 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-950 dark:text-emerald-100 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
               <Check className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold">
-                Generated &ldquo;{successInfo.deckTitle}&rdquo;!
+              <h3 className="text-sm font-semibold">
+                Generated &ldquo;{successInfo.deckTitle}&rdquo;
               </h3>
               <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                Created {successInfo.cardCount} flashcards with SM-2 schedules
-                {successInfo.isFallback ? ' (Instant Engine)' : ' (AI Enriched)'}.
+                Created <span className="font-mono">{successInfo.cardCount}</span> flashcards with SM-2 schedules
+                {successInfo.isFallback ? ' · Instant Engine' : ' · AI Enriched'}
               </p>
             </div>
           </div>
@@ -371,7 +371,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
             <div
               role="group"
               aria-label="Card definition order"
-              className="inline-flex items-center p-0.5 bg-white/90 dark:bg-neutral-800 rounded-xl border border-emerald-200 dark:border-emerald-700 text-xs font-medium shrink-0"
+              className="inline-flex items-center p-1 bg-white/90 dark:bg-[#18181B] rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 text-xs font-medium shrink-0"
             >
               <button
                 type="button"
@@ -381,7 +381,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                 }}
                 className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   studyDirection === 'target-first'
-                    ? 'bg-emerald-700 text-white font-semibold'
+                    ? 'bg-emerald-600 text-white font-semibold'
                     : 'text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40'
                 }`}
               >
@@ -395,7 +395,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                 }}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   studyDirection === 'definition-first'
-                    ? 'bg-indigo-600 text-white font-semibold'
+                    ? 'bg-blue-600 text-white font-semibold'
                     : 'text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40'
                 }`}
               >
@@ -408,7 +408,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
               id="start-study-imported-btn"
               type="button"
               onClick={() => onNavigateToStudy(successInfo.deckId, studyDirection)}
-              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full sm:w-auto h-9 px-4 rounded-xl bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 transition-colors shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>Start Studying</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -419,25 +419,26 @@ export const TableImporter: React.FC<TableImporterProps> = ({
 
       {/* ERROR BANNER */}
       {errorMessage && (
-        <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2">
+        <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/35 border border-rose-200/80 dark:border-rose-800/60 text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
           <span>{errorMessage}</span>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Column: Compact Raw Input + Deck Settings + Primary Actions Above the Fold */}
+        {/* Left Column: Raw Input + Deck Settings + Primary Actions */}
         <div className="lg:col-span-5 flex flex-col gap-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl p-4 sm:p-5 shadow-2xs border border-black/5 dark:border-white/10">
-            <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="bg-white dark:bg-[#111114] rounded-2xl p-4 sm:p-5 border border-zinc-200/80 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(15,23,42,0.03),0_10px_28px_-18px_rgba(15,23,42,0.07)]">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
               <label
                 htmlFor="table-raw-textarea"
-                className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400"
+                className="text-xs font-medium text-zinc-700 dark:text-zinc-300"
               >
                 Raw Table Input
               </label>
-              <span className="text-[11px] text-neutral-400 dark:text-neutral-500 tabular-nums">
-                {editableRows.length} rows · {parsed.sections.length}{' '}
+              <span className="text-[11px] text-zinc-400 dark:text-zinc-500 tabular-nums">
+                <span className="font-mono text-zinc-600 dark:text-zinc-300">{editableRows.length}</span> rows ·{' '}
+                <span className="font-mono text-zinc-600 dark:text-zinc-300">{parsed.sections.length}</span>{' '}
                 {parsed.sections.length === 1 ? 'section' : 'sections'}
               </span>
             </div>
@@ -448,17 +449,17 @@ export const TableImporter: React.FC<TableImporterProps> = ({
               onChange={(e) => handleRawTextChange(e.target.value)}
               placeholder={`1. Greetings & Introductions\nEnglish\tArabic Script\tTransliteration\tNotes\nWelcome\tأهلاً وسهلاً\t'ahlan wa sahlan\tFormal\nHello\tمَرحَباً\tmarHaban\t`}
               rows={9}
-              className="w-full min-h-[200px] p-3 font-mono text-xs text-neutral-800 dark:text-neutral-100 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-black/5 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-y leading-relaxed"
+              className="w-full min-h-[200px] p-3 font-mono text-xs text-zinc-900 dark:text-zinc-100 bg-zinc-50/90 dark:bg-[#18181B] rounded-xl border border-zinc-200/80 dark:border-white/[0.08] focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 resize-y leading-relaxed"
             />
           </div>
 
           {/* Deck Settings & Generation CTAs */}
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl p-4 sm:p-5 shadow-2xs border border-black/5 dark:border-white/10 space-y-3.5">
+          <div className="bg-white dark:bg-[#111114] rounded-2xl p-4 sm:p-5 border border-zinc-200/80 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(15,23,42,0.03),0_10px_28px_-18px_rgba(15,23,42,0.07)] space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label
                   htmlFor="deck-title-input"
-                  className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1"
+                  className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
                 >
                   Deck Title
                 </label>
@@ -468,14 +469,14 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                   value={deckTitle}
                   onChange={(e) => setDeckTitle(e.target.value)}
                   placeholder="e.g. Arabic Core & Expressions"
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
+                  className="w-full h-9 px-3 text-xs rounded-xl bg-zinc-50/90 dark:bg-[#18181B] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 font-medium"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="target-language-input"
-                  className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1"
+                  className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
                 >
                   Target Language
                 </label>
@@ -485,28 +486,28 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                   value={targetLanguage}
                   onChange={(e) => setTargetLanguage(e.target.value)}
                   placeholder="e.g. Arabic, Spanish, Japanese"
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
+                  className="w-full h-9 px-3 text-xs rounded-xl bg-zinc-50/90 dark:bg-[#18181B] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 font-medium"
                 />
               </div>
             </div>
 
             {/* Schedule Curve */}
             <div>
-              <span className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5">
+              <span className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5">
                 Initial Schedule
               </span>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setScheduleMode('staggered')}
-                  className={`px-3 py-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                  className={`px-3 py-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
                     scheduleMode === 'staggered'
-                      ? 'bg-blue-50/80 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-100 font-semibold'
-                      : 'bg-neutral-50 dark:bg-neutral-800 border-black/5 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                      ? 'bg-blue-50/70 dark:bg-blue-950/35 border-blue-500/60 dark:border-blue-500/50 text-blue-950 dark:text-blue-100'
+                      : 'bg-zinc-50/90 dark:bg-[#18181B] border-zinc-200/80 dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/[0.15]'
                   }`}
                 >
                   <span className="block font-semibold">Optimal Stagger</span>
-                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-normal">
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-normal">
                     Paced daily retention
                   </span>
                 </button>
@@ -514,14 +515,14 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                 <button
                   type="button"
                   onClick={() => setScheduleMode('immediate')}
-                  className={`px-3 py-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                  className={`px-3 py-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
                     scheduleMode === 'immediate'
-                      ? 'bg-blue-50/80 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-100 font-semibold'
-                      : 'bg-neutral-50 dark:bg-neutral-800 border-black/5 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                      ? 'bg-blue-50/70 dark:bg-blue-950/35 border-blue-500/60 dark:border-blue-500/50 text-blue-950 dark:text-blue-100'
+                      : 'bg-zinc-50/90 dark:bg-[#18181B] border-zinc-200/80 dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/[0.15]'
                   }`}
                 >
                   <span className="block font-semibold">All Immediate</span>
-                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-normal">
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-normal">
                     All due in session 1
                   </span>
                 </button>
@@ -535,10 +536,10 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                 type="button"
                 disabled={editableRows.length === 0}
                 onClick={handleGenerateInstant}
-                className="flex-1 py-2.5 px-3.5 rounded-xl bg-neutral-900 dark:bg-white hover:bg-black dark:hover:bg-neutral-100 text-white dark:text-neutral-900 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-2xs active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                className="flex-1 h-10 px-3.5 rounded-xl bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white text-white dark:text-zinc-950 font-medium text-xs transition-all flex items-center justify-center gap-1.5 shadow-2xs active:scale-[0.98] cursor-pointer disabled:opacity-50 tabular-nums"
                 title="Instantly generate deck with all detected words, pronunciations, and notes"
               >
-                <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                <Zap className="w-3.5 h-3.5 text-amber-400 dark:text-amber-600 fill-current shrink-0" />
                 <span>Create Deck ({editableRows.length})</span>
               </button>
 
@@ -547,7 +548,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                 type="button"
                 disabled={isAiLoading || editableRows.length === 0}
                 onClick={handleAIGenerate}
-                className="py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 active:scale-[0.98] cursor-pointer whitespace-nowrap"
+                className="h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 active:scale-[0.98] cursor-pointer whitespace-nowrap"
                 title="Enrich all cards with AI generated example sentences, mnemonics, and phonetics"
               >
                 {isAiLoading ? (
@@ -568,14 +569,20 @@ export const TableImporter: React.FC<TableImporterProps> = ({
 
         {/* Right Column: Live Multi-Column Table Preview */}
         <div className="lg:col-span-7 flex flex-col">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl p-4 sm:p-5 shadow-2xs border border-black/5 dark:border-white/10 flex flex-col">
+          <div className="bg-white dark:bg-[#111114] rounded-2xl p-4 sm:p-5 border border-zinc-200/80 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(15,23,42,0.03),0_10px_28px_-18px_rgba(15,23,42,0.07)] flex flex-col">
             <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                   Preview
                 </span>
-                <span className="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">
-                  {displayedRows.length} of {editableRows.length} cards
+                <span className="text-zinc-300 dark:text-zinc-700" aria-hidden="true">
+                  ·
+                </span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
+                  <span className="font-mono text-zinc-700 dark:text-zinc-300">
+                    {displayedRows.length}
+                  </span>{' '}
+                  of <span className="font-mono">{editableRows.length}</span> cards
                 </span>
               </div>
 
@@ -585,7 +592,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                     aria-label="Filter by topic section"
                     value={selectedSectionFilter}
                     onChange={(e) => setSelectedSectionFilter(e.target.value)}
-                    className="max-w-[220px] px-2.5 py-1.5 text-xs font-medium rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 truncate cursor-pointer"
+                    className="h-8 max-w-[220px] px-2.5 text-xs font-medium rounded-xl bg-zinc-50/90 dark:bg-[#18181B] text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-white/[0.08] focus:outline-none focus:border-blue-500/70 truncate cursor-pointer"
                   >
                     <option value="all">All Sections ({editableRows.length})</option>
                     {sectionCategories.map((cat) => {
@@ -602,7 +609,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                 <button
                   type="button"
                   onClick={handleAddRow}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                  className="inline-flex items-center gap-1 h-8 px-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-[#18181B] text-blue-600 dark:text-blue-400 hover:bg-blue-50/80 dark:hover:bg-blue-950/35 border border-zinc-200/80 dark:border-white/[0.08] font-medium transition-colors cursor-pointer whitespace-nowrap"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Row</span>
@@ -611,23 +618,26 @@ export const TableImporter: React.FC<TableImporterProps> = ({
             </div>
 
             {/* Table Scrollable Container */}
-            <div className="max-h-[540px] overflow-y-auto overflow-x-auto rounded-xl border border-black/5 dark:border-white/10 bg-neutral-50/60 dark:bg-neutral-950/60">
+            <div className="max-h-[540px] overflow-y-auto overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-white/[0.08] bg-zinc-50/50 dark:bg-[#09090B]/40">
               <table className="w-full text-left text-xs min-w-[640px] table-fixed">
-                <thead className="sticky top-0 bg-neutral-100/95 dark:bg-neutral-800/95 backdrop-blur-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-[10px] z-10 border-b border-black/5 dark:border-white/10">
+                <thead className="sticky top-0 bg-zinc-50/95 dark:bg-[#18181B]/95 backdrop-blur-xs text-zinc-500 dark:text-zinc-400 font-medium text-[11px] z-10 border-b border-zinc-200/80 dark:border-white/[0.07]">
                   <tr>
-                    <th className="py-2.5 px-2.5 w-[25%]">English</th>
-                    <th className="py-2.5 px-2.5 w-[25%]">Target Script</th>
-                    <th className="py-2.5 px-2.5 w-[24%]">Transliteration</th>
-                    <th className="py-2.5 px-2.5 w-[21%]">Notes</th>
+                    <th className="py-2.5 px-2.5 w-[25%] font-medium">English</th>
+                    <th className="py-2.5 px-2.5 w-[25%] font-medium">Target Script</th>
+                    <th className="py-2.5 px-2.5 w-[24%] font-medium">Transliteration</th>
+                    <th className="py-2.5 px-2.5 w-[21%] font-medium">Notes</th>
                     <th className="py-2.5 px-1 w-9"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                <tbody className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
                   {displayedRows.map((row) => {
                     const actualIdx = editableRows.indexOf(row);
                     const isRtl = isArabicScript(row.targetWord);
                     return (
-                      <tr key={actualIdx} className="group hover:bg-white/90 dark:hover:bg-neutral-800/80 transition-colors">
+                      <tr
+                        key={actualIdx}
+                        className="group hover:bg-white dark:hover:bg-[#18181B]/70 transition-colors"
+                      >
                         <td className="p-1">
                           <input
                             type="text"
@@ -635,7 +645,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                             title={row.english}
                             onChange={(e) => handleCellChange(actualIdx, 'english', e.target.value)}
                             placeholder="English phrase"
-                            className="w-full px-2 py-1 bg-transparent rounded-lg focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-900 dark:text-neutral-100 truncate"
+                            className="w-full px-2 py-1.5 bg-transparent rounded-lg focus:bg-white dark:focus:bg-[#18181B] focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-900 dark:text-zinc-100 truncate"
                           />
                         </td>
                         <td className="p-1">
@@ -646,7 +656,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                             dir={isRtl ? 'rtl' : 'ltr'}
                             onChange={(e) => handleCellChange(actualIdx, 'targetWord', e.target.value)}
                             placeholder="Target script"
-                            className={`w-full px-2 py-1 bg-transparent rounded-lg focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-900 dark:text-neutral-100 truncate ${
+                            className={`w-full px-2 py-1.5 bg-transparent rounded-lg focus:bg-white dark:focus:bg-[#18181B] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-zinc-900 dark:text-zinc-100 truncate ${
                               isRtl ? 'text-sm text-right' : ''
                             }`}
                           />
@@ -658,7 +668,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                             title={row.phonetic || ''}
                             onChange={(e) => handleCellChange(actualIdx, 'phonetic', e.target.value)}
                             placeholder="Transliteration"
-                            className="w-full px-2 py-1 bg-transparent rounded-lg focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-600 dark:text-neutral-300 italic text-[11px] truncate"
+                            className="w-full px-2 py-1.5 bg-transparent rounded-lg focus:bg-white dark:focus:bg-[#18181B] focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-600 dark:text-zinc-300 italic text-[11px] truncate"
                           />
                         </td>
                         <td className="p-1">
@@ -668,7 +678,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                             title={row.notes || ''}
                             onChange={(e) => handleCellChange(actualIdx, 'notes', e.target.value)}
                             placeholder="Optional notes"
-                            className="w-full px-2 py-1 bg-transparent rounded-lg focus:bg-white dark:focus:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-500 dark:text-neutral-400 text-[11px] truncate"
+                            className="w-full px-2 py-1.5 bg-transparent rounded-lg focus:bg-white dark:focus:bg-[#18181B] focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-500 dark:text-zinc-400 text-[11px] truncate"
                           />
                         </td>
                         <td className="p-1 text-center">
@@ -676,7 +686,7 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                             type="button"
                             onClick={() => handleDeleteRow(actualIdx)}
                             aria-label={`Delete row ${row.english || actualIdx + 1}`}
-                            className="p-1 text-neutral-300 dark:text-neutral-600 hover:text-rose-500 dark:hover:text-rose-400 rounded-md transition-colors cursor-pointer"
+                            className="p-1 text-zinc-300 dark:text-zinc-600 hover:text-rose-500 dark:hover:text-rose-400 rounded-md transition-colors cursor-pointer"
                             title="Delete row"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -687,7 +697,10 @@ export const TableImporter: React.FC<TableImporterProps> = ({
                   })}
                   {displayedRows.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-xs text-neutral-400 dark:text-neutral-500">
+                      <td
+                        colSpan={5}
+                        className="p-8 text-center text-xs text-zinc-400 dark:text-zinc-500"
+                      >
                         No rows found in this section. Paste a table on the left or switch filter.
                       </td>
                     </tr>

@@ -5,13 +5,12 @@ import {
   BookOpen,
   Plus,
   Play,
-  Clock,
-  CheckCircle2,
   Trash2,
   Download,
   MoreHorizontal,
   Search,
   BarChart3,
+  X,
 } from 'lucide-react';
 import { CardDirection, Deck, Flashcard } from '@/lib/types';
 import { isCardDue } from '@/lib/srs';
@@ -130,17 +129,34 @@ export const DecksView: React.FC<DecksViewProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5">
-      {/* Clean Minimal Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 sm:py-9 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+          <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
             Decks
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 tabular-nums mt-0.5">
-            {decks.length} {decks.length === 1 ? 'deck' : 'decks'} · {totalCardsCount} cards
-            {totalDueToday > 0 ? ` · ${totalDueToday} due` : ' · caught up'}
-            {totalMastered > 0 ? ` · ${totalMastered} mastered` : ''}
+          <p className="text-xs sm:text-[13px] text-zinc-500 dark:text-zinc-400 tabular-nums mt-1">
+            <span className="font-mono text-zinc-700 dark:text-zinc-300">{decks.length}</span>{' '}
+            {decks.length === 1 ? 'deck' : 'decks'}
+            <span className="mx-1.5 text-zinc-300 dark:text-zinc-700">·</span>
+            <span className="font-mono text-zinc-700 dark:text-zinc-300">{totalCardsCount}</span> cards
+            <span className="mx-1.5 text-zinc-300 dark:text-zinc-700">·</span>
+            {totalDueToday > 0 ? (
+              <span>
+                <span className="font-mono text-rose-600 dark:text-rose-400">{totalDueToday}</span> due
+              </span>
+            ) : (
+              <span className="text-emerald-600 dark:text-emerald-400">Caught up</span>
+            )}
+            {totalMastered > 0 && (
+              <>
+                <span className="mx-1.5 text-zinc-300 dark:text-zinc-700">·</span>
+                <span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400">{totalMastered}</span> mastered
+                </span>
+              </>
+            )}
           </p>
         </div>
 
@@ -153,10 +169,13 @@ export const DecksView: React.FC<DecksViewProps> = ({
                 playHapticFeedback('tap');
                 onSelectDeckToStudy(null);
               }}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-[0.98] text-neutral-800 dark:text-neutral-100 border border-black/10 dark:border-white/10 font-semibold text-xs sm:text-sm shadow-2xs transition-all whitespace-nowrap shrink-0 cursor-pointer tabular-nums"
+              className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-white dark:bg-[#111114] hover:bg-zinc-50 dark:hover:bg-[#18181B] active:scale-[0.98] text-zinc-800 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] font-medium text-xs sm:text-[13px] transition-all whitespace-nowrap shrink-0 cursor-pointer tabular-nums"
             >
               <Play className="w-3.5 h-3.5 fill-current text-blue-600 dark:text-blue-400 shrink-0" />
-              <span>Study Due ({totalDueToday})</span>
+              <span>Study Due</span>
+              <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                {totalDueToday}
+              </span>
             </button>
           )}
 
@@ -168,10 +187,10 @@ export const DecksView: React.FC<DecksViewProps> = ({
               setShowInsights((prev) => !prev);
             }}
             aria-expanded={showInsights}
-            className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-[13px] font-medium border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               showInsights
-                ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 border-transparent'
-                : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-black/10 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+                ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 border-transparent'
+                : 'bg-white dark:bg-[#111114] text-zinc-600 dark:text-zinc-300 border-zinc-200/80 dark:border-white/[0.08] hover:bg-zinc-50 dark:hover:bg-[#18181B]'
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5 shrink-0" />
@@ -185,33 +204,34 @@ export const DecksView: React.FC<DecksViewProps> = ({
               playHapticFeedback('tap');
               onNavigateToImport();
             }}
-            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-semibold text-xs sm:text-sm shadow-xs transition-all whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-medium text-xs sm:text-[13px] shadow-xs transition-all whitespace-nowrap shrink-0 cursor-pointer"
           >
-            <Plus className="w-4 h-4 shrink-0" />
+            <Plus className="w-3.5 h-3.5 shrink-0" />
             <span>New Deck</span>
           </button>
         </div>
       </div>
 
-      {/* Lightweight Search & Filter Strip */}
+      {/* Search & Filter Toolbar */}
       {decks.length > 0 && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="relative flex-1 max-w-lg">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
             <input
               type="text"
               placeholder="Search decks..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 text-xs bg-white/90 dark:bg-neutral-900/90 rounded-xl border border-black/10 dark:border-white/10 focus:border-blue-500 outline-hidden transition-all text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
+              className="w-full h-9 pl-9 pr-8 text-xs bg-white dark:bg-[#111114] rounded-xl border border-zinc-200/80 dark:border-white/[0.08] focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 outline-hidden transition-all text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 cursor-pointer"
+                aria-label="Clear deck search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
               >
-                ✕
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -221,7 +241,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
               <select
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-200 border border-black/10 dark:border-white/10 outline-hidden font-medium cursor-pointer"
+                className="h-9 px-3 text-xs rounded-xl bg-white dark:bg-[#111114] text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-white/[0.08] focus:border-blue-500/70 outline-hidden font-medium cursor-pointer"
               >
                 <option value="all">All Languages</option>
                 {availableLanguages.map((lang) => (
@@ -232,14 +252,14 @@ export const DecksView: React.FC<DecksViewProps> = ({
               </select>
             )}
 
-            <div className="flex items-center p-0.5 bg-neutral-200/70 dark:bg-neutral-800 rounded-xl text-xs font-medium">
+            <div className="flex items-center p-1 bg-zinc-100 dark:bg-white/[0.05] rounded-xl border border-zinc-200/70 dark:border-white/[0.06] text-xs font-medium">
               <button
                 type="button"
                 onClick={() => setFilterMode('all')}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   filterMode === 'all'
-                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
-                    : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
+                    ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-2xs font-semibold'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                 }`}
               >
                 All
@@ -249,8 +269,8 @@ export const DecksView: React.FC<DecksViewProps> = ({
                 onClick={() => setFilterMode('due')}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   filterMode === 'due'
-                    ? 'bg-white dark:bg-neutral-700 text-rose-600 dark:text-rose-400 shadow-2xs font-semibold'
-                    : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
+                    ? 'bg-white dark:bg-zinc-800 text-rose-600 dark:text-rose-400 shadow-2xs font-semibold'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                 }`}
               >
                 Due
@@ -260,8 +280,8 @@ export const DecksView: React.FC<DecksViewProps> = ({
                 onClick={() => setFilterMode('mastered')}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   filterMode === 'mastered'
-                    ? 'bg-white dark:bg-neutral-700 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold'
-                    : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
+                    ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                 }`}
               >
                 Mastered
@@ -271,9 +291,9 @@ export const DecksView: React.FC<DecksViewProps> = ({
         </div>
       )}
 
-      {/* Clean Decks Grid */}
+      {/* Decks Grid */}
       {filteredDecks.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {filteredDecks.map((deck) => {
             const deckCards = cards.filter((c) => c.deckId === deck.id);
             const dueCards = deckCards.filter((c) => isCardDue(c));
@@ -289,24 +309,24 @@ export const DecksView: React.FC<DecksViewProps> = ({
             return (
               <div
                 key={deck.id}
-                className="group relative bg-white dark:bg-neutral-900 rounded-2xl p-5 shadow-2xs hover:shadow-sm border border-black/5 dark:border-white/10 hover:border-black/10 dark:hover:border-white/15 transition-all flex flex-col justify-between"
+                className="group relative bg-white dark:bg-[#111114] rounded-2xl p-5 border border-zinc-200/80 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(15,23,42,0.03),0_10px_28px_-18px_rgba(15,23,42,0.07)] hover:-translate-y-0.5 hover:border-zinc-300/90 dark:hover:border-white/[0.15] transition-all flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between gap-2 mb-2.5">
-                    <div className="flex items-center gap-2 text-xs tabular-nums">
-                      <span className="font-semibold text-blue-600 dark:text-blue-400">
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-1.5 text-xs tabular-nums min-w-0">
+                      <span className="font-medium text-blue-600 dark:text-blue-400 truncate">
                         {deck.language}
                       </span>
-                      <span className="text-neutral-300 dark:text-neutral-700">·</span>
+                      <span className="text-zinc-300 dark:text-zinc-700" aria-hidden="true">
+                        ·
+                      </span>
                       {dueCards.length > 0 ? (
-                        <span className="inline-flex items-center gap-1 font-medium text-rose-600 dark:text-rose-400">
-                          <Clock className="w-3 h-3" />
-                          <span>{dueCards.length} due</span>
+                        <span className="font-medium text-rose-600 dark:text-rose-400 whitespace-nowrap">
+                          <span className="font-mono">{dueCards.length}</span> due
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Caught up</span>
+                        <span className="font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                          Caught up
                         </span>
                       )}
                     </div>
@@ -320,7 +340,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                           setActiveMenuId((prev) => (prev === deck.id ? null : deck.id));
                         }}
                         aria-label="Deck options"
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
@@ -328,7 +348,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       {activeMenuId === deck.id && (
                         <div
                           onClick={(e) => e.stopPropagation()}
-                          className="absolute right-0 top-8 z-20 w-48 rounded-2xl bg-white dark:bg-neutral-800 p-1.5 shadow-lg border border-black/10 dark:border-white/10 text-xs text-neutral-700 dark:text-neutral-200"
+                          className="absolute right-0 top-8 z-20 w-48 rounded-xl bg-white dark:bg-[#18181B] p-1.5 shadow-xl border border-zinc-200/80 dark:border-white/[0.09] text-xs text-zinc-700 dark:text-zinc-200"
                         >
                           <button
                             type="button"
@@ -336,9 +356,9 @@ export const DecksView: React.FC<DecksViewProps> = ({
                               setActiveMenuId(null);
                               onInspectDeck(deck);
                             }}
-                            className="w-full text-left px-3 py-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 cursor-pointer"
+                            className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06] flex items-center gap-2 cursor-pointer transition-colors"
                           >
-                            <BookOpen className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
+                            <BookOpen className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />
                             <span>Browse &amp; Edit Cards</span>
                           </button>
                           <button
@@ -348,37 +368,38 @@ export const DecksView: React.FC<DecksViewProps> = ({
                               setSelectedDeckId(deck.id);
                               setShowInsights(true);
                             }}
-                            className="w-full text-left px-3 py-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 cursor-pointer"
+                            className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06] flex items-center gap-2 cursor-pointer transition-colors"
                           >
-                            <BarChart3 className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
+                            <BarChart3 className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />
                             <span>View Mastery Chart</span>
                           </button>
                           <button
                             type="button"
                             disabled={deckCards.length === 0}
                             onClick={() => handleExportDeckCsv(deck)}
-                            className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
+                            className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2 transition-colors ${
                               deckCards.length === 0
-                                ? 'text-neutral-300 dark:text-neutral-600 cursor-not-allowed'
-                                : 'hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer'
+                                ? 'text-zinc-300 dark:text-zinc-600 cursor-not-allowed'
+                                : 'hover:bg-zinc-100 dark:hover:bg-white/[0.06] cursor-pointer'
                             }`}
                           >
-                            <Download className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
+                            <Download className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />
                             <span>Export Backup (.csv)</span>
                           </button>
                           <button
                             type="button"
                             disabled={deckCards.length === 0}
                             onClick={() => handleExportDeck(deck)}
-                            className={`w-full text-left px-3 py-2 rounded-xl flex items-center gap-2 ${
+                            className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2 transition-colors ${
                               deckCards.length === 0
-                                ? 'text-neutral-300 dark:text-neutral-600 cursor-not-allowed'
-                                : 'hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer'
+                                ? 'text-zinc-300 dark:text-zinc-600 cursor-not-allowed'
+                                : 'hover:bg-zinc-100 dark:hover:bg-white/[0.06] cursor-pointer'
                             }`}
                           >
-                            <Download className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
+                            <Download className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />
                             <span>Export Table (.tsv)</span>
                           </button>
+                          <div className="my-1 border-t border-zinc-100 dark:border-white/[0.06]" />
                           {confirmDeleteId === deck.id ? (
                             <button
                               type="button"
@@ -387,7 +408,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                                 setActiveMenuId(null);
                                 onDeleteDeck(deck.id);
                               }}
-                              className="w-full text-left px-3 py-2 rounded-xl bg-rose-600 text-white font-semibold flex items-center gap-2 cursor-pointer"
+                              className="w-full text-left px-2.5 py-2 rounded-lg bg-rose-600 text-white font-semibold flex items-center gap-2 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               <span>Confirm Delete ({deckCards.length})</span>
@@ -396,7 +417,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteId(deck.id)}
-                              className="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center gap-2 cursor-pointer"
+                              className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center gap-2 cursor-pointer transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               <span>Delete Deck</span>
@@ -407,7 +428,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                     </div>
                   </div>
 
-                  <h3 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-neutral-100 tracking-tight mb-1">
+                  <h3 className="text-[17px] font-semibold text-zinc-950 dark:text-zinc-50 tracking-tight leading-snug mb-1">
                     <button
                       type="button"
                       onClick={() => onInspectDeck(deck)}
@@ -416,14 +437,27 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       {deck.title}
                     </button>
                   </h3>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 tabular-nums mb-4">
-                    {deckCards.length} {deckCards.length === 1 ? 'card' : 'cards'} · {masteryScore}% mastery
-                    {studiedCount > 0 ? ` · ${studiedCount} studied` : ''}
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums mb-4">
+                    <span className="font-mono text-zinc-700 dark:text-zinc-300">
+                      {deckCards.length}
+                    </span>{' '}
+                    {deckCards.length === 1 ? 'card' : 'cards'}
+                    <span className="mx-1.5 text-zinc-300 dark:text-zinc-700">·</span>
+                    <span className="font-mono text-zinc-700 dark:text-zinc-300">
+                      {masteryScore}%
+                    </span>{' '}
+                    mastery
+                    {studiedCount > 0 && (
+                      <>
+                        <span className="mx-1.5 text-zinc-300 dark:text-zinc-700">·</span>
+                        <span className="font-mono">{studiedCount}</span> studied
+                      </>
+                    )}
                   </p>
                 </div>
 
                 <div>
-                  <div className="h-1.5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 flex overflow-hidden mb-3.5">
+                  <div className="h-1 w-full rounded-full bg-zinc-100 dark:bg-white/[0.07] flex overflow-hidden mb-4">
                     {masteredCount > 0 && (
                       <div
                         style={{ width: `${(masteredCount / deckCards.length) * 100}%` }}
@@ -441,14 +475,14 @@ export const DecksView: React.FC<DecksViewProps> = ({
                     {learningCount > 0 && (
                       <div
                         style={{ width: `${(learningCount / deckCards.length) * 100}%` }}
-                        className="bg-orange-500"
+                        className="bg-amber-500"
                         title={`Learning: ${learningCount}`}
                       />
                     )}
                     {newCount > 0 && (
                       <div
                         style={{ width: `${(newCount / deckCards.length) * 100}%` }}
-                        className="bg-slate-400"
+                        className="bg-zinc-300 dark:bg-zinc-600"
                         title={`New: ${newCount}`}
                       />
                     )}
@@ -461,14 +495,16 @@ export const DecksView: React.FC<DecksViewProps> = ({
                         playHapticFeedback('tap');
                         onSelectDeckToStudy(deck.id, deckDirection);
                       }}
-                      className={`flex-1 py-2 px-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer tabular-nums ${
+                      className={`flex-1 h-9 px-3 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer tabular-nums active:scale-[0.99] ${
                         dueCards.length > 0
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                          : 'bg-neutral-900 dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900'
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
+                          : 'bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white text-white dark:text-zinc-950'
                       }`}
                     >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>{dueCards.length > 0 ? `Study (${dueCards.length})` : 'Practice'}</span>
+                      <Play className="w-3 h-3 fill-current" />
+                      <span>
+                        {dueCards.length > 0 ? `Study (${dueCards.length})` : 'Practice'}
+                      </span>
                     </button>
 
                     <button
@@ -477,7 +513,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                         playHapticFeedback('tap');
                         onInspectDeck(deck);
                       }}
-                      className="py-2 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-medium text-xs transition-colors cursor-pointer"
+                      className="h-9 px-3.5 rounded-xl bg-zinc-50 dark:bg-[#18181B] hover:bg-zinc-100 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-white/[0.08] font-medium text-xs transition-colors cursor-pointer"
                       title="Browse and edit cards"
                     >
                       Browse
@@ -492,12 +528,12 @@ export const DecksView: React.FC<DecksViewProps> = ({
 
       {/* Empty Search / No Decks State */}
       {filteredDecks.length === 0 && (
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl p-10 text-center border border-black/5 dark:border-white/10">
-          <Search className="w-7 h-7 text-neutral-300 dark:text-neutral-600 mx-auto mb-2.5" />
-          <h3 className="font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200 mb-1">
+        <div className="bg-white dark:bg-[#111114] rounded-2xl p-10 text-center border border-zinc-200/80 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(15,23,42,0.03),0_10px_28px_-18px_rgba(15,23,42,0.07)]">
+          <Search className="w-6 h-6 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 mb-1">
             {decks.length === 0 ? 'No decks yet' : 'No matching decks'}
           </h3>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5">
             {decks.length === 0
               ? 'Import a vocabulary table to create your first deck.'
               : 'Try adjusting your search or filter.'}
@@ -506,7 +542,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
             <button
               type="button"
               onClick={onNavigateToImport}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white cursor-pointer"
+              className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-medium text-white cursor-pointer transition-colors"
             >
               Create First Deck
             </button>
@@ -518,7 +554,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                 setSelectedLanguage('all');
                 setFilterMode('all');
               }}
-              className="px-4 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-semibold text-neutral-700 dark:text-neutral-200 cursor-pointer"
+              className="h-9 px-4 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200/80 dark:hover:bg-white/[0.1] text-xs font-medium text-zinc-700 dark:text-zinc-200 cursor-pointer transition-colors"
             >
               Clear Filters
             </button>
@@ -526,7 +562,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
         </div>
       )}
 
-      {/* Side-by-Side Mastery & Weekly Insights below Decks */}
+      {/* Side-by-Side Mastery & Weekly Insights */}
       {showInsights && decks.length > 0 && (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch pt-1">
           <div className="xl:col-span-7 flex [&>*]:w-full">

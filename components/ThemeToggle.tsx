@@ -22,12 +22,12 @@ export const ThemeToggle: React.FC = () => {
       onClick={handleToggle}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="relative w-8 h-8 rounded-full flex items-center justify-center text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-neutral-100 dark:hover:bg-neutral-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+      className="relative w-8 h-8 rounded-lg flex items-center justify-center text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-white/[0.06] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-pointer shrink-0"
     >
       {isDark ? (
-        <Sun className="w-4 h-4 text-amber-400 transition-transform duration-200 rotate-0 hover:rotate-45" />
+        <Sun className="w-4 h-4 text-amber-400 transition-transform duration-200" />
       ) : (
-        <Moon className="w-4 h-4 text-neutral-600 transition-transform duration-200 rotate-0 hover:-rotate-12" />
+        <Moon className="w-4 h-4 transition-transform duration-200" />
       )}
     </button>
   );

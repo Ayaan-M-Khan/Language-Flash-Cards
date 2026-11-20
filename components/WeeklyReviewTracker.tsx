@@ -12,15 +12,10 @@ import {
   ReferenceLine,
 } from 'recharts';
 import {
-  TrendingUp,
   Flame,
   CheckCircle2,
-  Calendar,
   Target,
-  Sparkles,
-  Zap,
   LogIn,
-  ShieldCheck,
 } from 'lucide-react';
 import {
   buildConsistencyStatsFromRecord,
@@ -72,34 +67,35 @@ const CustomChartTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) =
   const isTargetMet = data.reviews >= data.target;
 
   return (
-    <div className="bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-lg border border-black/10 dark:border-white/10 text-xs">
-      <p className="font-semibold text-neutral-900 dark:text-neutral-100 mb-1">
+    <div className="bg-white/95 dark:bg-[#18181B]/95 backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-xl border border-zinc-200/80 dark:border-white/10 text-xs">
+      <p className="font-semibold text-zinc-950 dark:text-zinc-50 mb-1">
         {data.fullDayLabel}
       </p>
-      <div className="flex items-center gap-2 mb-1">
-        <span className="w-2 h-2 rounded-full bg-blue-500" />
-        <span className="text-neutral-600 dark:text-neutral-400">Reviewed:</span>
-        <span className="font-bold text-neutral-900 dark:text-neutral-100 text-sm tabular-nums">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <span className="text-zinc-500 dark:text-zinc-400">Reviewed</span>
+        <span className="font-mono font-semibold text-zinc-950 dark:text-zinc-50 tabular-nums">
           {data.reviews} {data.reviews === 1 ? 'card' : 'cards'}
         </span>
       </div>
       {data.accuracyPct !== null && (
-        <div className="flex items-center justify-between gap-3 text-[11px] text-neutral-600 dark:text-neutral-400 mb-1 tabular-nums">
+        <div className="flex items-center justify-between gap-3 text-[11px] text-zinc-500 dark:text-zinc-400 mb-1 tabular-nums">
           <span>Recall accuracy</span>
-          <span className="font-semibold text-blue-600 dark:text-blue-400">
+          <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
             {data.accuracyPct}% ({data.recalledCount}/{data.recalledCount + data.againCount})
           </span>
         </div>
       )}
-      <div className="flex items-center justify-between gap-3 pt-1 border-t border-neutral-100 dark:border-neutral-800 text-[11px] tabular-nums">
-        <span className="text-neutral-500 dark:text-neutral-400">Goal: {data.target}/day</span>
+      <div className="flex items-center justify-between gap-3 pt-1.5 border-t border-zinc-100 dark:border-white/[0.06] text-[11px] tabular-nums">
+        <span className="text-zinc-500 dark:text-zinc-400">
+          Goal <span className="font-mono">{data.target}</span>/day
+        </span>
         <span
-          className={`font-semibold px-1.5 py-0.5 rounded-md ${
+          className={`font-medium ${
             isTargetMet
-              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+              ? 'text-emerald-600 dark:text-emerald-400'
               : data.reviews > 0
-              ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
-              : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
+              ? 'text-blue-600 dark:text-blue-400'
+              : 'text-zinc-400 dark:text-zinc-500'
           }`}
         >
           {isTargetMet ? 'Goal Met' : data.reviews > 0 ? 'Active' : 'No Reviews'}
@@ -225,7 +221,7 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
 
   if (!isClient) {
     return (
-      <div className="w-full bg-white dark:bg-neutral-900 rounded-3xl p-6 shadow-xs border border-black/5 dark:border-white/10 animate-pulse min-h-[340px]" />
+      <div className="w-full bg-white dark:bg-[#111114] rounded-2xl p-6 border border-zinc-200/80 dark:border-white/[0.08] animate-pulse min-h-[340px]" />
     );
   }
 
@@ -238,44 +234,41 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
   return (
     <section
       id="weekly-review-tracker-section"
-      className="w-full bg-white dark:bg-neutral-900 rounded-3xl p-5 sm:p-6 shadow-xs border border-black/5 dark:border-white/10 transition-all flex flex-col justify-between"
+      className="w-full bg-white dark:bg-[#111114] rounded-2xl p-5 sm:p-6 border border-zinc-200/80 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(15,23,42,0.03),0_10px_28px_-18px_rgba(15,23,42,0.07)] transition-all flex flex-col justify-between"
       aria-label="Study Consistency Progress"
     >
       <div>
         {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-              <TrendingUp className="w-4 h-4" />
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4 border-b border-zinc-100 dark:border-white/[0.06]">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <h3 className="text-[15px] font-semibold tracking-tight text-zinc-950 dark:text-zinc-50 whitespace-nowrap">
+                Study Activity
+              </h3>
+              <span className="text-zinc-300 dark:text-zinc-700" aria-hidden="true">
+                ·
+              </span>
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">
+                <span className="font-mono">{stats.consistencyRate}%</span> active
+              </span>
             </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100 whitespace-nowrap">
-                  Study Activity
-                </h3>
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  {stats.consistencyRate}% active
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              {user ? (
+                <span className="truncate">
+                  Synced · {profile?.displayName || user.displayName || user.email}
                 </span>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                {user ? (
-                  <span className="truncate">
-                    Synced · {profile?.displayName || user.displayName || user.email}
-                  </span>
-                ) : (
-                  <button
-                    id="tracker-signin-sync-btn"
-                    type="button"
-                    disabled={isSyncing}
-                    onClick={() => signInWithGoogle()}
-                    className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer disabled:opacity-50"
-                  >
-                    <LogIn className="w-3 h-3 shrink-0" />
-                    <span>Saved locally · Sign in to sync</span>
-                  </button>
-                )}
-              </div>
+              ) : (
+                <button
+                  id="tracker-signin-sync-btn"
+                  type="button"
+                  disabled={isSyncing}
+                  onClick={() => signInWithGoogle()}
+                  className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer disabled:opacity-50"
+                >
+                  <LogIn className="w-3 h-3 shrink-0" />
+                  <span>Saved locally · Sign in to sync</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -284,7 +277,7 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
             <div
               role="group"
               aria-label="Activity date range"
-              className="flex items-center p-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-neutral-200/60 dark:border-neutral-700 text-xs font-medium"
+              className="flex items-center p-1 bg-zinc-100 dark:bg-white/[0.05] rounded-xl border border-zinc-200/70 dark:border-white/[0.06] text-xs font-medium"
             >
               <button
                 id="tracker-range-7d-btn"
@@ -293,10 +286,10 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
                   playHapticFeedback('tap');
                   setDaysWindow(7);
                 }}
-                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${
+                className={`px-2 py-0.5 rounded-lg font-mono transition-all cursor-pointer ${
                   daysWindow === 7
-                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
+                    ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-2xs font-semibold'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                 }`}
               >
                 7d
@@ -308,10 +301,10 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
                   playHapticFeedback('tap');
                   setDaysWindow(14);
                 }}
-                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${
+                className={`px-2 py-0.5 rounded-lg font-mono transition-all cursor-pointer ${
                   daysWindow === 14
-                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
+                    ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-2xs font-semibold'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                 }`}
               >
                 14d
@@ -322,68 +315,71 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
               id="cycle-daily-goal-btn"
               type="button"
               onClick={handleCycleDailyGoal}
-              className="px-2.5 py-1 rounded-xl text-xs font-medium border bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/50 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/50 transition-colors flex items-center gap-1 cursor-pointer"
+              className="h-8 px-2.5 rounded-xl text-xs font-medium border bg-zinc-50/90 dark:bg-[#18181B] text-zinc-700 dark:text-zinc-200 border-zinc-200/80 dark:border-white/[0.08] hover:border-emerald-400/70 dark:hover:border-emerald-600/60 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors flex items-center gap-1 cursor-pointer"
               title="Click to adjust daily review goal (10 / 15 / 20 / 30)"
             >
-              <Target className="w-3.5 h-3.5" />
-              <span>Goal {dailyGoal}</span>
+              <Target className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="font-mono">{dailyGoal}</span>
             </button>
 
             <div
               id="tracker-streak-value"
-              className="flex items-center gap-1 px-1.5 text-orange-600 dark:text-orange-400 text-xs font-semibold"
+              className="flex items-center gap-1 px-1.5 text-amber-600 dark:text-amber-400 text-xs font-semibold font-mono"
               title="Active consecutive days studied"
             >
-              <Flame className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
+              <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
               <span>{effectiveStreakDisplay}d</span>
             </div>
           </div>
         </div>
 
-        {/* 4 Summary Metrics (Single-Elevation Divided Row) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 sm:gap-0 sm:divide-x divide-neutral-100 dark:divide-neutral-800 py-3.5 border-b border-neutral-100 dark:border-neutral-800 tabular-nums">
+        {/* 4 Summary Metrics */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 sm:gap-0 sm:divide-x divide-zinc-100 dark:divide-white/[0.06] py-3.5 border-b border-zinc-100 dark:border-white/[0.06] tabular-nums">
           <div className="sm:pr-3">
-            <div className="flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-              <Sparkles className="w-3 h-3 text-blue-500 shrink-0" />
-              <span>{daysWindow}d Total</span>
+            <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+              {daysWindow}d Total
             </div>
             <div
               id="tracker-total-reviews-value"
-              className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100 mt-0.5"
+              className="text-lg sm:text-xl font-semibold font-mono text-zinc-950 dark:text-zinc-50 mt-0.5"
             >
               {stats.totalWeeklyReviews}
             </div>
-            <div className="text-[11px] text-neutral-400 dark:text-neutral-500 truncate">
-              {stats.bestDay.reviews > 0 ? `Best: ${stats.bestDay.reviews}` : '0 reviews yet'}
+            <div className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate">
+              {stats.bestDay.reviews > 0 ? (
+                <>
+                  Best <span className="font-mono">{stats.bestDay.reviews}</span>
+                </>
+              ) : (
+                '0 reviews yet'
+              )}
             </div>
           </div>
 
           <div className="sm:px-3">
-            <div className="flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-              <Zap className="w-3 h-3 text-amber-500 shrink-0" />
-              <span>Daily Avg</span>
+            <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+              Daily Avg
             </div>
-            <div className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100 mt-0.5">
+            <div className="text-lg sm:text-xl font-semibold font-mono text-zinc-950 dark:text-zinc-50 mt-0.5">
               {stats.dailyAverage}
             </div>
-            <div className="text-[11px] text-neutral-400 dark:text-neutral-500">cards / day</div>
+            <div className="text-[11px] text-zinc-400 dark:text-zinc-500">cards / day</div>
           </div>
 
           <div className="sm:px-3">
-            <div className="flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-              <Target className="w-3 h-3 text-emerald-600 shrink-0" />
-              <span>Goal Met</span>
+            <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+              Goal Met
             </div>
-            <div className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+            <div className="text-lg sm:text-xl font-semibold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
               {stats.daysAchievedTarget}
-              <span className="text-xs font-normal text-neutral-400 dark:text-neutral-500">
+              <span className="text-xs font-normal text-zinc-400 dark:text-zinc-500">
                 /{daysWindow}
               </span>
             </div>
             <button
               type="button"
               onClick={() => setShowGoalLine((prev) => !prev)}
-              className="text-[11px] text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 cursor-pointer"
+              className="text-[11px] text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer"
             >
               {showGoalLine ? 'Hide line' : 'Show line'}
             </button>
@@ -392,30 +388,31 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
           <div className="sm:pl-3">
             {stats.windowAccuracyPct !== null ? (
               <>
-                <div className="flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-                  <ShieldCheck className="w-3 h-3 text-indigo-500 shrink-0" />
-                  <span>Accuracy</span>
+                <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                  Accuracy
                 </div>
-                <div className="text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400 mt-0.5">
+                <div className="text-lg sm:text-xl font-semibold font-mono text-blue-600 dark:text-blue-400 mt-0.5">
                   {stats.windowAccuracyPct}%
                 </div>
-                <div className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                  {stats.activeDaysCount}/{daysWindow} active d
+                <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                  <span className="font-mono">
+                    {stats.activeDaysCount}/{daysWindow}
+                  </span>{' '}
+                  active
                 </div>
               </>
             ) : (
               <>
-                <div className="flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-                  <Calendar className="w-3 h-3 text-indigo-500 shrink-0" />
-                  <span>Active Days</span>
+                <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                  Active Days
                 </div>
-                <div className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100 mt-0.5">
+                <div className="text-lg sm:text-xl font-semibold font-mono text-zinc-950 dark:text-zinc-50 mt-0.5">
                   {stats.activeDaysCount}
-                  <span className="text-xs font-normal text-neutral-400 dark:text-neutral-500">
+                  <span className="text-xs font-normal text-zinc-400 dark:text-zinc-500">
                     /{daysWindow}
                   </span>
                 </div>
-                <div className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
                   days studied
                 </div>
               </>
@@ -423,14 +420,11 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
           </div>
         </div>
 
-        {/* Subtle prompt when 0 reviews in window */}
+        {/* Quiet note when 0 reviews in window */}
         {stats.totalWeeklyReviews === 0 && (
-          <div className="mt-3 px-3.5 py-2 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40 flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
-            <Sparkles className="w-3.5 h-3.5 shrink-0" />
-            <span>
-              Rate flashcards in Study to watch your daily curve, streak, and recall accuracy update live.
-            </span>
-          </div>
+          <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+            Rate flashcards in Study to watch your daily curve, streak, and recall accuracy update live.
+          </p>
         )}
 
         {/* Recharts Line Chart Container */}
@@ -443,20 +437,20 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
-                stroke={isDark ? '#262626' : '#f0f0f4'}
+                stroke={isDark ? '#27272A' : '#F1F5F9'}
               />
               <XAxis
                 dataKey="dayLabel"
-                stroke={isDark ? '#a3a3a3' : '#8E8E93'}
+                stroke={isDark ? '#A1A1AA' : '#71717A'}
                 fontSize={11}
                 fontWeight={500}
                 tickLine={false}
-                axisLine={{ stroke: isDark ? '#333333' : '#E5E5EA' }}
+                axisLine={{ stroke: isDark ? '#27272A' : '#E4E4E7' }}
                 interval={daysWindow === 14 ? 1 : 0}
                 dy={6}
               />
               <YAxis
-                stroke={isDark ? '#a3a3a3' : '#8E8E93'}
+                stroke={isDark ? '#71717A' : '#71717A'}
                 fontSize={11}
                 tickLine={false}
                 axisLine={false}
@@ -470,13 +464,13 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
                   y={dailyGoal}
                   stroke="#10B981"
                   strokeDasharray="4 4"
-                  strokeWidth={1.5}
+                  strokeWidth={1.25}
                   label={{
-                    value: `Goal: ${dailyGoal}`,
+                    value: `Goal ${dailyGoal}`,
                     position: 'insideTopRight',
                     fill: isDark ? '#34D399' : '#059669',
                     fontSize: 10,
-                    fontWeight: 600,
+                    fontWeight: 500,
                     offset: 4,
                   }}
                 />
@@ -486,20 +480,20 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
                 type="monotone"
                 dataKey="reviews"
                 name="Cards Reviewed"
-                stroke="#007AFF"
-                strokeWidth={2.75}
+                stroke="#2563EB"
+                strokeWidth={2.25}
                 isAnimationActive={false}
                 activeDot={{
-                  r: 5.5,
-                  fill: '#007AFF',
-                  stroke: isDark ? '#171717' : '#FFFFFF',
+                  r: 5,
+                  fill: '#2563EB',
+                  stroke: isDark ? '#111114' : '#FFFFFF',
                   strokeWidth: 2,
                 }}
                 dot={{
-                  r: daysWindow === 14 ? 3 : 4,
-                  fill: '#007AFF',
-                  stroke: isDark ? '#171717' : '#FFFFFF',
-                  strokeWidth: 1.75,
+                  r: daysWindow === 14 ? 2.5 : 3.5,
+                  fill: '#2563EB',
+                  stroke: isDark ? '#111114' : '#FFFFFF',
+                  strokeWidth: 1.5,
                 }}
               />
             </LineChart>
@@ -507,35 +501,35 @@ export const WeeklyReviewTracker: React.FC<WeeklyReviewTrackerProps> = ({
         </div>
       </div>
 
-      {/* Compact Day Strip (7 tiles in 7d mode, 2 rows of 7 in 14d mode) */}
-      <div className="grid grid-cols-7 gap-1.5 mt-3 pt-3.5 border-t border-neutral-100 dark:border-neutral-800 tabular-nums">
+      {/* Compact Day Strip */}
+      <div className="grid grid-cols-7 gap-1.5 mt-3 pt-3.5 border-t border-zinc-100 dark:border-white/[0.06] tabular-nums">
         {stats.dailyBreakdown.map((item) => (
           <div
             key={item.dateStr}
             title={`${item.fullDayLabel}: ${item.reviews} reviewed${
               item.accuracyPct !== null ? ` (${item.accuracyPct}% accuracy)` : ''
             }`}
-            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-center transition-all ${
+            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-center transition-all border ${
               item.isToday
-                ? 'bg-blue-50/90 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800 text-blue-900 dark:text-blue-100 font-bold'
+                ? 'bg-blue-50/70 dark:bg-blue-950/40 border-blue-200/80 dark:border-blue-800/70 text-blue-700 dark:text-blue-200'
                 : item.achievedTarget
-                ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-100'
+                ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-200'
                 : item.reviews > 0
-                ? 'bg-neutral-50 dark:bg-neutral-800 border border-black/5 dark:border-white/10 text-neutral-800 dark:text-neutral-200'
-                : 'bg-neutral-50/40 dark:bg-neutral-800/30 border border-transparent text-neutral-400 dark:text-neutral-500'
+                ? 'bg-zinc-50 dark:bg-[#18181B] border-zinc-200/70 dark:border-white/[0.07] text-zinc-800 dark:text-zinc-200'
+                : 'bg-transparent border-transparent text-zinc-400 dark:text-zinc-600'
             }`}
           >
-            <span className="text-[10px] uppercase tracking-tight font-semibold opacity-75 truncate max-w-full">
+            <span className="text-[10px] font-medium opacity-80 truncate max-w-full">
               {daysWindow === 7 ? item.dayLabel : item.shortDateLabel.replace(' ', '')}
             </span>
-            <span className="text-xs font-bold my-0.5">{item.reviews}</span>
+            <span className="text-xs font-mono font-semibold my-0.5">{item.reviews}</span>
             <div className="h-3 flex items-center justify-center">
               {item.achievedTarget ? (
                 <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               ) : item.reviews > 0 ? (
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
               ) : (
-                <span className="w-1 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+                <span className="w-1 h-1 rounded-full bg-zinc-200 dark:bg-zinc-700" />
               )}
             </div>
           </div>

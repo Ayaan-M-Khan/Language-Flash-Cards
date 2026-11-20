@@ -89,31 +89,37 @@ const MasteryTooltip: React.FC<StageTooltipProps> = ({ active, payload }) => {
   const item = payload[0].payload;
 
   return (
-    <div className="bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-lg border border-black/10 dark:border-white/10 text-xs max-w-[230px]">
+    <div className="bg-white/95 dark:bg-[#18181B]/95 backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-xl border border-zinc-200/80 dark:border-white/10 text-xs max-w-[230px]">
       <div className="flex items-center justify-between gap-3 mb-1">
         <div className="flex items-center gap-2">
-          <span className={`w-2.5 h-2.5 rounded-xs shrink-0 ${item.dotClass}`} />
-          <span className="font-bold text-neutral-900 dark:text-neutral-100">{item.label}</span>
+          <span className={`w-2 h-2 rounded-xs shrink-0 ${item.dotClass}`} />
+          <span className="font-semibold text-zinc-950 dark:text-zinc-50">{item.label}</span>
         </div>
-        <span className="font-bold text-neutral-900 dark:text-neutral-100 tabular-nums">
+        <span className="font-mono font-semibold text-zinc-950 dark:text-zinc-50 tabular-nums">
           {item.percentage}%
         </span>
       </div>
-      <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug mb-2">
+      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug mb-2">
         {item.description}
       </p>
-      <div className="pt-1.5 border-t border-neutral-100 dark:border-neutral-800 space-y-1 text-[11px] tabular-nums">
-        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+      <div className="pt-1.5 border-t border-zinc-100 dark:border-white/[0.06] space-y-1 text-[11px] tabular-nums">
+        <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
           <span>Cards in stage</span>
-          <span className="font-semibold text-neutral-900 dark:text-neutral-100">{item.count}</span>
+          <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+            {item.count}
+          </span>
         </div>
-        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+        <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
           <span>Due right now</span>
-          <span className="font-semibold text-rose-600 dark:text-rose-400">{item.dueCount}</span>
+          <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
+            {item.dueCount}
+          </span>
         </div>
-        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+        <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
           <span>Avg. interval</span>
-          <span className="font-semibold text-neutral-900 dark:text-neutral-100">{item.avgIntervalLabel}</span>
+          <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+            {item.avgIntervalLabel}
+          </span>
         </div>
       </div>
     </div>
@@ -128,14 +134,14 @@ const ForecastTooltip: React.FC<ForecastTooltipProps> = ({ active, payload }) =>
   const item = payload[0].payload;
 
   return (
-    <div className="bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-lg border border-black/10 dark:border-white/10 text-xs max-w-[230px]">
+    <div className="bg-white/95 dark:bg-[#18181B]/95 backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-xl border border-zinc-200/80 dark:border-white/10 text-xs max-w-[230px]">
       <div className="flex items-center justify-between gap-3 mb-1">
-        <span className="font-bold text-neutral-900 dark:text-neutral-100">{item.label}</span>
-        <span className="font-bold text-neutral-900 dark:text-neutral-100 tabular-nums">
+        <span className="font-semibold text-zinc-950 dark:text-zinc-50">{item.label}</span>
+        <span className="font-mono font-semibold text-zinc-950 dark:text-zinc-50 tabular-nums">
           {item.count} {item.count === 1 ? 'card' : 'cards'}
         </span>
       </div>
-      <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug">
+      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug">
         {item.description}
       </p>
     </div>
@@ -208,7 +214,7 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
 
   if (!isClient) {
     return (
-      <div className="w-full bg-white dark:bg-neutral-900 rounded-3xl p-6 shadow-xs border border-black/5 dark:border-white/10 animate-pulse min-h-[340px]" />
+      <div className="w-full bg-white dark:bg-[#111114] rounded-2xl p-6 border border-zinc-200/80 dark:border-white/[0.08] animate-pulse min-h-[340px]" />
     );
   }
 
@@ -218,16 +224,13 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
       <section
         id="deck-mastery-empty-section"
         aria-label="Deck Mastery Distribution"
-        className="w-full bg-white dark:bg-neutral-900 rounded-3xl p-6 sm:p-8 shadow-xs border border-black/5 dark:border-white/10"
+        className="w-full bg-white dark:bg-[#111114] rounded-2xl p-6 sm:p-8 border border-zinc-200/80 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(15,23,42,0.03),0_10px_28px_-18px_rgba(15,23,42,0.07)]"
       >
         <div className="max-w-md mx-auto py-4 text-center flex flex-col items-center">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3">
-            <BarChart3 className="w-6 h-6" />
-          </div>
-          <h2 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1">
+          <h2 className="text-base sm:text-lg font-semibold text-zinc-950 dark:text-zinc-50 mb-1.5">
             Mastery &amp; Retention
           </h2>
-          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-5 leading-relaxed">
+          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mb-5 leading-relaxed">
             Import or create your first vocabulary deck to inspect how cards progress across New, Learning, Reviewing, and Mastered stages.
           </p>
           <button
@@ -236,9 +239,9 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
               playHapticFeedback('tap');
               onNavigateToImport();
             }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Create Deck from Table</span>
           </button>
         </div>
@@ -256,22 +259,17 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
     <section
       id="deck-mastery-distribution-section"
       aria-label="Mastery and Retention Analytics"
-      className="w-full bg-white dark:bg-neutral-900 rounded-3xl p-5 sm:p-6 shadow-xs border border-black/5 dark:border-white/10 transition-all flex flex-col"
+      className="w-full bg-white dark:bg-[#111114] rounded-2xl p-5 sm:p-6 border border-zinc-200/80 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(15,23,42,0.03),0_10px_28px_-18px_rgba(15,23,42,0.07)] transition-all flex flex-col"
     >
       {/* Header Row: Title + Deck Scope & Chart Mode */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-            <BarChart3 className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100 whitespace-nowrap">
-              Mastery &amp; Retention
-            </h2>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 tabular-nums truncate">
-              {analytics.scopeSubtitle}
-            </p>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-100 dark:border-white/[0.06]">
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-semibold tracking-tight text-zinc-950 dark:text-zinc-50 whitespace-nowrap">
+            Mastery &amp; Retention
+          </h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums truncate mt-0.5">
+            {analytics.scopeSubtitle}
+          </p>
         </div>
 
         {/* Right Controls: Deck Selector & Chart Mode Switcher */}
@@ -287,7 +285,7 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
               setExpandedStage(null);
               onSelectDeck(e.target.value);
             }}
-            className="px-2.5 py-1.5 text-xs rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200/70 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-100 border border-neutral-200/80 dark:border-neutral-700 outline-hidden font-semibold max-w-[175px] truncate cursor-pointer transition-colors"
+            className="h-8 px-2.5 text-xs rounded-xl bg-zinc-50/90 dark:bg-[#18181B] hover:bg-zinc-100 dark:hover:bg-white/[0.08] text-zinc-800 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] outline-hidden font-medium max-w-[175px] truncate cursor-pointer transition-colors"
           >
             <option value="all">All Decks ({cards.length})</option>
             {decks.map((d) => (
@@ -300,7 +298,7 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
           <div
             role="group"
             aria-label="Mastery chart mode"
-            className="flex items-center p-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-neutral-200/60 dark:border-neutral-700 text-xs font-medium"
+            className="flex items-center p-1 bg-zinc-100 dark:bg-white/[0.05] rounded-xl border border-zinc-200/70 dark:border-white/[0.06] text-xs font-medium"
           >
             <button
               id="mastery-mode-stages-btn"
@@ -311,8 +309,8 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
               }}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                 chartType === 'bar'
-                  ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
-                  : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
+                  ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-2xs font-semibold'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
@@ -327,8 +325,8 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
               }}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                 chartType === 'donut'
-                  ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
-                  : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
+                  ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-2xs font-semibold'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
               }`}
             >
               <PieChartIcon className="w-3.5 h-3.5" />
@@ -343,8 +341,8 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
               }}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                 chartType === 'forecast'
-                  ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
-                  : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
+                  ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-2xs font-semibold'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
               }`}
             >
               <CalendarClock className="w-3.5 h-3.5" />
@@ -354,36 +352,36 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
         </div>
       </div>
 
-      {/* 4-Metric Telemetry Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 sm:gap-0 sm:divide-x divide-neutral-100 dark:divide-neutral-800 py-3.5 border-b border-neutral-100 dark:border-neutral-800 tabular-nums">
+      {/* 4-Metric Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 sm:gap-0 sm:divide-x divide-zinc-100 dark:divide-white/[0.06] py-3.5 border-b border-zinc-100 dark:border-white/[0.06] tabular-nums">
         <div className="sm:pr-3">
-          <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+          <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
             Mastery Score
           </div>
           <div
             id="mastery-score-value"
-            className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5"
+            className="text-lg sm:text-xl font-semibold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5"
           >
             {analytics.masteryScorePct}%
           </div>
-          <div className="text-[11px] text-neutral-400 dark:text-neutral-500">
-            {analytics.masteredCount}/{analytics.totalCards} mastered
+          <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
+            <span className="font-mono">{analytics.masteredCount}/{analytics.totalCards}</span> mastered
           </div>
         </div>
 
         <div className="sm:px-4">
-          <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+          <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
             Recall Accuracy
           </div>
           <div
             id="mastery-accuracy-value"
-            className="text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400 mt-0.5"
+            className="text-lg sm:text-xl font-semibold font-mono text-blue-600 dark:text-blue-400 mt-0.5"
           >
             {ratingBreakdown.retentionRatePct !== null
               ? `${ratingBreakdown.retentionRatePct}%`
               : '—'}
           </div>
-          <div className="text-[11px] text-neutral-400 dark:text-neutral-500">
+          <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
             {ratingBreakdown.total > 0
               ? `${ratingBreakdown.recalledCount}/${ratingBreakdown.total} recalled`
               : 'Rate cards to track'}
@@ -391,27 +389,28 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
         </div>
 
         <div className="sm:px-4">
-          <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+          <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
             Avg. Interval
           </div>
-          <div className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100 mt-0.5">
+          <div className="text-lg sm:text-xl font-semibold font-mono text-zinc-950 dark:text-zinc-50 mt-0.5">
             {analytics.avgIntervalLabel}
           </div>
-          <div className="text-[11px] text-neutral-400 dark:text-neutral-500">
-            Avg {analytics.avgRepetitions} reps
+          <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
+            Avg <span className="font-mono">{analytics.avgRepetitions}</span> reps
           </div>
         </div>
 
         <div className="sm:pl-4">
-          <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+          <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
             Mean Ease
           </div>
-          <div className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100 mt-0.5">
+          <div className="text-lg sm:text-xl font-semibold font-mono text-zinc-950 dark:text-zinc-50 mt-0.5">
             {analytics.avgEaseLabel}
-            <span className="text-xs font-normal text-neutral-400 dark:text-neutral-500">×</span>
+            <span className="text-xs font-normal text-zinc-400 dark:text-zinc-500">×</span>
           </div>
-          <div className="text-[11px] text-neutral-400 dark:text-neutral-500">
-            {analytics.reviewedCount} studied · {analytics.dueCount} due
+          <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
+            <span className="font-mono">{analytics.reviewedCount}</span> studied ·{' '}
+            <span className="font-mono">{analytics.dueCount}</span> due
           </div>
         </div>
       </div>
@@ -419,10 +418,10 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
       {/* Main Visualization Body */}
       {analytics.totalCards === 0 ? (
         <div className="py-10 text-center flex flex-col items-center">
-          <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 mb-1">
+          <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 mb-1">
             No flashcards in &ldquo;{analytics.scopeTitle}&rdquo; yet
           </p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-sm mb-4">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mb-4">
             Add vocabulary cards to visualize SM-2 mastery stages and retention.
           </p>
           {selectedDeck && (
@@ -432,7 +431,7 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                 playHapticFeedback('tap');
                 onInspectDeck(selectedDeck);
               }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-neutral-900 dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-neutral-900 text-xs font-semibold transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white text-white dark:text-zinc-950 text-xs font-medium transition-colors cursor-pointer"
             >
               <BookOpen className="w-3.5 h-3.5" />
               <span>Add Cards to Deck</span>
@@ -449,24 +448,24 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                   <BarChart
                     data={analytics.distribution}
                     margin={{ top: 10, right: 10, left: -20, bottom: 2 }}
-                    barSize={42}
+                    barSize={40}
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
                       vertical={false}
-                      stroke={isDark ? '#262626' : '#F0F0F4'}
+                      stroke={isDark ? '#27272A' : '#F1F5F9'}
                     />
                     <XAxis
                       dataKey="label"
-                      stroke={isDark ? '#a3a3a3' : '#8E8E93'}
+                      stroke={isDark ? '#A1A1AA' : '#71717A'}
                       fontSize={12}
-                      fontWeight={600}
+                      fontWeight={500}
                       tickLine={false}
-                      axisLine={{ stroke: isDark ? '#333333' : '#E5E5EA' }}
+                      axisLine={{ stroke: isDark ? '#27272A' : '#E4E4E7' }}
                       dy={6}
                     />
                     <YAxis
-                      stroke={isDark ? '#a3a3a3' : '#8E8E93'}
+                      stroke={isDark ? '#71717A' : '#71717A'}
                       fontSize={11}
                       tickLine={false}
                       axisLine={false}
@@ -475,15 +474,15 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                     />
                     <Tooltip
                       cursor={{
-                        fill: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-                        radius: 8,
+                        fill: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(15, 23, 42, 0.03)',
+                        radius: 6,
                       }}
                       content={<MasteryTooltip />}
                     />
                     <Bar
                       dataKey="count"
                       name="Cards"
-                      radius={[10, 10, 4, 4]}
+                      radius={[6, 6, 2, 2]}
                       isAnimationActive={false}
                     >
                       {analytics.distribution.map((entry) => (
@@ -504,7 +503,7 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                         nameKey="label"
                         cx="50%"
                         cy="50%"
-                        innerRadius="58%"
+                        innerRadius="60%"
                         outerRadius="85%"
                         paddingAngle={nonZeroDonutSlices.length > 1 ? 3 : 0}
                         strokeWidth={0}
@@ -518,10 +517,10 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center tabular-nums">
-                    <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 leading-none">
+                    <span className="text-2xl font-semibold font-mono text-zinc-950 dark:text-zinc-50 leading-none">
                       {analytics.masteryScorePct}%
                     </span>
-                    <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-1">
+                    <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mt-1">
                       Mastery
                     </span>
                   </div>
@@ -533,24 +532,24 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                   <BarChart
                     data={analytics.forecast}
                     margin={{ top: 10, right: 10, left: -20, bottom: 2 }}
-                    barSize={36}
+                    barSize={34}
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
                       vertical={false}
-                      stroke={isDark ? '#262626' : '#F0F0F4'}
+                      stroke={isDark ? '#27272A' : '#F1F5F9'}
                     />
                     <XAxis
                       dataKey="shortLabel"
-                      stroke={isDark ? '#a3a3a3' : '#8E8E93'}
+                      stroke={isDark ? '#A1A1AA' : '#71717A'}
                       fontSize={12}
-                      fontWeight={600}
+                      fontWeight={500}
                       tickLine={false}
-                      axisLine={{ stroke: isDark ? '#333333' : '#E5E5EA' }}
+                      axisLine={{ stroke: isDark ? '#27272A' : '#E4E4E7' }}
                       dy={6}
                     />
                     <YAxis
-                      stroke={isDark ? '#a3a3a3' : '#8E8E93'}
+                      stroke={isDark ? '#71717A' : '#71717A'}
                       fontSize={11}
                       tickLine={false}
                       axisLine={false}
@@ -559,15 +558,15 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                     />
                     <Tooltip
                       cursor={{
-                        fill: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-                        radius: 8,
+                        fill: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(15, 23, 42, 0.03)',
+                        radius: 6,
                       }}
                       content={<ForecastTooltip />}
                     />
                     <Bar
                       dataKey="count"
                       name="Scheduled"
-                      radius={[10, 10, 4, 4]}
+                      radius={[6, 6, 2, 2]}
                       isAnimationActive={false}
                     >
                       {analytics.forecast.map((bucket) => (
@@ -581,7 +580,7 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
 
             {/* Interactive Stage Breakdown & Actions (5 cols) */}
             <div className="lg:col-span-5 flex flex-col justify-between">
-              <div className="divide-y divide-neutral-100 dark:divide-neutral-800 border-t border-b border-neutral-100 dark:border-neutral-800">
+              <div className="divide-y divide-zinc-100 dark:divide-white/[0.06] border-t border-b border-zinc-100 dark:border-white/[0.06]">
                 {analytics.distribution.map((stage) => {
                   const isSelected = expandedStage === stage.state;
                   return (
@@ -593,36 +592,40 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                         playHapticFeedback('tap');
                         setExpandedStage((prev) => (prev === stage.state ? null : stage.state));
                       }}
-                      className={`w-full text-left py-2.5 px-1.5 -mx-1.5 rounded-xl flex items-center justify-between gap-3 text-xs tabular-nums transition-colors ${
+                      className={`w-full text-left py-2.5 px-2 -mx-2 rounded-xl flex items-center justify-between gap-3 text-xs tabular-nums transition-colors ${
                         stage.count === 0
-                          ? 'opacity-65 cursor-default'
+                          ? 'opacity-55 cursor-default'
                           : isSelected
-                          ? 'bg-blue-50/70 dark:bg-blue-950/40 cursor-pointer'
-                          : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/60 cursor-pointer'
+                          ? 'bg-blue-50/70 dark:bg-blue-950/35 cursor-pointer'
+                          : 'hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer'
                       }`}
-                      title={stage.count > 0 ? `Inspect ${stage.count} ${stage.label.toLowerCase()} cards` : undefined}
+                      title={
+                        stage.count > 0
+                          ? `Inspect ${stage.count} ${stage.label.toLowerCase()} cards`
+                          : undefined
+                      }
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className={`w-2.5 h-2.5 rounded-xs shrink-0 ${stage.dotClass}`} />
-                          <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                          <span className={`w-2 h-2 rounded-xs shrink-0 ${stage.dotClass}`} />
+                          <span className="font-medium text-zinc-900 dark:text-zinc-100">
                             {stage.label}
                           </span>
                           {stage.avgIntervalLabel !== '—' && (
-                            <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                              · avg {stage.avgIntervalLabel}
+                            <span className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500">
+                              · {stage.avgIntervalLabel}
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate pl-4.5 mt-0.5">
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate pl-4 mt-0.5">
                           {stage.dueCount > 0 ? `${stage.dueCount} due now` : stage.description}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <div className="text-right font-bold text-neutral-900 dark:text-neutral-100">
+                        <div className="text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100">
                           {stage.count}{' '}
-                          <span className="font-normal text-neutral-400 dark:text-neutral-500">
+                          <span className="font-normal text-zinc-400 dark:text-zinc-500">
                             ({stage.percentage}%)
                           </span>
                         </div>
@@ -630,7 +633,7 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                           (isSelected ? (
                             <ChevronUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                           ) : (
-                            <ChevronDown className="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500" />
+                            <ChevronDown className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />
                           ))}
                       </div>
                     </button>
@@ -638,48 +641,56 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                 })}
               </div>
 
-              {/* Rating Mix Bar (visible once user has rated at least 1 card in scope) */}
+              {/* Rating Mix Bar */}
               {ratingBreakdown.total > 0 && (
                 <div className="pt-3.5 tabular-nums">
                   <div className="flex items-center justify-between text-[11px] mb-1.5">
-                    <span className="font-semibold text-neutral-600 dark:text-neutral-300">
-                      Rating Mix ({ratingBreakdown.total})
+                    <span className="font-medium text-zinc-600 dark:text-zinc-300">
+                      Rating Mix (<span className="font-mono">{ratingBreakdown.total}</span>)
                     </span>
-                    <span className="text-neutral-400 dark:text-neutral-500">
+                    <span className="font-mono text-zinc-400 dark:text-zinc-500">
                       {ratingBreakdown.strongRecallPct}% Good/Easy
                     </span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 flex overflow-hidden">
+                  <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-white/[0.07] flex overflow-hidden">
                     {ratingBreakdown.again > 0 && (
                       <div
-                        style={{ width: `${(ratingBreakdown.again / ratingBreakdown.total) * 100}%` }}
+                        style={{
+                          width: `${(ratingBreakdown.again / ratingBreakdown.total) * 100}%`,
+                        }}
                         className="bg-rose-500"
                         title={`Again: ${ratingBreakdown.again}`}
                       />
                     )}
                     {ratingBreakdown.hard > 0 && (
                       <div
-                        style={{ width: `${(ratingBreakdown.hard / ratingBreakdown.total) * 100}%` }}
+                        style={{
+                          width: `${(ratingBreakdown.hard / ratingBreakdown.total) * 100}%`,
+                        }}
                         className="bg-amber-500"
                         title={`Hard: ${ratingBreakdown.hard}`}
                       />
                     )}
                     {ratingBreakdown.good > 0 && (
                       <div
-                        style={{ width: `${(ratingBreakdown.good / ratingBreakdown.total) * 100}%` }}
-                        className="bg-blue-500"
+                        style={{
+                          width: `${(ratingBreakdown.good / ratingBreakdown.total) * 100}%`,
+                        }}
+                        className="bg-blue-600"
                         title={`Good: ${ratingBreakdown.good}`}
                       />
                     )}
                     {ratingBreakdown.easy > 0 && (
                       <div
-                        style={{ width: `${(ratingBreakdown.easy / ratingBreakdown.total) * 100}%` }}
+                        style={{
+                          width: `${(ratingBreakdown.easy / ratingBreakdown.total) * 100}%`,
+                        }}
                         className="bg-emerald-500"
                         title={`Easy: ${ratingBreakdown.easy}`}
                       />
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-neutral-500 dark:text-neutral-400 mt-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-1.5">
                     <span className="text-rose-600 dark:text-rose-400">
                       Again {ratingBreakdown.again}
                     </span>
@@ -705,9 +716,9 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                       playHapticFeedback('tap');
                       onStudyDeck(selectedDeck ? selectedDeck.id : null, cardDirection);
                     }}
-                    className="flex-1 min-w-0 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer tabular-nums whitespace-nowrap"
+                    className="flex-1 min-w-0 h-9 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer tabular-nums whitespace-nowrap shadow-xs"
                   >
-                    <Play className="w-3.5 h-3.5 fill-current shrink-0" />
+                    <Play className="w-3 h-3 fill-current shrink-0" />
                     <span className="truncate">
                       {analytics.dueCount > 0 ? `Study (${analytics.dueCount})` : 'Practice'}
                     </span>
@@ -720,7 +731,7 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                         playHapticFeedback('tap');
                         onInspectDeck(selectedDeck);
                       }}
-                      className="py-2 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+                      className="h-9 px-3 rounded-xl bg-zinc-50 dark:bg-[#18181B] hover:bg-zinc-100 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-white/[0.08] font-medium text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                     >
                       <BookOpen className="w-3.5 h-3.5 shrink-0" />
                       <span>Browse</span>
@@ -735,26 +746,26 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
           {inspectedStageDatum && inspectedStageDatum.cards.length > 0 && (
             <div
               id="mastery-stage-inspector"
-              className="mt-4 pt-3.5 border-t border-neutral-100 dark:border-neutral-800"
+              className="mt-4 pt-3.5 border-t border-zinc-100 dark:border-white/[0.06]"
             >
               <div className="flex items-center justify-between gap-2 mb-2.5">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className={`w-2.5 h-2.5 rounded-xs ${inspectedStageDatum.dotClass}`} />
-                  <span className="font-bold text-neutral-900 dark:text-neutral-100">
+                  <span className={`w-2 h-2 rounded-xs ${inspectedStageDatum.dotClass}`} />
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">
                     {inspectedStageDatum.label} Cards ({inspectedStageDatum.count})
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setExpandedStage(null)}
-                  className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+                  className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                   aria-label="Close stage inspector"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="max-h-44 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-800/40 px-3">
+              <div className="max-h-44 overflow-y-auto divide-y divide-zinc-100 dark:divide-white/[0.06] rounded-xl border border-zinc-200/70 dark:border-white/[0.07] bg-zinc-50/80 dark:bg-[#18181B] px-3">
                 {inspectedStageDatum.cards.slice(0, 25).map((card) => {
                   const due = isCardDue(card);
                   return (
@@ -763,22 +774,22 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                       className="py-2 flex items-center justify-between gap-3 text-xs tabular-nums"
                     >
                       <div className="min-w-0">
-                        <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                        <span className="font-medium text-zinc-900 dark:text-zinc-100">
                           {card.targetWord}
                         </span>
-                        <span className="text-neutral-400 dark:text-neutral-500 mx-1.5">·</span>
-                        <span className="text-neutral-600 dark:text-neutral-300 truncate">
+                        <span className="text-zinc-400 dark:text-zinc-600 mx-1.5">·</span>
+                        <span className="text-zinc-600 dark:text-zinc-300 truncate">
                           {card.english}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 text-[11px] text-neutral-500 dark:text-neutral-400">
+                      <div className="flex items-center gap-2 shrink-0 text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
                         <span>
                           {card.state === 'new' ? 'New' : formatInterval(card.intervalDays)}
                         </span>
                         <span>·</span>
                         <span>{(card.easeFactor || 2.5).toFixed(2)}×</span>
                         {due && (
-                          <span className="font-semibold text-rose-600 dark:text-rose-400">
+                          <span className="font-sans font-semibold text-rose-600 dark:text-rose-400">
                             Due
                           </span>
                         )}
@@ -787,7 +798,7 @@ export const DeckMasteryChart: React.FC<DeckMasteryChartProps> = ({
                   );
                 })}
                 {inspectedStageDatum.cards.length > 25 && (
-                  <div className="py-2 text-center text-[11px] text-neutral-400 dark:text-neutral-500">
+                  <div className="py-2 text-center text-[11px] text-zinc-400 dark:text-zinc-500">
                     Showing 25 of {inspectedStageDatum.cards.length} cards
                   </div>
                 )}

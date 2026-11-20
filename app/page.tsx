@@ -1070,8 +1070,8 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f2f2f7] dark:bg-[#0f141c] text-[#1c1c1e] dark:text-[#f3f4f6] flex flex-col antialiased selection:bg-blue-500 selection:text-white transition-colors">
-      {/* Apple-styled Navigation Header */}
+    <div className="min-h-screen bg-[#F8F9FB] dark:bg-[#09090B] text-zinc-900 dark:text-zinc-100 flex flex-col antialiased selection:bg-blue-600 selection:text-white transition-colors">
+      {/* Sleek Navigation Header */}
       <Navbar
         activeTab={activeTab}
         onTabChange={handleTabChange}
@@ -1085,16 +1085,16 @@ export default function HomePage() {
 
       {/* Quiet Toast Feedback Indicator */}
       {syncToastMessage && (
-        <div className="fixed top-20 right-4 z-50 animate-in fade-in slide-in-from-top-3 duration-200">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-neutral-900/90 backdrop-blur-md text-white text-xs font-medium shadow-lg border border-white/10">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+        <div className="fixed top-[4.25rem] right-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-900/95 dark:bg-zinc-100 text-white dark:text-zinc-900 backdrop-blur-md text-xs font-medium shadow-lg border border-white/10 dark:border-zinc-200">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600 shrink-0" />
             <span>{syncToastMessage}</span>
           </div>
         </div>
       )}
 
       {/* Main App Content Body */}
-      <main className="flex-1 w-full pb-8">
+      <main className="flex-1 w-full pb-10">
         {activeTab === 'study' && (
           <CardStudyView
             cards={cards}

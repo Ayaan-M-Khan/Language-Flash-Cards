@@ -127,29 +127,31 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
         e.stopPropagation();
         onClose();
       }}
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-zinc-950/50 backdrop-blur-sm flex items-center justify-center p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-neutral-900 rounded-3xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-black/10 dark:border-white/10 animate-in fade-in zoom-in-95 duration-150"
+        className="bg-white dark:bg-[#111114] rounded-2xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-zinc-200/80 dark:border-white/[0.08] animate-in fade-in zoom-in-95 duration-150"
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-black/5 dark:border-white/10 flex items-center justify-between gap-3">
+        <div className="px-5 py-4 border-b border-zinc-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 mb-0.5">
-              <span className="font-semibold text-blue-600 dark:text-blue-400">
+            <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">
+              <span className="font-medium text-blue-600 dark:text-blue-400">
                 {card.language}
               </span>
               {deckTitle && (
                 <>
-                  <span aria-hidden="true">·</span>
+                  <span className="text-zinc-300 dark:text-zinc-700" aria-hidden="true">
+                    ·
+                  </span>
                   <span className="truncate">{deckTitle}</span>
                 </>
               )}
             </div>
             <h2
               id="edit-card-modal-title"
-              className="text-lg font-bold text-neutral-900 dark:text-neutral-100 tracking-tight"
+              className="text-lg font-semibold text-zinc-950 dark:text-zinc-50 tracking-tight"
             >
               Edit Flashcard
             </h2>
@@ -159,7 +161,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close edit flashcard dialog"
-            className="w-10 h-10 rounded-full flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer shrink-0"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -168,7 +170,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
         {/* Form Body */}
         <form id="edit-card-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
           {error && (
-            <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/80 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -177,10 +179,10 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
           {/* Core Pair */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1.5">
                 <label
                   htmlFor="edit-card-target"
-                  className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                  className="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
                 >
                   Target Word / Phrase <span className="text-rose-500">*</span>
                 </label>
@@ -212,7 +214,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                 required
                 autoFocus
                 placeholder={`Word in ${card.language}`}
-                className={`w-full px-3.5 py-2.5 text-sm font-semibold rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+                className={`w-full px-3.5 py-2.5 text-sm font-semibold rounded-xl bg-zinc-50/90 dark:bg-[#18181B] text-zinc-950 dark:text-zinc-50 border border-zinc-200/80 dark:border-white/[0.08] focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 ${
                   targetIsRtl ? 'text-right' : ''
                 }`}
               />
@@ -221,7 +223,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
             <div>
               <label
                 htmlFor="edit-card-english"
-                className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1"
+                className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5"
               >
                 English Definition <span className="text-rose-500">*</span>
               </label>
@@ -236,7 +238,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                 maxLength={500}
                 required
                 placeholder="English translation"
-                className="w-full px-3.5 py-2.5 text-sm font-medium rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="w-full px-3.5 py-2.5 text-sm font-medium rounded-xl bg-zinc-50/90 dark:bg-[#18181B] text-zinc-950 dark:text-zinc-50 border border-zinc-200/80 dark:border-white/[0.08] focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15"
               />
             </div>
           </div>
@@ -246,7 +248,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
             <div>
               <label
                 htmlFor="edit-card-phonetic"
-                className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
               >
                 Transliteration / IPA
               </label>
@@ -257,14 +259,14 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                 onChange={(e) => setPhonetic(e.target.value)}
                 maxLength={200}
                 placeholder="e.g. marHaban"
-                className="w-full px-3 py-2 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-50/90 dark:bg-[#18181B] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15"
               />
             </div>
 
             <div>
               <label
                 htmlFor="edit-card-pos"
-                className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
               >
                 Part of Speech
               </label>
@@ -275,14 +277,14 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                 onChange={(e) => setPartOfSpeech(e.target.value)}
                 maxLength={50}
                 placeholder="e.g. noun, phrase"
-                className="w-full px-3 py-2 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-50/90 dark:bg-[#18181B] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15"
               />
             </div>
 
             <div>
               <label
                 htmlFor="edit-card-category"
-                className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
               >
                 Category / Topic
               </label>
@@ -293,14 +295,14 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                 onChange={(e) => setCategory(e.target.value)}
                 maxLength={100}
                 placeholder="e.g. Greetings"
-                className="w-full px-3 py-2 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-50/90 dark:bg-[#18181B] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15"
               />
             </div>
           </div>
 
           {/* Example Sentence */}
-          <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-800/60 border border-black/5 dark:border-white/10 space-y-2.5">
-            <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block">
+          <div className="p-3.5 rounded-xl bg-zinc-50/80 dark:bg-[#18181B]/70 border border-zinc-200/70 dark:border-white/[0.07] space-y-2.5">
+            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 block">
               Example Sentence (Optional)
             </span>
             <input
@@ -314,7 +316,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
               }}
               maxLength={500}
               placeholder={`Example sentence in ${card.language}`}
-              className={`w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+              className={`w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#111114] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 ${
                 exampleIsRtl ? 'text-right' : ''
               }`}
             />
@@ -328,7 +330,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
               }}
               maxLength={500}
               placeholder="English translation of example sentence"
-              className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#111114] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15"
             />
           </div>
 
@@ -336,7 +338,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
           <div>
             <label
               htmlFor="edit-card-notes"
-              className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1"
+              className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5"
             >
               Usage &amp; Memory Notes
             </label>
@@ -347,16 +349,16 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
               onChange={(e) => setNotes(e.target.value)}
               maxLength={1000}
               placeholder="Grammar tips, gender, register, or memory hooks..."
-              className="w-full px-3.5 py-2 text-xs rounded-xl bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-y leading-relaxed"
+              className="w-full px-3.5 py-2 text-xs rounded-xl bg-zinc-50/90 dark:bg-[#18181B] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 resize-y leading-relaxed"
             />
           </div>
         </form>
 
         {/* Footer Actions */}
-        <div className="px-5 py-3.5 border-t border-black/5 dark:border-white/10 bg-neutral-50/80 dark:bg-neutral-800/50 rounded-b-3xl flex flex-wrap items-center justify-between gap-2">
+        <div className="px-5 py-3.5 border-t border-zinc-100 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#18181B]/70 rounded-b-2xl flex flex-wrap items-center justify-between gap-2">
           <div>
-            {onDelete && (
-              confirmingDelete ? (
+            {onDelete &&
+              (confirmingDelete ? (
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -364,7 +366,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                       playHapticFeedback('fail');
                       onDelete(card.id);
                     }}
-                    className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="h-8 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Confirm Delete</span>
@@ -372,7 +374,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setConfirmingDelete(false)}
-                    className="px-2.5 py-2 rounded-xl text-xs text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
+                    className="h-8 px-2.5 rounded-xl text-xs text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200/70 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                   >
                     Keep
                   </button>
@@ -381,27 +383,26 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setConfirmingDelete(true)}
-                  className="px-3 py-2 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="h-8 px-3 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Delete</span>
                 </button>
-              )
-            )}
+              ))}
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-neutral-200/80 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 text-xs font-semibold transition-colors cursor-pointer"
+              className="h-8 px-3.5 rounded-xl bg-zinc-200/80 dark:bg-white/[0.08] hover:bg-zinc-300/80 dark:hover:bg-white/[0.12] text-zinc-800 dark:text-zinc-200 text-xs font-medium transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               form="edit-card-form"
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+              className="h-8 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Save Changes</span>

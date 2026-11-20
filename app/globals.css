@@ -1,9 +1,14 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme inline {
+  --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 @layer utilities {
   .perspective-1000 {
-    perspective: 1000px;
+    perspective: 1200px;
   }
   .transform-style-preserve-3d {
     transform-style: preserve-3d;
@@ -17,26 +22,22 @@
   }
 }
 
-/* Apple system typography & frosted glass scrollbars */
-:root {
-  --font-apple: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
-}
-
 body {
-  font-family: var(--font-apple);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f2f2f7;
-  color: #1c1c1e;
-  transition: background-color 200ms ease, color 200ms ease;
+  background-color: #F8F9FB;
+  color: #18181B;
+  transition: background-color 180ms ease, color 180ms ease;
 }
 
 .dark body {
-  background-color: #0f141c;
-  color: #f3f4f6;
+  background-color: #09090B;
+  color: #F4F4F5;
+  letter-spacing: 0.005em;
 }
 
-/* Custom subtle scrollbar */
+/* Subtle refined scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -45,16 +46,16 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(24, 24, 27, 0.14);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(24, 24, 27, 0.26);
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.14);
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.24);
 }

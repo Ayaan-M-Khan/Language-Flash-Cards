@@ -7,11 +7,8 @@ import {
   CloudCheck,
   Cloud,
   LogOut,
-  Flame,
-  Award,
   CheckCircle2,
   RefreshCw,
-  Sparkles,
 } from 'lucide-react';
 import { playHapticFeedback } from '@/lib/audio';
 
@@ -24,11 +21,10 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
   totalDecks,
   totalCards,
 }) => {
-  const { user, profile, isSyncing, syncStatus, signInWithGoogle, signOutUser } = useAuth();
+  const { user, profile, isSyncing, signInWithGoogle, signOutUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -54,17 +50,17 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
     await signOutUser();
   };
 
-  // If not signed in, show Apple-style Google Sign In button
   if (!user) {
     return (
       <button
         id="google-signin-btn"
+        type="button"
         onClick={handleSignIn}
         disabled={isSyncing}
         title="Sign in with your Google Account to save progress, streaks, and language decks"
-        className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-semibold shadow-2xs hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-[0.98] transition-all duration-200 disabled:opacity-60 cursor-pointer whitespace-nowrap"
+        className="inline-flex items-center gap-1.5 sm:gap-2 h-8 px-2 sm:px-3 rounded-lg bg-white dark:bg-[#18181B] border border-zinc-200 dark:border-white/[0.1] text-zinc-800 dark:text-zinc-200 text-xs font-medium hover:bg-zinc-50 dark:hover:bg-white/[0.06] active:scale-[0.98] transition-all duration-150 disabled:opacity-60 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
       >
-        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+        <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
           <path
             fill="#4285F4"
             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -82,146 +78,132 @@ export const UserAccountMenu: React.FC<UserAccountMenuProps> = ({
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
           />
         </svg>
-        <span className="hidden sm:inline">Sign In with Google</span>
-        <span className="sm:hidden">Sign In</span>
+        <span>Sign in</span>
       </button>
     );
   }
 
-  // User is signed in: show avatar + sync status pill
   const userInitials = (user.displayName || user.email || 'U').slice(0, 2).toUpperCase();
 
   return (
     <div className="relative" ref={menuRef}>
       <button
         id="user-account-dropdown-btn"
+        type="button"
         onClick={() => {
           playHapticFeedback('tap');
           setIsOpen(!isOpen);
         }}
-        className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full bg-white/90 dark:bg-neutral-800/90 border border-black/5 dark:border-white/10 hover:border-black/10 dark:hover:border-white/20 shadow-2xs hover:shadow-xs active:scale-[0.98] transition-all cursor-pointer"
+        className="flex items-center gap-1.5 sm:gap-2 h-8 pl-1 pr-2 sm:pr-2.5 rounded-lg bg-white dark:bg-[#18181B] border border-zinc-200/80 dark:border-white/[0.1] hover:border-zinc-300 dark:hover:border-white/[0.18] active:scale-[0.98] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
         title={`Account: ${user.email} (Cloud Synced)`}
       >
         {user.photoURL ? (
           <Image
             src={user.photoURL}
             alt={user.displayName || 'Avatar'}
-            width={28}
-            height={28}
+            width={24}
+            height={24}
             referrerPolicy="no-referrer"
-            className="w-7 h-7 rounded-full object-cover border border-neutral-200 dark:border-neutral-700"
+            className="w-6 h-6 rounded-md object-cover"
           />
         ) : (
-          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">
+          <div className="w-6 h-6 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-[10px] font-semibold flex items-center justify-center">
             {userInitials}
           </div>
         )}
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {isSyncing ? (
-            <RefreshCw className="w-3.5 h-3.5 text-blue-500 animate-spin" />
+            <RefreshCw className="w-3 h-3 text-blue-600 dark:text-blue-400 animate-spin" />
           ) : (
-            <CloudCheck className="w-3.5 h-3.5 text-emerald-500" />
+            <CloudCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           )}
-          <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300 max-w-[80px] sm:max-w-[120px] truncate">
+          <span className="hidden sm:inline text-xs font-medium text-zinc-700 dark:text-zinc-300 max-w-[110px] truncate">
             {user.displayName?.split(' ')[0] || user.email?.split('@')[0]}
           </span>
         </div>
       </button>
 
-      {/* Apple Card Popover Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 rounded-3xl bg-white/95 dark:bg-neutral-900/95 backdrop-blur-2xl border border-neutral-200/80 dark:border-neutral-800 shadow-xl p-4 text-neutral-900 dark:text-neutral-100 z-50 animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-white dark:bg-[#111114] border border-zinc-200/80 dark:border-white/[0.08] shadow-[0_12px_36px_-12px_rgba(15,23,42,0.18)] p-4 text-zinc-900 dark:text-zinc-100 z-50 animate-in fade-in zoom-in-95 duration-150">
           {/* User Header */}
-          <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
+          <div className="flex items-center gap-3 pb-3.5 border-b border-zinc-100 dark:border-white/[0.06]">
             {user.photoURL ? (
               <Image
                 src={user.photoURL}
                 alt={user.displayName || 'Avatar'}
-                width={44}
-                height={44}
+                width={40}
+                height={40}
                 referrerPolicy="no-referrer"
-                className="w-11 h-11 rounded-2xl object-cover border border-neutral-200 dark:border-neutral-700 shrink-0"
+                className="w-10 h-10 rounded-xl object-cover border border-zinc-200/80 dark:border-white/[0.08] shrink-0"
               />
             ) : (
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white text-sm font-bold flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-semibold flex items-center justify-center shrink-0">
                 {userInitials}
               </div>
             )}
-            <div className="overflow-hidden">
-              <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 truncate">
+            <div className="overflow-hidden min-w-0">
+              <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                 {user.displayName || 'Language Learner'}
               </h4>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{user.email}</p>
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold uppercase tracking-wider">
-                  Cloud Synced
-                </span>
-              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{user.email}</p>
             </div>
           </div>
 
-          {/* Progress & Mastery Overview */}
-          <div className="py-3 grid grid-cols-3 gap-2 text-center tabular-nums">
-            <div className="p-2 rounded-2xl bg-orange-50/80 dark:bg-orange-950/40 border border-orange-100 dark:border-orange-900/40">
-              <div className="flex items-center justify-center text-orange-600 dark:text-orange-400 mb-0.5">
-                <Flame className="w-4 h-4 fill-orange-500" />
-              </div>
-              <div className="text-sm font-bold text-orange-700 dark:text-orange-300">
+          {/* Hairline-divided Progress Overview */}
+          <div className="py-3.5 grid grid-cols-3 divide-x divide-zinc-100 dark:divide-white/[0.06] text-center tabular-nums">
+            <div className="px-2">
+              <div className="text-sm font-semibold font-mono text-zinc-900 dark:text-zinc-100">
                 {profile?.streak ?? 0}d
               </div>
-              <div className="text-[10px] text-orange-600/80 dark:text-orange-400/80 font-medium">Streak</div>
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">Streak</div>
             </div>
 
-            <div className="p-2 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40">
-              <div className="flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-0.5">
-                <Award className="w-4 h-4" />
-              </div>
-              <div className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+            <div className="px-2">
+              <div className="text-sm font-semibold font-mono text-zinc-900 dark:text-zinc-100">
                 {profile?.cardsMastered ?? 0}
               </div>
-              <div className="text-[10px] text-indigo-600/80 dark:text-indigo-400/80 font-medium">Mastered</div>
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">Mastered</div>
             </div>
 
-            <div className="p-2 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40">
-              <div className="flex items-center justify-center text-blue-600 dark:text-blue-400 mb-0.5">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div className="text-sm font-bold text-blue-700 dark:text-blue-300">
+            <div className="px-2">
+              <div className="text-sm font-semibold font-mono text-zinc-900 dark:text-zinc-100">
                 {profile?.totalReviews ?? 0}
               </div>
-              <div className="text-[10px] text-blue-600/80 dark:text-blue-400/80 font-medium">Reviews</div>
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">Reviews</div>
             </div>
           </div>
 
-          {/* Cloud Storage Status Details */}
-          <div className="mb-2 px-3 py-2 rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/60 dark:border-neutral-700/60 text-xs text-neutral-600 dark:text-neutral-400 flex items-center justify-between tabular-nums">
-            <div className="flex items-center gap-1.5">
-              <Cloud className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
-              <span>Saved Decks</span>
+          {/* Cloud Storage Summary */}
+          <div className="py-3 border-t border-zinc-100 dark:border-white/[0.06] space-y-2 text-xs">
+            <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400 tabular-nums">
+              <span className="inline-flex items-center gap-1.5">
+                <Cloud className="w-3.5 h-3.5" />
+                Saved library
+              </span>
+              <span className="font-medium text-zinc-800 dark:text-zinc-200 font-mono">
+                {totalDecks}d · {totalCards}c
+              </span>
             </div>
-            <span className="font-semibold text-neutral-900 dark:text-neutral-100">
-              {totalDecks} decks ({totalCards} cards)
-            </span>
-          </div>
 
-          <div className="mb-3 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100/80 dark:border-emerald-800/40 text-[11px] text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              Multi-Device Live Sync
-            </span>
-            <span className="font-semibold text-emerald-700 dark:text-emerald-400">Active</span>
+            <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
+              <span className="inline-flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                Cloud sync
+              </span>
+              <span className="font-medium text-emerald-700 dark:text-emerald-400">Active</span>
+            </div>
           </div>
 
           {/* Sign Out Button */}
           <button
             id="signout-btn"
+            type="button"
             onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-100 dark:border-rose-900/30 transition-colors cursor-pointer"
+            className="w-full mt-2 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-zinc-200/80 dark:border-white/[0.08] transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>Sign Out</span>
+            <span>Sign out</span>
           </button>
         </div>
       )}

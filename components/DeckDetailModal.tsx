@@ -156,30 +156,32 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
       aria-modal="true"
       aria-labelledby="deck-detail-modal-title"
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-zinc-950/50 backdrop-blur-sm flex items-center justify-center p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-neutral-900 rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-black/10 dark:border-white/10 animate-in fade-in zoom-in-95 duration-200"
+        className="bg-white dark:bg-[#111114] rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-zinc-200/80 dark:border-white/[0.08] animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-black/5 dark:border-white/10 space-y-3">
+        <div className="p-4 sm:p-5 border-b border-zinc-100 dark:border-white/[0.06] space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1 text-xs tabular-nums">
-                <span className="font-semibold text-blue-600 dark:text-blue-400">
+              <div className="flex items-center gap-1.5 mb-1 text-xs tabular-nums">
+                <span className="font-medium text-blue-600 dark:text-blue-400">
                   {deck.language}
                 </span>
-                <span className="text-neutral-300 dark:text-neutral-600" aria-hidden="true">
+                <span className="text-zinc-300 dark:text-zinc-700" aria-hidden="true">
                   ·
                 </span>
-                <span className="text-neutral-500 dark:text-neutral-400">
-                  {cards.length} {cards.length === 1 ? 'card' : 'cards'} ({dueCount} due)
+                <span className="text-zinc-500 dark:text-zinc-400">
+                  <span className="font-mono text-zinc-700 dark:text-zinc-300">{cards.length}</span>{' '}
+                  {cards.length === 1 ? 'card' : 'cards'} ·{' '}
+                  <span className="font-mono text-zinc-700 dark:text-zinc-300">{dueCount}</span> due
                 </span>
               </div>
               <h2
                 id="deck-detail-modal-title"
-                className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight truncate"
+                className="text-lg sm:text-xl font-semibold text-zinc-950 dark:text-zinc-50 tracking-tight truncate"
               >
                 {deck.title}
               </h2>
@@ -190,7 +192,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                 <div
                   role="group"
                   aria-label="Card definition order"
-                  className="inline-flex items-center p-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-neutral-200/80 dark:border-neutral-700 text-xs font-medium shrink-0"
+                  className="inline-flex items-center p-1 bg-zinc-100 dark:bg-white/[0.05] rounded-xl border border-zinc-200/70 dark:border-white/[0.06] text-xs font-medium shrink-0"
                 >
                   <button
                     type="button"
@@ -200,8 +202,8 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                     }}
                     className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                       cardDirection === 'target-first'
-                        ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
-                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
+                        ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-2xs font-semibold'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                     }`}
                   >
                     Word → Def
@@ -214,8 +216,8 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                     }}
                     className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                       cardDirection === 'definition-first'
-                        ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
-                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
+                        ? 'bg-blue-600 text-white shadow-2xs font-semibold'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                     }`}
                   >
                     <ArrowLeftRight className="w-3 h-3 shrink-0" />
@@ -229,9 +231,9 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                     onClose();
                     onStudyDeck(deck.id, cardDirection);
                   }}
-                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-2xs whitespace-nowrap cursor-pointer"
+                  className="h-8 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs whitespace-nowrap cursor-pointer transition-colors"
                 >
-                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <Play className="w-3 h-3 fill-current" />
                   <span>Study</span>
                 </button>
               </div>
@@ -240,7 +242,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                 type="button"
                 onClick={onClose}
                 aria-label="Close deck browser"
-                className="w-9 h-9 rounded-full flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer shrink-0"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -251,7 +253,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
             <div
               role="group"
               aria-label="Card definition order"
-              className="inline-flex items-center p-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-neutral-200/80 dark:border-neutral-700 text-xs font-medium shrink-0"
+              className="inline-flex items-center p-1 bg-zinc-100 dark:bg-white/[0.05] rounded-xl border border-zinc-200/70 dark:border-white/[0.06] text-xs font-medium shrink-0"
             >
               <button
                 type="button"
@@ -261,8 +263,8 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                 }}
                 className={`px-2 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   cardDirection === 'target-first'
-                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
+                    ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-2xs font-semibold'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                 }`}
               >
                 Word → Def
@@ -275,8 +277,8 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                 }}
                 className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   cardDirection === 'definition-first'
-                    ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100'
+                    ? 'bg-blue-600 text-white shadow-2xs font-semibold'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                 }`}
               >
                 <ArrowLeftRight className="w-3 h-3 shrink-0" />
@@ -290,38 +292,38 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                 onClose();
                 onStudyDeck(deck.id, cardDirection);
               }}
-              className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-2xs whitespace-nowrap cursor-pointer"
+              className="h-8 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs whitespace-nowrap cursor-pointer transition-colors"
             >
-              <Play className="w-3.5 h-3.5 fill-current" />
+              <Play className="w-3 h-3 fill-current" />
               <span>Study</span>
             </button>
           </div>
         </div>
 
-        {/* Search & Quick Add Toolbar */}
+        {/* Search Toolbar */}
         {cards.length > 0 && (
-          <div className="px-5 pt-3.5 pb-1 flex items-center gap-2">
+          <div className="px-5 pt-3.5 pb-1 flex items-center gap-2.5">
             <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search words, definitions, phonetics, or topics..."
-                className="w-full pl-8 pr-8 py-2 text-xs rounded-xl bg-neutral-100/80 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 border border-transparent focus:border-blue-500/50 focus:bg-white dark:focus:bg-neutral-800 focus:outline-none transition-colors"
+                className="w-full h-9 pl-8 pr-8 text-xs rounded-xl bg-zinc-50/90 dark:bg-[#18181B] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 border border-zinc-200/80 dark:border-white/[0.08] focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 focus:outline-none transition-colors"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
                   aria-label="Clear search"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
-            <span className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 tabular-nums shrink-0">
+            <span className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500 tabular-nums shrink-0">
               {filteredCards.length}/{cards.length}
             </span>
           </div>
@@ -333,10 +335,10 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
           {isAdding ? (
             <form
               onSubmit={handleAddCard}
-              className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-800 border border-blue-200/80 dark:border-blue-700/80 mb-3 space-y-2.5"
+              className="p-4 rounded-2xl bg-zinc-50/90 dark:bg-[#18181B] border border-blue-500/40 dark:border-blue-500/40 mb-3 space-y-2.5"
             >
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-neutral-700 dark:text-neutral-200">
+                <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
                   Add New Flashcard
                 </h4>
                 <button
@@ -365,7 +367,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                   value={newTarget}
                   onChange={(e) => setNewTarget(e.target.value)}
                   placeholder={`Foreign word (${deck.language})`}
-                  className={`px-3 py-2 text-xs bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium placeholder:text-neutral-400 dark:placeholder:text-neutral-500 ${
+                  className={`px-3 py-2 text-xs bg-white dark:bg-[#111114] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] rounded-xl focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 font-medium placeholder:text-zinc-400 dark:placeholder:text-zinc-500 ${
                     isRtlScript(newTarget) ? 'text-right' : ''
                   }`}
                   required
@@ -375,7 +377,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                   value={newEnglish}
                   onChange={(e) => setNewEnglish(e.target.value)}
                   placeholder="English meaning"
-                  className="px-3 py-2 text-xs bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
+                  className="px-3 py-2 text-xs bg-white dark:bg-[#111114] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] rounded-xl focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
                   required
                 />
                 <input
@@ -383,7 +385,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
                   placeholder="Topic / Category"
-                  className="px-3 py-2 text-xs bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
+                  className="px-3 py-2 text-xs bg-white dark:bg-[#111114] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] rounded-xl focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
                 />
               </div>
 
@@ -395,14 +397,14 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                       value={newPhonetic}
                       onChange={(e) => setNewPhonetic(e.target.value)}
                       placeholder="Transliteration / IPA (optional)"
-                      className="px-3 py-2 text-xs bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
+                      className="px-3 py-2 text-xs bg-white dark:bg-[#111114] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] rounded-xl focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
                     />
                     <input
                       type="text"
                       value={newPartOfSpeech}
                       onChange={(e) => setNewPartOfSpeech(e.target.value)}
                       placeholder="Part of speech (e.g. noun, phrase)"
-                      className="px-3 py-2 text-xs bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
+                      className="px-3 py-2 text-xs bg-white dark:bg-[#111114] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] rounded-xl focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -412,7 +414,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                       value={newExampleTarget}
                       onChange={(e) => setNewExampleTarget(e.target.value)}
                       placeholder={`Example in ${deck.language} (optional)`}
-                      className={`px-3 py-2 text-xs bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 ${
+                      className={`px-3 py-2 text-xs bg-white dark:bg-[#111114] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] rounded-xl focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 ${
                         isRtlScript(newExampleTarget) ? 'text-right' : ''
                       }`}
                     />
@@ -421,7 +423,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                       value={newExampleEnglish}
                       onChange={(e) => setNewExampleEnglish(e.target.value)}
                       placeholder="Example English translation"
-                      className="px-3 py-2 text-xs bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
+                      className="px-3 py-2 text-xs bg-white dark:bg-[#111114] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] rounded-xl focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
                     />
                   </div>
                   <input
@@ -429,7 +431,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                     value={newNotes}
                     onChange={(e) => setNewNotes(e.target.value)}
                     placeholder="Usage & memory notes (optional)"
-                    className="w-full px-3 py-2 text-xs bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
+                    className="w-full px-3 py-2 text-xs bg-white dark:bg-[#111114] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.08] rounded-xl focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
                   />
                 </div>
               )}
@@ -438,13 +440,13 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAdding(false)}
-                  className="px-3 py-1.5 rounded-xl text-xs text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 cursor-pointer"
+                  className="h-8 px-3 rounded-xl text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200/70 dark:hover:bg-white/[0.06] cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 text-white font-semibold text-xs hover:bg-blue-700 cursor-pointer"
+                  className="h-8 px-3.5 rounded-xl bg-blue-600 text-white font-medium text-xs hover:bg-blue-700 cursor-pointer transition-colors"
                 >
                   Save Card
                 </button>
@@ -454,7 +456,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
             <button
               type="button"
               onClick={() => setIsAdding(true)}
-              className="w-full py-2.5 px-3 rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 hover:border-blue-500 hover:bg-blue-50/20 dark:hover:bg-blue-950/20 text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              className="w-full h-10 px-3 rounded-xl border border-dashed border-zinc-300 dark:border-white/[0.14] hover:border-blue-500/70 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 text-xs font-medium text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Single Flashcard</span>
@@ -470,13 +472,13 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
               return (
                 <div
                   key={card.id}
-                  className="p-3.5 rounded-2xl bg-neutral-50/70 dark:bg-neutral-800/70 border border-black/5 dark:border-white/10 hover:border-black/15 dark:hover:border-white/20 flex items-center justify-between gap-3 transition-colors"
+                  className="p-3.5 rounded-xl bg-zinc-50/70 dark:bg-[#18181B]/75 border border-zinc-200/70 dark:border-white/[0.07] hover:border-zinc-300/90 dark:hover:border-white/[0.14] flex items-center justify-between gap-3 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-0.5">
                       <span
                         dir={targetRtl ? 'rtl' : 'ltr'}
-                        className="font-semibold text-sm text-neutral-900 dark:text-neutral-100 break-words"
+                        className="font-semibold text-sm text-zinc-950 dark:text-zinc-50 break-words"
                       >
                         {card.targetWord}
                       </span>
@@ -486,7 +488,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                         className={`transition-colors shrink-0 cursor-pointer ${
                           speakingCardId === card.id
                             ? 'text-blue-600 dark:text-blue-400 scale-110'
-                            : 'text-neutral-400 dark:text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400'
+                            : 'text-zinc-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400'
                         }`}
                         title="Pronounce"
                         aria-label={`Pronounce ${card.targetWord}`}
@@ -494,51 +496,51 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                         <Volume2 className="w-3.5 h-3.5" />
                       </button>
                       {card.phonetic && (
-                        <span className="text-[11px] text-indigo-600/85 dark:text-indigo-400 font-medium break-words">
+                        <span className="text-[11px] text-blue-600/85 dark:text-blue-400 font-medium break-words">
                           [{card.phonetic}]
                         </span>
                       )}
                       {card.partOfSpeech && (
-                        <span className="text-[11px] italic text-neutral-400 dark:text-neutral-500">
+                        <span className="text-[11px] italic text-zinc-400 dark:text-zinc-500">
                           {card.partOfSpeech}
                         </span>
                       )}
                     </div>
 
-                    <p className="text-xs text-neutral-600 dark:text-neutral-300 break-words">
+                    <p className="text-xs text-zinc-600 dark:text-zinc-300 break-words">
                       {card.english}
                     </p>
 
                     {card.exampleSentence?.target && (
                       <p
                         dir={isRtlScript(card.exampleSentence.target) ? 'rtl' : 'ltr'}
-                        className="text-[11px] text-neutral-400 dark:text-neutral-500 italic mt-0.5 truncate"
+                        className="text-[11px] text-zinc-400 dark:text-zinc-500 italic mt-0.5 truncate"
                       >
                         &ldquo;{card.exampleSentence.target}&rdquo;
                       </p>
                     )}
 
                     {card.notes && (
-                      <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
+                      <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5 truncate">
                         Note: {card.notes}
                       </p>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="text-right tabular-nums pr-1">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="text-right tabular-nums pr-1.5">
                       <span
-                        className={`inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide ${
+                        className={`block text-[11px] font-medium capitalize ${
                           card.state === 'mastered'
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : isDue
                             ? 'text-rose-600 dark:text-rose-400'
-                            : 'text-neutral-600 dark:text-neutral-300'
+                            : 'text-zinc-600 dark:text-zinc-300'
                         }`}
                       >
                         {isDue ? 'Due' : card.state}
                       </span>
-                      <span className="block text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+                      <span className="block text-[10px] font-mono text-zinc-400 dark:text-zinc-500 mt-0.5">
                         {formatInterval(card.intervalDays)}
                       </span>
                     </div>
@@ -549,7 +551,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                         playHapticFeedback('tap');
                         setEditingCard(card);
                       }}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
                       title="Edit card"
                       aria-label={`Edit ${card.targetWord}`}
                     >
@@ -559,7 +561,7 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
                     <button
                       type="button"
                       onClick={() => onDeleteCard(card.id)}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 dark:text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                       title="Delete card"
                       aria-label={`Delete ${card.targetWord}`}
                     >
@@ -571,13 +573,13 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
             })}
 
             {cards.length === 0 && (
-              <p className="text-center text-xs text-neutral-400 dark:text-neutral-500 py-8">
+              <p className="text-center text-xs text-zinc-400 dark:text-zinc-500 py-8">
                 No cards in this deck yet. Click &ldquo;Add Single Flashcard&rdquo; above or import from a table.
               </p>
             )}
 
             {cards.length > 0 && filteredCards.length === 0 && (
-              <p className="text-center text-xs text-neutral-400 dark:text-neutral-500 py-8">
+              <p className="text-center text-xs text-zinc-400 dark:text-zinc-500 py-8">
                 No cards match &ldquo;{searchQuery}&rdquo;.
               </p>
             )}
@@ -585,14 +587,14 @@ export const DeckDetailModal: React.FC<DeckDetailModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-black/5 dark:border-white/10 bg-neutral-50/70 dark:bg-neutral-800/50 rounded-b-3xl flex items-center justify-between gap-2">
-          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 hidden sm:inline">
+        <div className="px-5 py-3.5 border-t border-zinc-100 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#18181B]/70 rounded-b-2xl flex items-center justify-between gap-2">
+          <span className="text-[11px] text-zinc-400 dark:text-zinc-500 hidden sm:inline">
             Click the edit icon on any card to update text, phonetics, examples, or notes.
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="ml-auto px-4 py-2 rounded-xl bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 text-xs font-semibold cursor-pointer transition-colors"
+            className="ml-auto h-8 px-4 rounded-xl bg-zinc-200/80 dark:bg-white/[0.08] hover:bg-zinc-300/80 dark:hover:bg-white/[0.12] text-zinc-800 dark:text-zinc-200 text-xs font-medium cursor-pointer transition-colors"
           >
             Close
           </button>
